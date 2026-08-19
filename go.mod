@@ -3,6 +3,7 @@ module github.com/shibukawa/ebigentserver
 go 1.26.5
 
 require (
+	github.com/shibukawa/fixmath v0.0.0-20260819025749-43f3be5662a6
 	github.com/shibukawa/tinybind-go v0.5.17
 	github.com/shibukawa/tinygodriver v1.2.6
 )
@@ -12,3 +13,5 @@ require (
 	golang.org/x/sync v0.22.0 // indirect
 	golang.org/x/tools v0.48.0 // indirect
 )
+
+replace github.com/shibukawa/fixmath => ../fixmath

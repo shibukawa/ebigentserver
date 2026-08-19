@@ -8,7 +8,7 @@
 
 | 項目 | 状態 | 実装 |
 |---|---|---|
-| `api:fixed-point-math` | 実装中 | [github.com/shibukawa/fixmath](https://github.com/shibukawa/fixmath)（別モジュール） |
+| `api:fixed-point-math` | 済（ローカル） | [github.com/shibukawa/fixmath](https://github.com/shibukawa/fixmath) — F64 (s32.32)、BAM Angle、Vec2、宣言スケール変換。**未push・未tagのため `go.mod` は `replace => ../fixmath` を持つ。push と v1.0.0 tag 後に replace を外すこと** |
 | CBOR 生成（wire / world プロファイル、スケール対応） | 済 | tinybind-go v0.5.17 + tinygodriver v1.2.6 |
 | `rule:codegen-rejects-nondeterministic-types` | 済 | tinybind の生成時検査（[検証テスト](examples/phase0/msg/gencheck_test.go)） |
 | `data:protocol-version` | 済 | 生成コードの `CBORProtocolVersion` / `CBORSchema` |
@@ -25,6 +25,7 @@
 
 - `importcheck` — 依存の閉じ込め検査。ゲームモジュールは `importcheck.Enforce(t, ".", importcheck.Default())` を 1 テスト持つ。
 - `examples/phase0` — Phase 0 の証明: 固定小数点型 + 生成 CBOR コーデック + delta、build target ごとの cmd エントリポイント。
+- `examples/phase0/sim` — Phase 0 スタック全体（fixmath の Sin/Atan2/Sqrt → 宣言スケール量子化 → 生成 delta エンコード）を通した決定的エピソード。digest をテストで固定しており、これが Phase 2 のクロスアーキテクチャ検証の種になる。
 
 ## コード生成
 

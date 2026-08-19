@@ -9,6 +9,7 @@
 package msg
 
 import (
+	"github.com/shibukawa/fixmath"
 	"github.com/shibukawa/tinybind-go/cborbind"
 	"github.com/shibukawa/tinygodriver/encoding/cbor"
 )
@@ -21,6 +22,14 @@ type Fixed1024 int64
 // AppendCBORTo encodes the raw scaled integer; the scale is declared by the
 // type and never travels on the wire (rule:fixed-point-on-wire).
 func (f Fixed1024) AppendCBORTo(dst []byte) []byte { return cbor.AppendInt(dst, int64(f)) }
+
+// F64 converts the wire value into the canonical compute format
+// (api:fixed-point-math). Exact: shift 10 <= 32.
+func (f Fixed1024) F64() fixmath.F64 { return fixmath.FromScaled(int64(f), 10) }
+
+// Fixed1024FromF64 quantizes a compute value onto the wire scale, rounding
+// half away from zero (fixmath FR-7).
+func Fixed1024FromF64(v fixmath.F64) Fixed1024 { return Fixed1024(fixmath.ToScaled(v, 10)) }
 
 // DecodeCBORFrom reads one scaled integer.
 func (f *Fixed1024) DecodeCBORFrom(data []byte) error {
@@ -42,6 +51,13 @@ type Fixed65536 int64
 
 // AppendCBORTo encodes the raw scaled integer.
 func (f Fixed65536) AppendCBORTo(dst []byte) []byte { return cbor.AppendInt(dst, int64(f)) }
+
+// F64 converts the wire value into the canonical compute format. Exact.
+func (f Fixed65536) F64() fixmath.F64 { return fixmath.FromScaled(int64(f), 16) }
+
+// Fixed65536FromF64 quantizes a compute value onto the wire scale, rounding
+// half away from zero.
+func Fixed65536FromF64(v fixmath.F64) Fixed65536 { return Fixed65536(fixmath.ToScaled(v, 16)) }
 
 // DecodeCBORFrom reads one scaled integer.
 func (f *Fixed65536) DecodeCBORFrom(data []byte) error {

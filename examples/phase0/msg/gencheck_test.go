@@ -60,17 +60,22 @@ func requireGenerationError(t *testing.T, field, wantInError string) {
 	t.Logf("rejected as expected: %v", err)
 }
 
+// writeFixtureModule builds a self-contained module whose dependencies are
+// replaced by the directories this module already resolves them to, so the
+// fixture builds offline and against the exact same code — including a
+// dependency that only exists as a local replace.
 func writeFixtureModule(t *testing.T, dir, source string) {
 	t.Helper()
-	gomod := `module example.com/floatcheck
-
-go 1.26
-
-require (
-	github.com/shibukawa/tinybind-go ` + moduleVersion(t, "github.com/shibukawa/tinybind-go") + `
-	github.com/shibukawa/tinygodriver ` + moduleVersion(t, "github.com/shibukawa/tinygodriver") + `
-)
-`
+	deps := []string{
+		"github.com/shibukawa/tinybind-go",
+		"github.com/shibukawa/tinygodriver",
+		"github.com/shibukawa/fixmath",
+	}
+	gomod := "module example.com/floatcheck\n\ngo 1.26\n\n"
+	for _, dep := range deps {
+		gomod += "require " + dep + " v0.0.0-00010101000000-000000000000\n"
+		gomod += "replace " + dep + " => " + moduleDir(t, dep) + "\n"
+	}
 	if err := os.WriteFile(filepath.Join(dir, "go.mod"), []byte(gomod), 0o644); err != nil {
 		t.Fatal(err)
 	}
