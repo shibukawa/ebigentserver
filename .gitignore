@@ -1,0 +1,17 @@
+# Binaries
+/bin/
+*.exe
+*.wasm
+
+# Test artifacts
+*.test
+*.out
+coverage.*
+
+# Editor
+.DS_Store
+.idea/
+.vscode/
+
+# Claude scratch
+.claude/worktrees/

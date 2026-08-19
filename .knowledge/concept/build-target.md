@@ -1,0 +1,36 @@
+---
+id: concept:build-target
+type: concept
+title: Build Target
+---
+Named artifact kind produced from one game codebase, realized as one entry point.
+
+```yaml
+mechanism: decision:entry-points-over-build-tags
+matrix:
+  - target: native client
+    renders: yes
+    links: system:ebitengine, all transports, api:lan-discovery
+  - target: wasm client
+    renders: yes
+    links: system:ebitengine, system:websocket, system:webtransport, system:webrtc
+    excludes: udp sockets, so api:lan-discovery is unavailable
+  - target: static wasm bundle
+    renders: yes
+    links: system:webrtc and api:manual-signaling-token only
+    mode: concept:static-host-mode
+  - target: listen server
+    renders: yes
+    note: a client that also hosts, so it links everything a client and a session need
+  - target: dedicated server
+    renders: no
+    links: transports and session only; system:ebitengine is never imported
+    mode: concept:dedicated-server-mode
+  - target: simulation
+    renders: no
+    links: session and local transport only
+    mode: concept:simulation-mode
+shared_by_all: the game rules package, which links into every target unchanged
+built_by: api:game-cli
+constraint: requirement:native-and-wasm-targets
+```

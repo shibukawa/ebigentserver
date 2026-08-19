@@ -1,0 +1,201 @@
+{"category": "behavior", "id": "actor:behavior-tree-agent", "path": ".knowledge/actor/behavior-tree-agent.md", "role": "supporting", "title": "Behavior Tree Agent", "type": "actor"}
+{"category": "behavior", "id": "actor:human-agent", "path": ".knowledge/actor/human-agent.md", "role": "supporting", "title": "Human Agent", "type": "actor"}
+{"category": "behavior", "id": "actor:llm-agent", "path": ".knowledge/actor/llm-agent.md", "role": "supporting", "title": "LLM Agent", "type": "actor"}
+{"category": "behavior", "id": "actor:remote-agent", "path": ".knowledge/actor/remote-agent.md", "role": "supporting", "title": "Remote Agent", "type": "actor"}
+{"category": "behavior", "id": "actor:replay-agent", "path": ".knowledge/actor/replay-agent.md", "role": "supporting", "title": "Replay Agent", "type": "actor"}
+{"category": "behavior", "id": "actor:rl-agent", "path": ".knowledge/actor/rl-agent.md", "role": "supporting", "title": "RL Agent", "type": "actor"}
+{"category": "behavior", "id": "actor:script-bot-agent", "path": ".knowledge/actor/script-bot-agent.md", "role": "supporting", "title": "Script Bot Agent", "type": "actor"}
+{"category": "interface", "id": "api:action-validator", "path": ".knowledge/api/action-validator.md", "role": "primary", "title": "Action Validator", "type": "api"}
+{"category": "interface", "id": "api:agent-interface", "path": ".knowledge/api/agent-interface.md", "role": "primary", "title": "Agent Interface", "type": "api"}
+{"category": "interface", "id": "api:fixed-point-math", "path": ".knowledge/api/fixed-point-math.md", "role": "primary", "title": "Fixed Point Math", "type": "api"}
+{"category": "interface", "id": "api:game-cli", "path": ".knowledge/api/game-cli.md", "role": "primary", "title": "Game CLI", "type": "api"}
+{"category": "interface", "id": "api:input-adapter", "path": ".knowledge/api/input-adapter.md", "role": "primary", "title": "Input Adapter", "type": "api"}
+{"category": "interface", "id": "api:lan-discovery", "path": ".knowledge/api/lan-discovery.md", "role": "primary", "title": "LAN Discovery", "type": "api"}
+{"category": "interface", "id": "api:manual-signaling-token", "path": ".knowledge/api/manual-signaling-token.md", "role": "primary", "title": "Manual Signaling Token", "type": "api"}
+{"category": "interface", "id": "api:message-framing", "path": ".knowledge/api/message-framing.md", "role": "primary", "title": "Message Framing", "type": "api"}
+{"category": "interface", "id": "api:runtime-observability", "path": ".knowledge/api/runtime-observability.md", "role": "primary", "title": "Runtime Observability", "type": "api"}
+{"category": "interface", "id": "api:sequence-ack-layer", "path": ".knowledge/api/sequence-ack-layer.md", "role": "primary", "title": "Sequence And Ack Layer", "type": "api"}
+{"category": "interface", "id": "api:transport-interface", "path": ".knowledge/api/transport-interface.md", "role": "primary", "title": "Transport Interface", "type": "api"}
+{"category": "concept", "id": "concept:ack-transmission-policy", "path": ".knowledge/concept/ack-transmission-policy.md", "role": "supporting", "title": "Ack Transmission Policy", "type": "concept"}
+{"category": "concept", "id": "concept:action", "path": ".knowledge/concept/action.md", "role": "supporting", "title": "Action", "type": "concept"}
+{"category": "concept", "id": "concept:agent-departure-policy", "path": ".knowledge/concept/agent-departure-policy.md", "role": "supporting", "title": "Agent Departure Policy", "type": "concept"}
+{"category": "concept", "id": "concept:agent-proxy-designation", "path": ".knowledge/concept/agent-proxy-designation.md", "role": "supporting", "title": "Agent Proxy Designation", "type": "concept"}
+{"category": "concept", "id": "concept:agent-view", "path": ".knowledge/concept/agent-view.md", "role": "supporting", "title": "Agent View", "type": "concept"}
+{"category": "concept", "id": "concept:agent", "path": ".knowledge/concept/agent.md", "role": "supporting", "title": "Agent", "type": "concept"}
+{"category": "concept", "id": "concept:behavior-distillation", "path": ".knowledge/concept/behavior-distillation.md", "role": "supporting", "title": "Behavior Distillation", "type": "concept"}
+{"category": "concept", "id": "concept:behavior-evidence", "path": ".knowledge/concept/behavior-evidence.md", "role": "supporting", "title": "Behavior Evidence", "type": "concept"}
+{"category": "concept", "id": "concept:behavior-profile", "path": ".knowledge/concept/behavior-profile.md", "role": "supporting", "title": "Behavior Profile", "type": "concept"}
+{"category": "concept", "id": "concept:build-target", "path": ".knowledge/concept/build-target.md", "role": "supporting", "title": "Build Target", "type": "concept"}
+{"category": "concept", "id": "concept:cbor-wire-profile", "path": ".knowledge/concept/cbor-wire-profile.md", "role": "supporting", "title": "CBOR Wire Profile", "type": "concept"}
+{"category": "concept", "id": "concept:cbor-world-profile", "path": ".knowledge/concept/cbor-world-profile.md", "role": "supporting", "title": "CBOR World Profile", "type": "concept"}
+{"category": "concept", "id": "concept:client-prediction", "path": ".knowledge/concept/client-prediction.md", "role": "supporting", "title": "Client Prediction", "type": "concept"}
+{"category": "concept", "id": "concept:continuous-match-loop", "path": ".knowledge/concept/continuous-match-loop.md", "role": "supporting", "title": "Continuous Match Loop", "type": "concept"}
+{"category": "concept", "id": "concept:control-plane", "path": ".knowledge/concept/control-plane.md", "role": "supporting", "title": "Control Plane", "type": "concept"}
+{"category": "concept", "id": "concept:coverage-matrix", "path": ".knowledge/concept/coverage-matrix.md", "role": "supporting", "title": "Coverage Matrix", "type": "concept"}
+{"category": "concept", "id": "concept:dedicated-server-mode", "path": ".knowledge/concept/dedicated-server-mode.md", "role": "supporting", "title": "Dedicated Server Mode", "type": "concept"}
+{"category": "concept", "id": "concept:delta-baseline-policy", "path": ".knowledge/concept/delta-baseline-policy.md", "role": "supporting", "title": "Delta Baseline Policy", "type": "concept"}
+{"category": "concept", "id": "concept:episode-recording-mode", "path": ".knowledge/concept/episode-recording-mode.md", "role": "supporting", "title": "Episode Recording Mode", "type": "concept"}
+{"category": "concept", "id": "concept:episode", "path": ".knowledge/concept/episode.md", "role": "supporting", "title": "Episode", "type": "concept"}
+{"category": "concept", "id": "concept:execution-topology", "path": ".knowledge/concept/execution-topology.md", "role": "supporting", "title": "Execution Topology", "type": "concept"}
+{"category": "concept", "id": "concept:game-time-control", "path": ".knowledge/concept/game-time-control.md", "role": "supporting", "title": "Game Time Control", "type": "concept"}
+{"category": "concept", "id": "concept:hybrid-synchronization", "path": ".knowledge/concept/hybrid-synchronization.md", "role": "supporting", "title": "Hybrid Synchronization", "type": "concept"}
+{"category": "concept", "id": "concept:input-synchronization", "path": ".knowledge/concept/input-synchronization.md", "role": "supporting", "title": "Input Synchronization", "type": "concept"}
+{"category": "concept", "id": "concept:lag-compensation", "path": ".knowledge/concept/lag-compensation.md", "role": "supporting", "title": "Lag Compensation", "type": "concept"}
+{"category": "concept", "id": "concept:listen-server-mode", "path": ".knowledge/concept/listen-server-mode.md", "role": "supporting", "title": "Listen Server Mode", "type": "concept"}
+{"category": "concept", "id": "concept:observation", "path": ".knowledge/concept/observation.md", "role": "supporting", "title": "Observation", "type": "concept"}
+{"category": "concept", "id": "concept:player-slot", "path": ".knowledge/concept/player-slot.md", "role": "supporting", "title": "Player Slot", "type": "concept"}
+{"category": "concept", "id": "concept:sample-acceptance-matrix", "path": ".knowledge/concept/sample-acceptance-matrix.md", "role": "supporting", "title": "Sample Acceptance Matrix", "type": "concept"}
+{"category": "concept", "id": "concept:sample-progression", "path": ".knowledge/concept/sample-progression.md", "role": "supporting", "title": "Sample Progression", "type": "concept"}
+{"category": "concept", "id": "concept:session-lifecycle", "path": ".knowledge/concept/session-lifecycle.md", "role": "supporting", "title": "Session Lifecycle", "type": "concept"}
+{"category": "concept", "id": "concept:session", "path": ".knowledge/concept/session.md", "role": "supporting", "title": "Session", "type": "concept"}
+{"category": "concept", "id": "concept:signaling-method", "path": ".knowledge/concept/signaling-method.md", "role": "supporting", "title": "Signaling Method", "type": "concept"}
+{"category": "concept", "id": "concept:simulation-farm", "path": ".knowledge/concept/simulation-farm.md", "role": "supporting", "title": "Simulation Farm", "type": "concept"}
+{"category": "concept", "id": "concept:simulation-mode", "path": ".knowledge/concept/simulation-mode.md", "role": "supporting", "title": "Simulation Mode", "type": "concept"}
+{"category": "concept", "id": "concept:skill-level-gating", "path": ".knowledge/concept/skill-level-gating.md", "role": "supporting", "title": "Skill Level Gating", "type": "concept"}
+{"category": "concept", "id": "concept:standalone-mode", "path": ".knowledge/concept/standalone-mode.md", "role": "supporting", "title": "Standalone Mode", "type": "concept"}
+{"category": "concept", "id": "concept:state-synchronization", "path": ".knowledge/concept/state-synchronization.md", "role": "supporting", "title": "State Synchronization", "type": "concept"}
+{"category": "concept", "id": "concept:static-host-mode", "path": ".knowledge/concept/static-host-mode.md", "role": "supporting", "title": "Static Host Mode", "type": "concept"}
+{"category": "concept", "id": "concept:synchronization-mode", "path": ".knowledge/concept/synchronization-mode.md", "role": "supporting", "title": "Synchronization Mode", "type": "concept"}
+{"category": "concept", "id": "concept:transport-capability", "path": ".knowledge/concept/transport-capability.md", "role": "supporting", "title": "Transport Capability", "type": "concept"}
+{"category": "concept", "id": "concept:trust-model", "path": ".knowledge/concept/trust-model.md", "role": "supporting", "title": "Trust Model", "type": "concept"}
+{"category": "concept", "id": "concept:visibility-scope", "path": ".knowledge/concept/visibility-scope.md", "role": "supporting", "title": "Visibility Scope", "type": "concept"}
+{"category": "concept", "id": "concept:world-state", "path": ".knowledge/concept/world-state.md", "role": "supporting", "title": "World State", "type": "concept"}
+{"category": "structure", "id": "data:behavior-candidate", "path": ".knowledge/data/behavior-candidate.md", "role": "supporting", "title": "Behavior Candidate", "type": "data"}
+{"category": "structure", "id": "data:behavior-tree", "path": ".knowledge/data/behavior-tree.md", "role": "supporting", "title": "Behavior Tree Artifact", "type": "data"}
+{"category": "structure", "id": "data:decision-record", "path": ".knowledge/data/decision-record.md", "role": "supporting", "title": "Decision Record", "type": "data"}
+{"category": "structure", "id": "data:derived-predicate", "path": ".knowledge/data/derived-predicate.md", "role": "supporting", "title": "Derived Predicate", "type": "data"}
+{"category": "structure", "id": "data:episode-log", "path": ".knowledge/data/episode-log.md", "role": "supporting", "title": "Episode Log", "type": "data"}
+{"category": "structure", "id": "data:evaluation-signal", "path": ".knowledge/data/evaluation-signal.md", "role": "supporting", "title": "Evaluation Signal", "type": "data"}
+{"category": "structure", "id": "data:game-event", "path": ".knowledge/data/game-event.md", "role": "supporting", "title": "Game Event Message", "type": "data"}
+{"category": "structure", "id": "data:identity-token", "path": ".knowledge/data/identity-token.md", "role": "supporting", "title": "Identity Token", "type": "data"}
+{"category": "structure", "id": "data:player-input", "path": ".knowledge/data/player-input.md", "role": "supporting", "title": "Player Input Message", "type": "data"}
+{"category": "structure", "id": "data:presence-message", "path": ".knowledge/data/presence-message.md", "role": "supporting", "title": "Presence Message", "type": "data"}
+{"category": "structure", "id": "data:progress-report", "path": ".knowledge/data/progress-report.md", "role": "supporting", "title": "Progress Report", "type": "data"}
+{"category": "structure", "id": "data:protocol-version", "path": ".knowledge/data/protocol-version.md", "role": "supporting", "title": "Protocol Version ID", "type": "data"}
+{"category": "structure", "id": "data:run-config", "path": ".knowledge/data/run-config.md", "role": "supporting", "title": "Run Config", "type": "data"}
+{"category": "structure", "id": "data:runtime-resource-budget", "path": ".knowledge/data/runtime-resource-budget.md", "role": "supporting", "title": "Runtime Resource Budget", "type": "data"}
+{"category": "structure", "id": "data:session-ticket", "path": ".knowledge/data/session-ticket.md", "role": "supporting", "title": "Session Ticket", "type": "data"}
+{"category": "structure", "id": "data:session-tuning-profile", "path": ".knowledge/data/session-tuning-profile.md", "role": "supporting", "title": "Session Tuning Profile", "type": "data"}
+{"category": "structure", "id": "data:snapshot", "path": ".knowledge/data/snapshot.md", "role": "supporting", "title": "Snapshot", "type": "data"}
+{"category": "structure", "id": "data:state-checkpoint", "path": ".knowledge/data/state-checkpoint.md", "role": "supporting", "title": "State Checkpoint", "type": "data"}
+{"category": "structure", "id": "data:state-delta", "path": ".knowledge/data/state-delta.md", "role": "supporting", "title": "State Delta Message", "type": "data"}
+{"category": "structure", "id": "data:visibility-annotation", "path": ".knowledge/data/visibility-annotation.md", "role": "supporting", "title": "Visibility Annotation", "type": "data"}
+{"category": "constraint", "id": "decision:agent-as-central-abstraction", "path": ".knowledge/decision/agent-as-central-abstraction.md", "role": "supporting", "title": "Agent Is The Central Abstraction", "type": "decision"}
+{"category": "constraint", "id": "decision:behavior-tree-compiled-to-go", "path": ".knowledge/decision/behavior-tree-compiled-to-go.md", "role": "supporting", "title": "Behavior Tree Compiled To Go", "type": "decision"}
+{"category": "constraint", "id": "decision:cbor-for-realtime-wire", "path": ".knowledge/decision/cbor-for-realtime-wire.md", "role": "supporting", "title": "CBOR For Realtime Wire Format", "type": "decision"}
+{"category": "constraint", "id": "decision:combined-local-dev-process", "path": ".knowledge/decision/combined-local-dev-process.md", "role": "supporting", "title": "Combined Local Development Process", "type": "decision"}
+{"category": "constraint", "id": "decision:control-plane-features-out-of-scope", "path": ".knowledge/decision/control-plane-features-out-of-scope.md", "role": "supporting", "title": "Control Plane Features Out Of Scope", "type": "decision"}
+{"category": "constraint", "id": "decision:dual-mode-agent-pacing", "path": ".knowledge/decision/dual-mode-agent-pacing.md", "role": "supporting", "title": "Dual Mode Agent Pacing", "type": "decision"}
+{"category": "constraint", "id": "decision:entry-points-over-build-tags", "path": ".knowledge/decision/entry-points-over-build-tags.md", "role": "supporting", "title": "Entry Points Over Build Tags", "type": "decision"}
+{"category": "constraint", "id": "decision:fixed-point-numeric-representation", "path": ".knowledge/decision/fixed-point-numeric-representation.md", "role": "supporting", "title": "Fixed Point Numeric Representation", "type": "decision"}
+{"category": "constraint", "id": "decision:framework-side-delta-generation", "path": ".knowledge/decision/framework-side-delta-generation.md", "role": "supporting", "title": "Framework Side Delta Generation", "type": "decision"}
+{"category": "constraint", "id": "decision:go-struct-world-state", "path": ".knowledge/decision/go-struct-world-state.md", "role": "supporting", "title": "Go Struct World State", "type": "decision"}
+{"category": "constraint", "id": "decision:host-loss-ends-session", "path": ".knowledge/decision/host-loss-ends-session.md", "role": "supporting", "title": "Host Loss Ends The Session", "type": "decision"}
+{"category": "constraint", "id": "decision:independent-from-popcorn-wave", "path": ".knowledge/decision/independent-from-popcorn-wave.md", "role": "supporting", "title": "Framework Independent From Popcorn Wave", "type": "decision"}
+{"category": "constraint", "id": "decision:input-timing-owned-by-sync-mode", "path": ".knowledge/decision/input-timing-owned-by-sync-mode.md", "role": "supporting", "title": "Input Timing Owned By Synchronization Mode", "type": "decision"}
+{"category": "constraint", "id": "decision:jwt-session-ticket", "path": ".knowledge/decision/jwt-session-ticket.md", "role": "supporting", "title": "JWT Encoded Session Ticket", "type": "decision"}
+{"category": "constraint", "id": "decision:no-ai-game-mode", "path": ".knowledge/decision/no-ai-game-mode.md", "role": "supporting", "title": "No AI Branch In Game Rules", "type": "decision"}
+{"category": "constraint", "id": "decision:no-auth-on-lan", "path": ".knowledge/decision/no-auth-on-lan.md", "role": "supporting", "title": "No Authentication On LAN", "type": "decision"}
+{"category": "constraint", "id": "decision:no-framework-tuning-defaults", "path": ".knowledge/decision/no-framework-tuning-defaults.md", "role": "supporting", "title": "No Framework Tuning Defaults", "type": "decision"}
+{"category": "constraint", "id": "decision:no-mid-session-reconnect", "path": ".knowledge/decision/no-mid-session-reconnect.md", "role": "supporting", "title": "No Mid Session Reconnect", "type": "decision"}
+{"category": "constraint", "id": "decision:owner-namespaced-entity-ids", "path": ".knowledge/decision/owner-namespaced-entity-ids.md", "role": "supporting", "title": "Owner Namespaced Entity IDs", "type": "decision"}
+{"category": "constraint", "id": "decision:reuse-tinybind-codegen", "path": ".knowledge/decision/reuse-tinybind-codegen.md", "role": "supporting", "title": "Reuse Tinybind Code Generation", "type": "decision"}
+{"category": "constraint", "id": "decision:samples-as-test-infrastructure", "path": ".knowledge/decision/samples-as-test-infrastructure.md", "role": "supporting", "title": "Samples Are Test Infrastructure", "type": "decision"}
+{"category": "constraint", "id": "decision:separate-game-cli", "path": ".knowledge/decision/separate-game-cli.md", "role": "supporting", "title": "Separate Game CLI From PW CLI", "type": "decision"}
+{"category": "constraint", "id": "decision:separate-topology-from-synchronization", "path": ".knowledge/decision/separate-topology-from-synchronization.md", "role": "supporting", "title": "Separate Topology From Synchronization", "type": "decision"}
+{"category": "constraint", "id": "decision:shared-tree-with-level-gates", "path": ".knowledge/decision/shared-tree-with-level-gates.md", "role": "supporting", "title": "Shared Tree With Level Gates", "type": "decision"}
+{"category": "constraint", "id": "decision:split-realtime-and-control-plane-processes", "path": ".knowledge/decision/split-realtime-and-control-plane-processes.md", "role": "supporting", "title": "Split Realtime And Control Plane Processes", "type": "decision"}
+{"category": "constraint", "id": "decision:webtransport-primary-for-wasm", "path": ".knowledge/decision/webtransport-primary-for-wasm.md", "role": "supporting", "title": "WebTransport Primary For WASM Dedicated Server", "type": "decision"}
+{"category": "constraint", "id": "decision:world-persistence-is-game-scope", "path": ".knowledge/decision/world-persistence-is-game-scope.md", "role": "supporting", "title": "World Persistence Is Game Scope", "type": "decision"}
+{"category": "behavior", "id": "flow:agent-decision-loop", "path": ".knowledge/flow/agent-decision-loop.md", "role": "primary", "title": "Agent Decision Loop", "type": "flow"}
+{"category": "behavior", "id": "flow:automated-playtest", "path": ".knowledge/flow/automated-playtest.md", "role": "primary", "title": "Automated Playtest", "type": "flow"}
+{"category": "behavior", "id": "flow:behavior-profile-derivation", "path": ".knowledge/flow/behavior-profile-derivation.md", "role": "primary", "title": "Behavior Profile Derivation", "type": "flow"}
+{"category": "behavior", "id": "flow:behavior-tree-synthesis", "path": ".knowledge/flow/behavior-tree-synthesis.md", "role": "primary", "title": "Behavior Tree Synthesis", "type": "flow"}
+{"category": "behavior", "id": "flow:hybrid-sync-exchange", "path": ".knowledge/flow/hybrid-sync-exchange.md", "role": "primary", "title": "Hybrid Sync Exchange", "type": "flow"}
+{"category": "behavior", "id": "flow:input-adaptation", "path": ".knowledge/flow/input-adaptation.md", "role": "primary", "title": "Engine Input Adaptation", "type": "flow"}
+{"category": "behavior", "id": "flow:llm-teacher-episode-generation", "path": ".knowledge/flow/llm-teacher-episode-generation.md", "role": "primary", "title": "LLM Teacher Episode Generation", "type": "flow"}
+{"category": "behavior", "id": "flow:peer-authentication", "path": ".knowledge/flow/peer-authentication.md", "role": "primary", "title": "Peer Authentication", "type": "flow"}
+{"category": "behavior", "id": "flow:session-admission", "path": ".knowledge/flow/session-admission.md", "role": "primary", "title": "Session Admission", "type": "flow"}
+{"category": "objective", "id": "metric:balance-signals", "path": ".knowledge/metric/balance-signals.md", "role": "supporting", "title": "Balance Signals", "type": "metric"}
+{"category": "objective", "id": "metric:episode-outcome", "path": ".knowledge/metric/episode-outcome.md", "role": "supporting", "title": "Episode Outcome", "type": "metric"}
+{"category": "constraint", "id": "permission:agent-seat-control", "path": ".knowledge/permission/agent-seat-control.md", "role": "supporting", "title": "Agent Seat Control", "type": "permission"}
+{"category": "constraint", "id": "permission:spectator-receive-only", "path": ".knowledge/permission/spectator-receive-only.md", "role": "supporting", "title": "Spectator Receive Only", "type": "permission"}
+{"category": "constraint", "id": "policy:episode-data-governance", "path": ".knowledge/policy/episode-data-governance.md", "role": "supporting", "title": "Episode Data Governance", "type": "policy"}
+{"category": "constraint", "id": "policy:observation-scoped-information", "path": ".knowledge/policy/observation-scoped-information.md", "role": "supporting", "title": "Observation Scoped Information", "type": "policy"}
+{"category": "constraint", "id": "policy:overload-handling", "path": ".knowledge/policy/overload-handling.md", "role": "supporting", "title": "Overload Handling", "type": "policy"}
+{"category": "constraint", "id": "policy:protocol-rollout", "path": ".knowledge/policy/protocol-rollout.md", "role": "supporting", "title": "Protocol Rollout", "type": "policy"}
+{"category": "constraint", "id": "policy:realtime-abuse-protection", "path": ".knowledge/policy/realtime-abuse-protection.md", "role": "supporting", "title": "Realtime Abuse Protection", "type": "policy"}
+{"category": "objective", "id": "requirement:ai-autoplay-testing", "path": ".knowledge/requirement/ai-autoplay-testing.md", "role": "primary", "title": "AI Autoplay Testing", "type": "requirement"}
+{"category": "objective", "id": "requirement:behavior-learning-from-logs", "path": ".knowledge/requirement/behavior-learning-from-logs.md", "role": "primary", "title": "Behavior Learning From Play Logs", "type": "requirement"}
+{"category": "objective", "id": "requirement:compact-binary-protocol", "path": ".knowledge/requirement/compact-binary-protocol.md", "role": "primary", "title": "Compact Binary Wire Protocol", "type": "requirement"}
+{"category": "objective", "id": "requirement:control-plane-decoupling", "path": ".knowledge/requirement/control-plane-decoupling.md", "role": "primary", "title": "Control Plane Decoupling", "type": "requirement"}
+{"category": "objective", "id": "requirement:dedicated-game-toolchain", "path": ".knowledge/requirement/dedicated-game-toolchain.md", "role": "primary", "title": "Dedicated Game Toolchain", "type": "requirement"}
+{"category": "objective", "id": "requirement:ebitengine-integration", "path": ".knowledge/requirement/ebitengine-integration.md", "role": "primary", "title": "Ebitengine Integration", "type": "requirement"}
+{"category": "objective", "id": "requirement:genre-agnostic-framework", "path": ".knowledge/requirement/genre-agnostic-framework.md", "role": "primary", "title": "Genre Agnostic Framework", "type": "requirement"}
+{"category": "objective", "id": "requirement:multi-execution-mode", "path": ".knowledge/requirement/multi-execution-mode.md", "role": "primary", "title": "Multi Execution Mode Support", "type": "requirement"}
+{"category": "objective", "id": "requirement:native-and-wasm-targets", "path": ".knowledge/requirement/native-and-wasm-targets.md", "role": "primary", "title": "Native And WebAssembly Targets", "type": "requirement"}
+{"category": "objective", "id": "requirement:offline-simulation", "path": ".knowledge/requirement/offline-simulation.md", "role": "primary", "title": "Offline Simulation", "type": "requirement"}
+{"category": "objective", "id": "requirement:production-runtime-safety", "path": ".knowledge/requirement/production-runtime-safety.md", "role": "primary", "title": "Production Runtime Safety", "type": "requirement"}
+{"category": "objective", "id": "requirement:replay-and-episode-recording", "path": ".knowledge/requirement/replay-and-episode-recording.md", "role": "primary", "title": "Replay And Episode Recording", "type": "requirement"}
+{"category": "objective", "id": "requirement:sample-suite-proves-capabilities", "path": ".knowledge/requirement/sample-suite-proves-capabilities.md", "role": "primary", "title": "Sample Suite Proves Capabilities", "type": "requirement"}
+{"category": "objective", "id": "requirement:selectable-synchronization", "path": ".knowledge/requirement/selectable-synchronization.md", "role": "primary", "title": "Selectable Synchronization", "type": "requirement"}
+{"category": "objective", "id": "requirement:token-based-identity", "path": ".knowledge/requirement/token-based-identity.md", "role": "primary", "title": "Token Based Identity", "type": "requirement"}
+{"category": "objective", "id": "requirement:transport-abstraction", "path": ".knowledge/requirement/transport-abstraction.md", "role": "primary", "title": "Transport Abstraction", "type": "requirement"}
+{"category": "objective", "id": "requirement:unified-agent-model", "path": ".knowledge/requirement/unified-agent-model.md", "role": "primary", "title": "Unified Agent Model", "type": "requirement"}
+{"category": "constraint", "id": "rule:analysis-restricted-to-visible-fields", "path": ".knowledge/rule/analysis-restricted-to-visible-fields.md", "role": "supporting", "title": "Analysis Restricted To Visible Fields", "type": "rule"}
+{"category": "constraint", "id": "rule:analysis-tooling-outside-game-process", "path": ".knowledge/rule/analysis-tooling-outside-game-process.md", "role": "supporting", "title": "Analysis Tooling Outside The Game Process", "type": "rule"}
+{"category": "constraint", "id": "rule:asymmetric-ticket-signature", "path": ".knowledge/rule/asymmetric-ticket-signature.md", "role": "supporting", "title": "Asymmetric Ticket Signature", "type": "rule"}
+{"category": "constraint", "id": "rule:build-tag-only-for-linkage", "path": ".knowledge/rule/build-tag-only-for-linkage.md", "role": "supporting", "title": "Build Tag Only For Linkage", "type": "rule"}
+{"category": "constraint", "id": "rule:codegen-rejects-nondeterministic-types", "path": ".knowledge/rule/codegen-rejects-nondeterministic-types.md", "role": "supporting", "title": "Codegen Rejects Nondeterministic Types", "type": "rule"}
+{"category": "constraint", "id": "rule:delta-baseline-must-be-retained", "path": ".knowledge/rule/delta-baseline-must-be-retained.md", "role": "supporting", "title": "Delta Baseline Must Be Retained And Named", "type": "rule"}
+{"category": "constraint", "id": "rule:deterministic-simulation-required-for-rollback", "path": ".knowledge/rule/deterministic-simulation-required-for-rollback.md", "role": "supporting", "title": "Determinism Required For Input Synchronization", "type": "rule"}
+{"category": "constraint", "id": "rule:deterministic-tick-commit", "path": ".knowledge/rule/deterministic-tick-commit.md", "role": "supporting", "title": "Deterministic Tick Commit", "type": "rule"}
+{"category": "constraint", "id": "rule:engine-import-confined-to-client-entry", "path": ".knowledge/rule/engine-import-confined-to-client-entry.md", "role": "supporting", "title": "Engine Import Confined To Client Entry Points", "type": "rule"}
+{"category": "constraint", "id": "rule:evaluation-computed-by-session", "path": ".knowledge/rule/evaluation-computed-by-session.md", "role": "supporting", "title": "Evaluation Computed By The Session", "type": "rule"}
+{"category": "constraint", "id": "rule:evaluation-respects-visibility-scope", "path": ".knowledge/rule/evaluation-respects-visibility-scope.md", "role": "supporting", "title": "Evaluation Respects Visibility Scope", "type": "rule"}
+{"category": "constraint", "id": "rule:fixed-point-on-wire", "path": ".knowledge/rule/fixed-point-on-wire.md", "role": "supporting", "title": "Fixed Point On Wire", "type": "rule"}
+{"category": "constraint", "id": "rule:generated-agent-code-is-deterministic", "path": ".knowledge/rule/generated-agent-code-is-deterministic.md", "role": "supporting", "title": "Generated Agent Code Is Deterministic", "type": "rule"}
+{"category": "constraint", "id": "rule:generated-behavior-requires-approval", "path": ".knowledge/rule/generated-behavior-requires-approval.md", "role": "supporting", "title": "Generated Behavior Requires Approval", "type": "rule"}
+{"category": "constraint", "id": "rule:identity-token-not-accepted-by-session", "path": ".knowledge/rule/identity-token-not-accepted-by-session.md", "role": "supporting", "title": "Identity Token Not Accepted By Session", "type": "rule"}
+{"category": "constraint", "id": "rule:invitation-is-single-use-and-expiring", "path": ".knowledge/rule/invitation-is-single-use-and-expiring.md", "role": "supporting", "title": "Invitation Is Single Use And Expiring", "type": "rule"}
+{"category": "constraint", "id": "rule:local-ticket-verification", "path": ".knowledge/rule/local-ticket-verification.md", "role": "supporting", "title": "Local Ticket Verification", "type": "rule"}
+{"category": "constraint", "id": "rule:no-engine-input-in-game-logic", "path": ".knowledge/rule/no-engine-input-in-game-logic.md", "role": "supporting", "title": "No Engine Input In Game Logic", "type": "rule"}
+{"category": "constraint", "id": "rule:no-float-in-simulation", "path": ".knowledge/rule/no-float-in-simulation.md", "role": "supporting", "title": "No Float In Simulation Path", "type": "rule"}
+{"category": "constraint", "id": "rule:observation-content-owned-by-game", "path": ".knowledge/rule/observation-content-owned-by-game.md", "role": "supporting", "title": "Observation Content Owned By Game", "type": "rule"}
+{"category": "constraint", "id": "rule:predicate-tests-generated-from-episodes", "path": ".knowledge/rule/predicate-tests-generated-from-episodes.md", "role": "supporting", "title": "Predicate Tests Generated From Episodes", "type": "rule"}
+{"category": "constraint", "id": "rule:presence-excluded-from-simulation-and-analysis", "path": ".knowledge/rule/presence-excluded-from-simulation-and-analysis.md", "role": "supporting", "title": "Presence Excluded From Simulation And Analysis", "type": "rule"}
+{"category": "constraint", "id": "rule:presence-superseded-not-retransmitted", "path": ".knowledge/rule/presence-superseded-not-retransmitted.md", "role": "supporting", "title": "Presence Is Superseded Not Retransmitted", "type": "rule"}
+{"category": "constraint", "id": "rule:profile-selection-by-message-kind", "path": ".knowledge/rule/profile-selection-by-message-kind.md", "role": "supporting", "title": "Encoding Profile Selection By Message Kind", "type": "rule"}
+{"category": "constraint", "id": "rule:protocol-version-must-match", "path": ".knowledge/rule/protocol-version-must-match.md", "role": "supporting", "title": "Protocol Version Must Match Exactly", "type": "rule"}
+{"category": "constraint", "id": "rule:regeneration-preserves-approved-nodes", "path": ".knowledge/rule/regeneration-preserves-approved-nodes.md", "role": "supporting", "title": "Regeneration Preserves Approved Nodes", "type": "rule"}
+{"category": "constraint", "id": "rule:sample-adds-one-capability", "path": ".knowledge/rule/sample-adds-one-capability.md", "role": "supporting", "title": "Sample Adds One Capability", "type": "rule"}
+{"category": "constraint", "id": "rule:session-independent-of-transport-and-agent-kind", "path": ".knowledge/rule/session-independent-of-transport-and-agent-kind.md", "role": "supporting", "title": "Session Independent Of Transport And Agent Kind", "type": "rule"}
+{"category": "constraint", "id": "rule:shared-rng-seed", "path": ".knowledge/rule/shared-rng-seed.md", "role": "supporting", "title": "Shared RNG Seed", "type": "rule"}
+{"category": "constraint", "id": "rule:ticket-bound-to-connection", "path": ".knowledge/rule/ticket-bound-to-connection.md", "role": "supporting", "title": "Ticket Bound To Connection", "type": "rule"}
+{"category": "constraint", "id": "rule:transport-selected-by-capability", "path": ".knowledge/rule/transport-selected-by-capability.md", "role": "supporting", "title": "Transport Selected By Capability", "type": "rule"}
+{"category": "constraint", "id": "rule:unauthenticated-admission-requires-scope-or-capability", "path": ".knowledge/rule/unauthenticated-admission-requires-scope-or-capability.md", "role": "supporting", "title": "Unauthenticated Admission Requires Scope Or Capability", "type": "rule"}
+{"category": "objective", "id": "sample:cooperative-maze", "path": ".knowledge/sample/cooperative-maze.md", "role": "primary", "title": "Cooperative Maze", "type": "sample"}
+{"category": "objective", "id": "sample:dungeon-master", "path": ".knowledge/sample/dungeon-master.md", "role": "primary", "title": "Dungeon Master", "type": "sample"}
+{"category": "objective", "id": "sample:pong", "path": ".knowledge/sample/pong.md", "role": "primary", "title": "Pong", "type": "sample"}
+{"category": "objective", "id": "sample:reversi", "path": ".knowledge/sample/reversi.md", "role": "primary", "title": "Reversi", "type": "sample"}
+{"category": "objective", "id": "sample:rts-lite", "path": ".knowledge/sample/rts-lite.md", "role": "primary", "title": "RTS Lite", "type": "sample"}
+{"category": "objective", "id": "sample:tic-tac-toe", "path": ".knowledge/sample/tic-tac-toe.md", "role": "primary", "title": "Tic-Tac-Toe", "type": "sample"}
+{"category": "objective", "id": "sample:tron", "path": ".knowledge/sample/tron.md", "role": "primary", "title": "Tron Light Cycle", "type": "sample"}
+{"category": "external", "id": "system:duckdb", "path": ".knowledge/system/duckdb.md", "role": "supporting", "title": "DuckDB", "type": "system"}
+{"category": "external", "id": "system:ebitengine", "path": ".knowledge/system/ebitengine.md", "role": "supporting", "title": "Ebitengine", "type": "system"}
+{"category": "external", "id": "system:edge-tls-terminator", "path": ".knowledge/system/edge-tls-terminator.md", "role": "supporting", "title": "Edge TLS Terminator", "type": "system"}
+{"category": "external", "id": "system:fixpointcs", "path": ".knowledge/system/fixpointcs.md", "role": "supporting", "title": "FixPointCS", "type": "system"}
+{"category": "external", "id": "system:popcorn-wave", "path": ".knowledge/system/popcorn-wave.md", "role": "supporting", "title": "Popcorn Wave", "type": "system"}
+{"category": "external", "id": "system:quic-udp", "path": ".knowledge/system/quic-udp.md", "role": "supporting", "title": "QUIC And UDP Transport", "type": "system"}
+{"category": "external", "id": "system:tinybind", "path": ".knowledge/system/tinybind.md", "role": "supporting", "title": "Tinybind", "type": "system"}
+{"category": "external", "id": "system:webrtc", "path": ".knowledge/system/webrtc.md", "role": "supporting", "title": "WebRTC", "type": "system"}
+{"category": "external", "id": "system:websocket", "path": ".knowledge/system/websocket.md", "role": "supporting", "title": "WebSocket Transport", "type": "system"}
+{"category": "external", "id": "system:webtransport", "path": ".knowledge/system/webtransport.md", "role": "supporting", "title": "WebTransport", "type": "system"}
+{"category": "vocabulary", "id": "term:delay-buffering", "path": ".knowledge/term/delay-buffering.md", "role": "supporting", "title": "Input Delay", "type": "term"}
+{"category": "vocabulary", "id": "term:determinism", "path": ".knowledge/term/determinism.md", "role": "supporting", "title": "Deterministic Simulation", "type": "term"}
+{"category": "vocabulary", "id": "term:fog-of-war", "path": ".knowledge/term/fog-of-war.md", "role": "supporting", "title": "Fog Of War", "type": "term"}
+{"category": "vocabulary", "id": "term:rollback", "path": ".knowledge/term/rollback.md", "role": "supporting", "title": "Rollback", "type": "term"}
+{"category": "vocabulary", "id": "term:server-authority", "path": ".knowledge/term/server-authority.md", "role": "supporting", "title": "Server Authority", "type": "term"}
+{"category": "vocabulary", "id": "term:tick", "path": ".knowledge/term/tick.md", "role": "supporting", "title": "Tick", "type": "term"}
+{"category": "interface", "id": "ui:behavior-tree-editor", "path": ".knowledge/ui/behavior-tree-editor.md", "role": "primary", "title": "Behavior Tree Editor", "type": "ui"}
+{"category": "objective", "id": "vision:agent-session-runtime", "path": ".knowledge/vision/agent-session-runtime.md", "role": "primary", "title": "Agent Session Runtime", "type": "vision"}
