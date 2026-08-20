@@ -7,6 +7,7 @@ Skill levels are expressed as gates on one shared data:behavior-tree rather than
 
 ```yaml
 decided: yes
+superseded_by: decision:shared-chip-library, which keeps this decision's rationale but shrinks the shared unit from the whole tree to data:behavior-chip
 rejected_alternative: one tree per level
 rejection_reasons:
   - a fix to shared logic must be applied n times and will drift

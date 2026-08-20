@@ -56,11 +56,14 @@
 {"category": "concept", "id": "concept:state-synchronization", "path": ".knowledge/concept/state-synchronization.md", "role": "supporting", "title": "State Synchronization", "type": "concept"}
 {"category": "concept", "id": "concept:static-host-mode", "path": ".knowledge/concept/static-host-mode.md", "role": "supporting", "title": "Static Host Mode", "type": "concept"}
 {"category": "concept", "id": "concept:synchronization-mode", "path": ".knowledge/concept/synchronization-mode.md", "role": "supporting", "title": "Synchronization Mode", "type": "concept"}
+{"category": "concept", "id": "concept:tactic-selector", "path": ".knowledge/concept/tactic-selector.md", "role": "supporting", "title": "Tactic Selector", "type": "concept"}
 {"category": "concept", "id": "concept:transport-capability", "path": ".knowledge/concept/transport-capability.md", "role": "supporting", "title": "Transport Capability", "type": "concept"}
 {"category": "concept", "id": "concept:trust-model", "path": ".knowledge/concept/trust-model.md", "role": "supporting", "title": "Trust Model", "type": "concept"}
 {"category": "concept", "id": "concept:visibility-scope", "path": ".knowledge/concept/visibility-scope.md", "role": "supporting", "title": "Visibility Scope", "type": "concept"}
 {"category": "concept", "id": "concept:world-state", "path": ".knowledge/concept/world-state.md", "role": "supporting", "title": "World State", "type": "concept"}
+{"category": "structure", "id": "data:agent-loadout", "path": ".knowledge/data/agent-loadout.md", "role": "supporting", "title": "Agent Loadout", "type": "data"}
 {"category": "structure", "id": "data:behavior-candidate", "path": ".knowledge/data/behavior-candidate.md", "role": "supporting", "title": "Behavior Candidate", "type": "data"}
+{"category": "structure", "id": "data:behavior-chip", "path": ".knowledge/data/behavior-chip.md", "role": "supporting", "title": "Behavior Chip", "type": "data"}
 {"category": "structure", "id": "data:behavior-tree", "path": ".knowledge/data/behavior-tree.md", "role": "supporting", "title": "Behavior Tree Artifact", "type": "data"}
 {"category": "structure", "id": "data:decision-record", "path": ".knowledge/data/decision-record.md", "role": "supporting", "title": "Decision Record", "type": "data"}
 {"category": "structure", "id": "data:derived-predicate", "path": ".knowledge/data/derived-predicate.md", "role": "supporting", "title": "Derived Predicate", "type": "data"}
@@ -103,6 +106,7 @@
 {"category": "constraint", "id": "decision:samples-as-test-infrastructure", "path": ".knowledge/decision/samples-as-test-infrastructure.md", "role": "supporting", "title": "Samples Are Test Infrastructure", "type": "decision"}
 {"category": "constraint", "id": "decision:separate-game-cli", "path": ".knowledge/decision/separate-game-cli.md", "role": "supporting", "title": "Separate Game CLI From PW CLI", "type": "decision"}
 {"category": "constraint", "id": "decision:separate-topology-from-synchronization", "path": ".knowledge/decision/separate-topology-from-synchronization.md", "role": "supporting", "title": "Separate Topology From Synchronization", "type": "decision"}
+{"category": "constraint", "id": "decision:shared-chip-library", "path": ".knowledge/decision/shared-chip-library.md", "role": "supporting", "title": "Shared Chip Library", "type": "decision"}
 {"category": "constraint", "id": "decision:shared-tree-with-level-gates", "path": ".knowledge/decision/shared-tree-with-level-gates.md", "role": "supporting", "title": "Shared Tree With Level Gates", "type": "decision"}
 {"category": "constraint", "id": "decision:split-realtime-and-control-plane-processes", "path": ".knowledge/decision/split-realtime-and-control-plane-processes.md", "role": "supporting", "title": "Split Realtime And Control Plane Processes", "type": "decision"}
 {"category": "constraint", "id": "decision:webtransport-primary-for-wasm", "path": ".knowledge/decision/webtransport-primary-for-wasm.md", "role": "supporting", "title": "WebTransport Primary For WASM Dedicated Server", "type": "decision"}
@@ -198,4 +202,5 @@
 {"category": "vocabulary", "id": "term:server-authority", "path": ".knowledge/term/server-authority.md", "role": "supporting", "title": "Server Authority", "type": "term"}
 {"category": "vocabulary", "id": "term:tick", "path": ".knowledge/term/tick.md", "role": "supporting", "title": "Tick", "type": "term"}
 {"category": "interface", "id": "ui:behavior-tree-editor", "path": ".knowledge/ui/behavior-tree-editor.md", "role": "primary", "title": "Behavior Tree Editor", "type": "ui"}
+{"category": "interface", "id": "ui:chip-benchmark", "path": ".knowledge/ui/chip-benchmark.md", "role": "primary", "title": "Chip Benchmark", "type": "ui"}
 {"category": "objective", "id": "vision:agent-session-runtime", "path": ".knowledge/vision/agent-session-runtime.md", "role": "primary", "title": "Agent Session Runtime", "type": "vision"}

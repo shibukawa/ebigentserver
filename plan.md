@@ -181,10 +181,13 @@ Phase 0 の決定性がここで初めて実証される。ここが赤いまま
 - `flow:behavior-tree-synthesis` の2段合成
   1. `data:derived-predicate` の提案（語彙層）
   2. 述語の上で条件を書く（`data:behavior-candidate`）
-- `decision:behavior-tree-compiled-to-go` — Go ソース生成
+- `decision:shared-chip-library` — 承認済み候補は `data:behavior-chip` として共有ライブラリに入る。AI 1体 = `data:agent-loadout`（チップ選択 + `concept:behavior-profile`）
+- `concept:tactic-selector` — ルートの作戦切り替え層。観測駆動・決定的、味方への作戦指示は普通の action
+- `decision:behavior-tree-compiled-to-go` — loadout ごとに Go ソース生成
 - `rule:predicate-tests-generated-from-episodes` — エピソードからのテスト自動生成
 - `ui:behavior-tree-editor` — 4ペイン（ツリー / 候補 / エビデンス / 述語）+ レベル行列 + 差分
-- `concept:skill-level-gating`
+- `ui:chip-benchmark` — loadout 総当たり行列、チップ寄与、ablation、作戦頻度
+- `concept:skill-level-gating` — chip タグの1次元として
 - `policy:episode-data-governance`
 
 ### 完了条件

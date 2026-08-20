@@ -30,7 +30,11 @@ flow:
       actor: developer
       action: assign level tags, see concept:skill-level-gating
     - id: commit
-      output: data:behavior-tree, see rule:generated-behavior-requires-approval
+      output: accepted candidates graduate into data:behavior-chip entries of the shared library, see rule:generated-behavior-requires-approval and decision:shared-chip-library
+    - id: assemble
+      actor: developer
+      action: select chips into data:agent-loadout personalities, grouped by tactic for concept:tactic-selector
+      output: data:behavior-tree per loadout
     - id: generate
       action: emit Go source for the tree and its predicates, see decision:behavior-tree-compiled-to-go
       output: predicate tests from rule:predicate-tests-generated-from-episodes

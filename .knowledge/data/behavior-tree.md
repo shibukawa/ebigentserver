@@ -12,7 +12,8 @@ contents:
   - per node level gates, see concept:skill-level-gating
   - provenance per node: authored by hand, or accepted from a data:behavior-candidate
   - the concept:behavior-evidence reference retained for accepted nodes
-source_of_truth: this artifact, not the analyzer that proposed it
+assembly: one tree materializes one data:agent-loadout — chips from the shared library under a concept:tactic-selector root, see decision:shared-chip-library
+source_of_truth: the data:behavior-chip library and the loadout; the tree is their materialization
 compilation: decision:behavior-tree-compiled-to-go emits Go source from it
 editing: by hand or through ui:behavior-tree-editor, both valid
 regeneration: rule:regeneration-preserves-approved-nodes

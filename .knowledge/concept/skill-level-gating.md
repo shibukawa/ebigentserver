@@ -7,6 +7,7 @@ One data:behavior-tree expresses several skill levels by tagging each node with 
 
 ```yaml
 model: per node level tag set, evaluated when the agent is instantiated, not per tick
+generalized_by: decision:shared-chip-library — level is one tag dimension on data:behavior-chip beside style and tactic; mid-game variation belongs to concept:tactic-selector, never gate re-evaluation
 two_axes_of_difficulty:
   - knowledge: which branches exist for this level, handled here
   - execution: reaction delay and prediction accuracy, handled by concept:behavior-profile

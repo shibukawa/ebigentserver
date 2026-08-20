@@ -6,7 +6,7 @@ title: Behavior Tree Agent
 concept:agent driven by a behavior tree or comparable runtime policy.
 
 ```yaml
-executes: data:behavior-tree
+executes: data:behavior-tree, the compiled materialization of one data:agent-loadout
 authoring: hand written, or accepted from analysis via flow:behavior-tree-synthesis
 level: node gates of concept:skill-level-gating decide which branches exist for this instance
 tuning: concept:behavior-profile decides reaction delay and execution quality
