@@ -1,0 +1,320 @@
+{
+  "game": "tictactoe",
+  "chips": [
+    {
+      "condition": "cell_0_empty",
+      "action": "play_0",
+      "priority": 0,
+      "coverage": 200,
+      "counterexamples": 0,
+      "evidence": [
+        {
+          "episode": "ttt-000",
+          "tick": 0
+        },
+        {
+          "episode": "ttt-001",
+          "tick": 0
+        },
+        {
+          "episode": "ttt-002",
+          "tick": 0
+        },
+        {
+          "episode": "ttt-003",
+          "tick": 0
+        },
+        {
+          "episode": "ttt-004",
+          "tick": 0
+        }
+      ],
+      "rationale": "when cell_0_empty held, play_0 was taken 200/200 times at this list position",
+      "approved": true,
+      "tags": [
+        "level:beginner",
+        "style:leftmost"
+      ]
+    },
+    {
+      "condition": "cell_1_empty",
+      "action": "play_1",
+      "priority": 1,
+      "coverage": 176,
+      "counterexamples": 0,
+      "evidence": [
+        {
+          "episode": "ttt-000",
+          "tick": 2
+        },
+        {
+          "episode": "ttt-001",
+          "tick": 2
+        },
+        {
+          "episode": "ttt-002",
+          "tick": 2
+        },
+        {
+          "episode": "ttt-003",
+          "tick": 2
+        },
+        {
+          "episode": "ttt-004",
+          "tick": 2
+        }
+      ],
+      "rationale": "when cell_1_empty held, play_1 was taken 176/176 times at this list position",
+      "approved": true,
+      "tags": [
+        "level:beginner",
+        "style:leftmost"
+      ]
+    },
+    {
+      "condition": "cell_2_empty",
+      "action": "play_2",
+      "priority": 2,
+      "coverage": 150,
+      "counterexamples": 0,
+      "evidence": [
+        {
+          "episode": "ttt-000",
+          "tick": 4
+        },
+        {
+          "episode": "ttt-001",
+          "tick": 4
+        },
+        {
+          "episode": "ttt-002",
+          "tick": 4
+        },
+        {
+          "episode": "ttt-003",
+          "tick": 4
+        },
+        {
+          "episode": "ttt-004",
+          "tick": 4
+        }
+      ],
+      "rationale": "when cell_2_empty held, play_2 was taken 150/150 times at this list position",
+      "approved": true,
+      "tags": [
+        "level:beginner",
+        "style:leftmost"
+      ]
+    },
+    {
+      "condition": "cell_3_empty",
+      "action": "play_3",
+      "priority": 3,
+      "coverage": 66,
+      "counterexamples": 0,
+      "evidence": [
+        {
+          "episode": "ttt-008",
+          "tick": 4
+        },
+        {
+          "episode": "ttt-009",
+          "tick": 4
+        },
+        {
+          "episode": "ttt-012",
+          "tick": 4
+        },
+        {
+          "episode": "ttt-013",
+          "tick": 4
+        },
+        {
+          "episode": "ttt-020",
+          "tick": 4
+        }
+      ],
+      "rationale": "when cell_3_empty held, play_3 was taken 66/66 times at this list position",
+      "approved": true,
+      "tags": [
+        "level:beginner",
+        "style:leftmost"
+      ]
+    },
+    {
+      "condition": "cell_4_empty",
+      "action": "play_4",
+      "priority": 4,
+      "coverage": 52,
+      "counterexamples": 0,
+      "evidence": [
+        {
+          "episode": "ttt-010",
+          "tick": 4
+        },
+        {
+          "episode": "ttt-011",
+          "tick": 4
+        },
+        {
+          "episode": "ttt-012",
+          "tick": 6
+        },
+        {
+          "episode": "ttt-013",
+          "tick": 6
+        },
+        {
+          "episode": "ttt-020",
+          "tick": 6
+        }
+      ],
+      "rationale": "when cell_4_empty held, play_4 was taken 52/52 times at this list position",
+      "approved": true,
+      "tags": [
+        "level:beginner",
+        "style:leftmost"
+      ]
+    },
+    {
+      "condition": "cell_5_empty",
+      "action": "play_5",
+      "priority": 5,
+      "coverage": 10,
+      "counterexamples": 0,
+      "evidence": [
+        {
+          "episode": "ttt-078",
+          "tick": 6
+        },
+        {
+          "episode": "ttt-079",
+          "tick": 6
+        },
+        {
+          "episode": "ttt-158",
+          "tick": 6
+        },
+        {
+          "episode": "ttt-159",
+          "tick": 6
+        },
+        {
+          "episode": "ttt-164",
+          "tick": 6
+        }
+      ],
+      "rationale": "when cell_5_empty held, play_5 was taken 10/10 times at this list position",
+      "approved": true,
+      "tags": [
+        "level:beginner",
+        "style:leftmost"
+      ]
+    },
+    {
+      "condition": "cell_6_empty",
+      "action": "play_6",
+      "priority": 6,
+      "coverage": 20,
+      "counterexamples": 0,
+      "evidence": [
+        {
+          "episode": "ttt-008",
+          "tick": 6
+        },
+        {
+          "episode": "ttt-009",
+          "tick": 6
+        },
+        {
+          "episode": "ttt-010",
+          "tick": 6
+        },
+        {
+          "episode": "ttt-011",
+          "tick": 6
+        },
+        {
+          "episode": "ttt-044",
+          "tick": 6
+        }
+      ],
+      "rationale": "when cell_6_empty held, play_6 was taken 20/20 times at this list position",
+      "approved": true,
+      "tags": [
+        "level:beginner",
+        "style:leftmost"
+      ]
+    },
+    {
+      "condition": "cell_7_empty",
+      "action": "play_7",
+      "priority": 7,
+      "coverage": 6,
+      "counterexamples": 0,
+      "evidence": [
+        {
+          "episode": "ttt-038",
+          "tick": 8
+        },
+        {
+          "episode": "ttt-039",
+          "tick": 8
+        },
+        {
+          "episode": "ttt-174",
+          "tick": 8
+        },
+        {
+          "episode": "ttt-175",
+          "tick": 8
+        },
+        {
+          "episode": "ttt-192",
+          "tick": 8
+        }
+      ],
+      "rationale": "when cell_7_empty held, play_7 was taken 6/6 times at this list position",
+      "approved": true,
+      "tags": [
+        "level:beginner",
+        "style:leftmost"
+      ]
+    },
+    {
+      "condition": "cell_8_empty",
+      "action": "play_8",
+      "priority": 8,
+      "coverage": 6,
+      "counterexamples": 0,
+      "evidence": [
+        {
+          "episode": "ttt-010",
+          "tick": 8
+        },
+        {
+          "episode": "ttt-011",
+          "tick": 8
+        },
+        {
+          "episode": "ttt-020",
+          "tick": 8
+        },
+        {
+          "episode": "ttt-021",
+          "tick": 8
+        },
+        {
+          "episode": "ttt-158",
+          "tick": 8
+        }
+      ],
+      "rationale": "when cell_8_empty held, play_8 was taken 6/6 times at this list position",
+      "approved": true,
+      "tags": [
+        "level:beginner",
+        "style:leftmost"
+      ]
+    }
+  ]
+}

@@ -4,6 +4,25 @@
 
 要件と設計判断は [.knowledge/](.knowledge/) に概念として記録されている。実装順は [plan.md](plan.md) を参照。
 
+## 状態: Phase 7 — AI育成パイプライン(第1貫通)
+
+| 項目 | 状態 | 実装 |
+|---|---|---|
+| `flow:behavior-tree-synthesis` 2段合成 | 済(貫通) | [behavior/](behavior/) — segment(エピソード→決定点) → 語彙(`data:derived-predicate`: 採掘用評価器+生成用Go式の対) → `Analyzer`が候補提案(`data:behavior-candidate`: coverage/反例/根拠つき) |
+| 分析ステップ | 差替可能 | `Analyzer`はインターフェース。本来はLLM(`actor:llm-agent`)、現在は決定的な逐次被覆(決定リスト貪欲採掘)の`SequentialCovering`がベースライン。成果物の形は同一 |
+| `decision:shared-chip-library` | 済 | 承認済み候補→`data:behavior-chip`(JSONライブラリ、タグ=level/style)。承認ゲートは`rule:generated-behavior-requires-approval`のとおり必須(現在はスクリプトが門番の代行) |
+| `decision:behavior-tree-compiled-to-go` | 済 | [behavior/codegen.go](behavior/codegen.go) — approved chips→決定リストのswitch+`api:agent-interface`実装のGoソース。古びた述語はビルドエラー |
+| `rule:predicate-tests-generated-from-episodes` | 済 | 記録済み局面をフィクスチャにしたテストを生成、episode+tickで失敗箇所を名指し |
+| `rule:regeneration-preserves-approved-nodes` | 済 | [behavior/merge.go](behavior/merge.go) — new / unchanged / changed_metrics / matches_rejected(却下理由再提示) / conflicts_with_approved の差分。approved/rejectedは絶対に無言上書きしない |
+| `concept:continuous-match-loop` | 済(最小) | [matchloop/](matchloop/) — fresh seed/試合 + `metric:episode-outcome`集計。pairing方針はplay関数側 |
+| DuckDB / Parquet | 概念のみ | episode JSONLはDuckDBが直接読める形。Parquet変換・SQL集計(`metric:balance-signals`)は未実装 |
+| `ui:behavior-tree-editor` / `ui:chip-benchmark` | 未実装 | 概念記録済み。承認UIとベンチUIは次の切片 |
+
+### 完了条件の対応
+
+- **承認したツリーから生成したGoコードのエージェントが automated-playtest を通る** — [distill_test.go](samples/tictactoe/distill/distill_test.go): TTTのfirst-emptyボットの対局200戦(686決定)を蒸留→9チップ承認→[生成されたagent](samples/tictactoe/distill/gen/agent_gen.go)が50試合のplaytestを完走。**同一シード・同一相手で元ボットと勝敗・所要tickが完全一致**(方策の等価性の実証)。生成フィクスチャテスト24件も同梱。
+- **再生成が承認済みノードを破壊せず差分として出る** — 同一コーパスの再合成→全て`unchanged`でライブラリファイルはバイト不変。却下チップは`matches_rejected`で旧理由つき再提示、approvedと矛盾する提案は`conflicts_with_approved`で明示判断待ち。
+
 ## 状態: Phase 6 — ハイブリッド同期 + RTS-lite
 
 | 項目 | 状態 | 実装 |
@@ -151,6 +170,8 @@
 - `episode` — `data:episode-log` の JSONL 読み書き。session.Recorder 実装の Writer と、replay 用 Reader。
 - `entity` — owner 名前空間つきエンティティ ID と決定的 allocator。
 - `samples/tictactoe` — 最小サンプル兼回帰ハーネス（`decision:samples-as-test-infrastructure`）。`go run ./samples/tictactoe/cmd/ttt` で人間対ボット。
+- `behavior` — 蒸留パイプライン: 語彙・分析(Analyzer差替可)・チップライブラリ・再生成マージ・Goコード生成。
+- `matchloop` — 無人連続対局と結果集計。
 - `netplay` — セッションを実トランスポートに接続する汎用層。admission→peer、view別状態配信(`MakeSender`ファクトリで席・役割ごとに投影を選択)、観戦者enforcement、離脱検出、abuse対策。
 - `budget` — `data:runtime-resource-budget` の宣言と起動時検証。
 - `observe` — 有界カウンタと構造化イベント(`api:runtime-observability`)。
