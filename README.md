@@ -4,6 +4,23 @@
 
 要件と設計判断は [.knowledge/](.knowledge/) に概念として記録されている。実装順は [plan.md](plan.md) を参照。
 
+## 状態: Phase 3a — ローカルリアルタイム + Pong
+
+| 項目 | 状態 | 実装 |
+|---|---|---|
+| tickループと権威シミュレーション | 済 | [session/realtime.go](session/realtime.go) — `TickGame`(Apply+Advance)、`RunRealtime`。入力は`Inbox`(非ブロッキング、tickごとに最新1件)、遅延agentはそのtick無入力 |
+| `data:player-input` / `data:snapshot` / `data:state-delta` | 済 | [samples/pong/msg](samples/pong/msg/types.go) — wire/worldプロファイル生成、状態=wire形そのもの |
+| `decision:framework-side-delta-generation` | 済 | [statesync/](statesync/) — 受信者ごとのSender(保持リング+speculative baseline)、Receiver、loopback Hub。baseline喪失→snapshot fallback |
+| `data:session-tuning-profile` | 済 | [session/tuning.go](session/tuning.go) — 宣言必須(デフォルトなし)、整合検査つき |
+| `sample:pong` ループバック | 済 | [samples/pong/](samples/pong/) — 固定小数点物理、hub経由のsnapshot/delta、bot対bot |
+| `concept:game-time-control` | 済(一部) | Paced / Unlimited。step は Phase 1 実装済み、slowed は未対応 |
+
+### 完了条件の対応(3a分)
+
+- **記録したリアルタイム対局の再生がビット一致** — `TestRealtimeRecordReplaysBitIdentical`: 記録から`ReadReplaySchedule`で「どのtickにどの入力が受理されたか」を復元し、再実行すると4ストリーム全てバイト一致。
+- **クロスアーキテクチャ** — `TestScriptedMatchDigestPinned`: スクリプト入力の585tick対局の最終checkpointを定数固定(arm64開発機 vs amd64 CI)。
+- 損失・遅延注入(3bの完了条件)はネットワーク実装後。ただしHubの輻輳ドロップ→resyncの経路は`TestLossForcesResync`で検証済み。
+
 ## 状態: Phase 2 — 記録と決定性の検証 + Reversi
 
 | 項目 | 状態 | 実装 |
@@ -65,7 +82,9 @@
 - `episode` — `data:episode-log` の JSONL 読み書き。session.Recorder 実装の Writer と、replay 用 Reader。
 - `entity` — owner 名前空間つきエンティティ ID と決定的 allocator。
 - `samples/tictactoe` — 最小サンプル兼回帰ハーネス（`decision:samples-as-test-infrastructure`）。`go run ./samples/tictactoe/cmd/ttt` で人間対ボット。
+- `statesync` — framework側delta生成。生成コーデックを差し込む`Codec`、受信者ごとの`Sender`/`Receiver`、ループバック`Hub`。
 - `samples/reversi` — 合法手列挙つき観測と記録/再生の実証。`go run ./samples/reversi/cmd/reversi` で人間対greedy bot、`-record=DIR` でエピソード記録。
+- `samples/pong` — 最小リアルタイム。`go run ./samples/pong/cmd/pong` でbot対bot(観戦チャネルがスコア表示)、`-record=DIR` 対応。
 - `importcheck` — 依存の閉じ込め検査。ゲームモジュールは `importcheck.Enforce(t, ".", importcheck.Default())` を 1 テスト持つ。
 - `examples/phase0` — Phase 0 の証明: 固定小数点型 + 生成 CBOR コーデック + delta、build target ごとの cmd エントリポイント。
 - `examples/phase0/sim` — Phase 0 スタック全体（fixmath の Sin/Atan2/Sqrt → 宣言スケール量子化 → 生成 delta エンコード）を通した決定的エピソード。digest をテストで固定しており、これが Phase 2 のクロスアーキテクチャ検証の種になる。

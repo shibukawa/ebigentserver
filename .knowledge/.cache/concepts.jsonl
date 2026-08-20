@@ -120,6 +120,7 @@
 {"category": "behavior", "id": "flow:llm-teacher-episode-generation", "path": ".knowledge/flow/llm-teacher-episode-generation.md", "role": "primary", "title": "LLM Teacher Episode Generation", "type": "flow"}
 {"category": "behavior", "id": "flow:peer-authentication", "path": ".knowledge/flow/peer-authentication.md", "role": "primary", "title": "Peer Authentication", "type": "flow"}
 {"category": "behavior", "id": "flow:session-admission", "path": ".knowledge/flow/session-admission.md", "role": "primary", "title": "Session Admission", "type": "flow"}
+{"category": "behavior", "id": "flow:strategy-guide-generation", "path": ".knowledge/flow/strategy-guide-generation.md", "role": "primary", "title": "Strategy Guide Generation", "type": "flow"}
 {"category": "objective", "id": "metric:balance-signals", "path": ".knowledge/metric/balance-signals.md", "role": "supporting", "title": "Balance Signals", "type": "metric"}
 {"category": "objective", "id": "metric:episode-outcome", "path": ".knowledge/metric/episode-outcome.md", "role": "supporting", "title": "Episode Outcome", "type": "metric"}
 {"category": "constraint", "id": "permission:agent-seat-control", "path": ".knowledge/permission/agent-seat-control.md", "role": "supporting", "title": "Agent Seat Control", "type": "permission"}

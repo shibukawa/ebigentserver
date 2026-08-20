@@ -117,6 +117,18 @@ type Config[S, A, O any] struct {
 	// to measure decision latency for the record — measurement
 	// metadata, never simulation input. Nil uses the wall clock.
 	Clock func() int64
+	// Tuning is required for RunRealtime (data:session-tuning-profile);
+	// step-paced sessions ignore it.
+	Tuning *TuningProfile
+	// Broadcast, when set, receives the committed world at the tuning
+	// profile's send cadence — the seam where snapshot/delta encoding
+	// (package statesync) attaches without the session knowing any
+	// transport.
+	Broadcast func(tick Tick, world *S)
+	// InputSource, when set, replaces the realtime inboxes with a
+	// deterministic per-tick schedule: called once per slot per tick in
+	// commit order. Replays and tests use it; live play leaves it nil.
+	InputSource func(tick Tick, slot SlotID) (A, bool)
 }
 
 // Session hosts one game run. Methods are not safe for concurrent use:
@@ -125,6 +137,7 @@ type Session[S, A, O any] struct {
 	cfg        Config[S, A, O]
 	slots      []SlotID // sorted; the commit order
 	agents     map[SlotID]Agent[O, A]
+	inboxes    map[SlotID]*Inbox[A]
 	state      State
 	world      S
 	tick       Tick
@@ -165,11 +178,16 @@ func New[S, A, O any](cfg Config[S, A, O]) (*Session[S, A, O], error) {
 	if cfg.Clock == nil {
 		cfg.Clock = wallClock
 	}
+	inboxes := make(map[SlotID]*Inbox[A], len(slots))
+	for _, slot := range slots {
+		inboxes[slot] = &Inbox[A]{}
+	}
 	return &Session[S, A, O]{
-		cfg:    cfg,
-		slots:  slots,
-		agents: make(map[SlotID]Agent[O, A], len(slots)),
-		state:  StateCreated,
+		cfg:     cfg,
+		slots:   slots,
+		agents:  make(map[SlotID]Agent[O, A], len(slots)),
+		inboxes: inboxes,
+		state:   StateCreated,
 	}, nil
 }
 

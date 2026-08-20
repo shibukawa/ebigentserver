@@ -846,6 +846,12 @@
 {"context": "body", "path": ".knowledge/flow/session-admission.md", "source": "flow:session-admission", "target": "api:runtime-observability", "target_category": "interface", "target_type": "api"}
 {"context": "body", "path": ".knowledge/flow/session-admission.md", "source": "flow:session-admission", "target": "flow:peer-authentication", "target_category": "behavior", "target_type": "flow"}
 {"context": "body", "path": ".knowledge/flow/session-admission.md", "source": "flow:session-admission", "target": "decision:no-mid-session-reconnect", "target_category": "constraint", "target_type": "decision"}
+{"context": "body", "path": ".knowledge/flow/strategy-guide-generation.md", "source": "flow:strategy-guide-generation", "target": "data:behavior-chip", "target_category": "structure", "target_type": "data"}
+{"context": "body", "path": ".knowledge/flow/strategy-guide-generation.md", "source": "flow:strategy-guide-generation", "target": "ui:chip-benchmark", "target_category": "interface", "target_type": "ui"}
+{"context": "body", "path": ".knowledge/flow/strategy-guide-generation.md", "source": "flow:strategy-guide-generation", "target": "actor:llm-agent", "target_category": "behavior", "target_type": "actor"}
+{"context": "body", "path": ".knowledge/flow/strategy-guide-generation.md", "source": "flow:strategy-guide-generation", "target": "data:derived-predicate", "target_category": "structure", "target_type": "data"}
+{"context": "body", "path": ".knowledge/flow/strategy-guide-generation.md", "source": "flow:strategy-guide-generation", "target": "concept:behavior-evidence", "target_category": "concept", "target_type": "concept"}
+{"context": "body", "path": ".knowledge/flow/strategy-guide-generation.md", "source": "flow:strategy-guide-generation", "target": "actor:replay-agent", "target_category": "behavior", "target_type": "actor"}
 {"context": "body", "path": ".knowledge/metric/balance-signals.md", "source": "metric:balance-signals", "target": "data:episode-log", "target_category": "structure", "target_type": "data"}
 {"context": "body", "path": ".knowledge/metric/balance-signals.md", "source": "metric:balance-signals", "target": "concept:simulation-farm", "target_category": "concept", "target_type": "concept"}
 {"context": "body", "path": ".knowledge/metric/balance-signals.md", "source": "metric:balance-signals", "target": "system:duckdb", "target_category": "external", "target_type": "system"}
