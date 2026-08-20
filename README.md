@@ -4,7 +4,19 @@
 
 要件と設計判断は [.knowledge/](.knowledge/) に概念として記録されている。実装順は [plan.md](plan.md) を参照。
 
-## 状態: Phase 7 — AI育成パイプライン(第1貫通)
+## 状態: 全フェーズ完了(Phase 0〜8)
+
+### Phase 8 — サーバーレス経路
+
+| 項目 | 状態 | 実装 |
+|---|---|---|
+| `system:webrtc` | 済 | [transport/rtc/](transport/rtc/) — pion/webrtc/v4。事前交渉済み2チャネル(ordered reliable + unordered/no-retransmit)、non-trickle ICE(有界gathering待ち)、リモートDTLS fingerprint公開(`rule:ticket-bound-to-connection`用)。js/wasm はwtと同じstubパターン |
+| `api:manual-signaling-token` | 済 | [signaltoken/](signaltoken/) — version/type/expiry/宣言長ヘッダ(チャットが付け足すゴミは宣言長より先を無視)、SDP辞書置換+flate+base64url、単回償還`Redeemer`(`rule:invitation-is-single-use-and-expiring`)。URLフラグメント運搬、TURN資格情報は決して含まない |
+| `api:lan-discovery` | 済 | [discovery/](discovery/) — UDPブロードキャストビーコン+受動リスナ、プロトコル版フィルタ、TTL失効。ネイティブのみ |
+| `rule:unauthenticated-admission-requires-scope-or-capability` | 済 | `admission.GuardUnauthenticated` — loopback/private/link-local以外はfail closed。WebRTCのrendezvous能力側はlistening portが存在しないためガード不要(`decision:no-auth-on-lan`) |
+| `concept:static-host-mode` / `flow:peer-authentication` | 部分 | 構成要素(rtc+token+fingerprint)は全部揃い、`TestPongOverWebRTC`が招待トークン貼り付け→償還→実WebRTC対局を通す。ブラウザ側WebRTC APIブリッジと相互チケット検証の実配線は未 |
+
+### Phase 7 — AI育成パイプライン
 
 | 項目 | 状態 | 実装 |
 |---|---|---|
@@ -15,8 +27,11 @@
 | `rule:predicate-tests-generated-from-episodes` | 済 | 記録済み局面をフィクスチャにしたテストを生成、episode+tickで失敗箇所を名指し |
 | `rule:regeneration-preserves-approved-nodes` | 済 | [behavior/merge.go](behavior/merge.go) — new / unchanged / changed_metrics / matches_rejected(却下理由再提示) / conflicts_with_approved の差分。approved/rejectedは絶対に無言上書きしない |
 | `concept:continuous-match-loop` | 済(最小) | [matchloop/](matchloop/) — fresh seed/試合 + `metric:episode-outcome`集計。pairing方針はplay関数側 |
-| DuckDB / Parquet | 概念のみ | episode JSONLはDuckDBが直接読める形。Parquet変換・SQL集計(`metric:balance-signals`)は未実装 |
-| `ui:behavior-tree-editor` / `ui:chip-benchmark` | 未実装 | 概念記録済み。承認UIとベンチUIは次の切片 |
+| `data:agent-loadout` / `concept:tactic-selector` 生成 | 済 | [behavior/loadout.go](behavior/loadout.go) — 作戦セレクタ+チップ決定リストの静的Go生成。TTTで同一ライブラリから別個性(center-first)を組み立て |
+| Reversi蒸留(判断語の語彙) | 済 | [samples/reversi/distill/](samples/reversi/distill/) — `best_move_is_k`(argmax判断)を[dpred](samples/reversi/distill/dpred/)としてレビュー可能なGoに。61チップ(到達可能最大)、GreedyBotとビット一致 |
+| 分析 / `metric:balance-signals` | 済 | [analysis/](analysis/) + `cmd/corpus-report` — 純Go集計(kind別勝率・duration分布・拒否ランキング等)+ DuckDB用SQL生成(実duckdbで検証済み)。Parquet変換は未 |
+| `ui:behavior-tree-editor` / `ui:chip-benchmark` | 済(初版) | [cmd/behavior-editor](cmd/behavior-editor/) — チップ承認/却下(理由付き)、証拠ペイン(episode+tickの実局面)、述語使用状況、levelタグ行列、再生成diff、ベンチ表。`-library chips.json`で起動 |
+| LLM Analyzer | 未 | `behavior.Analyzer`インターフェースに差し込む形。決定的ベースラインが同一成果物形で先行 |
 
 ### 完了条件の対応
 
@@ -172,6 +187,9 @@
 - `samples/tictactoe` — 最小サンプル兼回帰ハーネス（`decision:samples-as-test-infrastructure`）。`go run ./samples/tictactoe/cmd/ttt` で人間対ボット。
 - `behavior` — 蒸留パイプライン: 語彙・分析(Analyzer差替可)・チップライブラリ・再生成マージ・Goコード生成。
 - `matchloop` — 無人連続対局と結果集計。
+- `analysis` — corpus集計とDuckDB SQL生成(ゲームプロセス外の分析ツール)。
+- `signaltoken` — 帯域外シグナリングトークン(WebRTC招待/応答)。
+- `discovery` — LANセッション発見ビーコン。
 - `netplay` — セッションを実トランスポートに接続する汎用層。admission→peer、view別状態配信(`MakeSender`ファクトリで席・役割ごとに投影を選択)、観戦者enforcement、離脱検出、abuse対策。
 - `budget` — `data:runtime-resource-budget` の宣言と起動時検証。
 - `observe` — 有界カウンタと構造化イベント(`api:runtime-observability`)。
