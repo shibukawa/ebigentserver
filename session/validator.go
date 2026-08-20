@@ -21,3 +21,15 @@ type AllowAll[S, A any] struct{}
 
 // Legal always returns nil.
 func (AllowAll[S, A]) Legal(*S, SlotID, A) error { return nil }
+
+// PlausibilityValidator is the second validator class of
+// api:action-validator: could an honest client have produced this? It
+// runs only on the authoritative side, outside the simulation, so it is
+// free to use heuristics — rejecting here never touches simulation state
+// and can never desync. A position jump beyond maximum speed or inputs
+// stamped for far-future ticks belong here, not in Legal.
+type PlausibilityValidator[A any] interface {
+	// Plausible returns nil when an honest client could have sent the
+	// action at the given tick.
+	Plausible(tick Tick, slot SlotID, action A) error
+}

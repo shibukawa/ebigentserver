@@ -156,10 +156,17 @@ func (s *Session[S, A, O]) RunRealtime(ctx context.Context, tc TimeControl) erro
 			if !ok {
 				continue
 			}
-			if verr := s.cfg.Validator.Legal(&s.world, slot, action); verr != nil {
-				if s.cfg.Recorder != nil {
-					s.cfg.Recorder.Rejected(s.tick, slot, verr.Error())
+			// Plausibility first (heuristic, authoritative-side only),
+			// then legality (deterministic) — the two validator
+			// classes of api:action-validator.
+			if s.cfg.Plausibility != nil {
+				if verr := s.cfg.Plausibility.Plausible(s.tick, slot, action); verr != nil {
+					s.rejected(slot, verr.Error())
+					continue
 				}
+			}
+			if verr := s.cfg.Validator.Legal(&s.world, slot, action); verr != nil {
+				s.rejected(slot, verr.Error())
 				continue
 			}
 			if s.cfg.Recorder != nil {

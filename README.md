@@ -4,6 +4,24 @@
 
 要件と設計判断は [.knowledge/](.knowledge/) に概念として記録されている。実装順は [plan.md](plan.md) を参照。
 
+## 状態: Phase 4 — 多人数と運用堅牢性 + Tron
+
+| 項目 | 状態 | 実装 |
+|---|---|---|
+| 多人数フィールド(人間とボットの混在) | 済 | [samples/tron/](samples/tron/) — 2〜8スロット、trail は append-only identity collection で delta が snapshot より明確に安い形 |
+| `permission:spectator-receive-only` | 済 | [netplay/](netplay/) — spectator ロールは inbox を持たず、入力datagram は違反として計数。クライアント側は自動で dedicated ack |
+| `concept:agent-departure-policy` / `concept:agent-proxy-designation` | 済 | 離脱検出(transport close + 沈黙deadline) → `OnDeparture` コールバック。ai_takeover は「新しい admission でbotを着席」= 追加機構ゼロ(`decision:agent-as-central-abstraction`の実証) |
+| `decision:host-loss-ends-session` | 済 | クライアントは `ErrSessionLost` を報告して戻るのみ。移行なし |
+| `api:action-validator` 2クラス | 済 | legality(決定的) + plausibility(権威側ヒューリスティック、[session/validator.go](session/validator.go))。rejection計数 → tuning宣言のしきい値で `OnSuspect` → netplay が切断 |
+| `data:runtime-resource-budget` | 済 | [budget/](budget/) — 宣言必須・起動時検証。接続容量(handshake中も計上)、入力レート(token bucket)を enforcement |
+| `policy:overload-handling` / `policy:realtime-abuse-protection` | 済 | 容量超過は割り当て前に fail closed、不正入力/レート超過/観戦者入力は計数→しきい値切断、全てに証拠 |
+| `api:runtime-observability` | 済 | [observe/](observe/) — 有界カウンタ + 構造化イベント(session/conn/tick/reason付き、credential禁止) |
+
+### 完了条件の対応
+
+- **8人+観戦者で、切断・過負荷・不正入力を注入しても production-runtime-safety を満たす** — [net_test.go](samples/tron/tron/net_test.go) `TestEightPlayersSpectatorsAndInjectedFailures`: 損失10%+遅延の8人対戦に、①途中切断→AI takeover(slot 3)、②途中切断→continue_without(slot 5)、③不正データ洪水プレイヤー→しきい値切断、④入力を送る観戦者→違反計数→切断、を注入。セッションは正常終了し、正直なクライアントと観戦者は同期を維持、全違反に observability 証拠が残る。
+- **8受信者での baseline 保持コスト実測** — 同テストが試合中に実測: 7受信者 × history_depth 16版 × スナップショット約11.6KB ≈ 1.3MiB。trail が伸びる状態での history_depth 選定材料がそのまま出る。
+
 ## 状態: Phase 3b — ネットワーク
 
 | 項目 | 状態 | 実装 |
@@ -100,6 +118,9 @@
 - `episode` — `data:episode-log` の JSONL 読み書き。session.Recorder 実装の Writer と、replay 用 Reader。
 - `entity` — owner 名前空間つきエンティティ ID と決定的 allocator。
 - `samples/tictactoe` — 最小サンプル兼回帰ハーネス（`decision:samples-as-test-infrastructure`）。`go run ./samples/tictactoe/cmd/ttt` で人間対ボット。
+- `netplay` — セッションを実トランスポートに接続する汎用層(ゲームのS/A/D/Oでgeneric)。admission→peer、状態配信、観戦者enforcement、離脱検出、abuse対策。
+- `budget` — `data:runtime-resource-budget` の宣言と起動時検証。
+- `observe` — 有界カウンタと構造化イベント(`api:runtime-observability`)。
 - `transport` — トランスポート抽象とその実装(pipe/ws/wt)、framing、sequence/ack層。
 - `admission` — Ed25519署名のsession ticketとhandshake(バージョン照合→ローカル検証→着席)。
 - `statesync` — framework側delta生成。生成コーデックを差し込む`Codec`、受信者ごとの`Sender`/`Receiver`(双方が履歴保持)、baseline mode 3種、ループバック`Hub`。

@@ -129,6 +129,15 @@ type Config[S, A, O any] struct {
 	// deterministic per-tick schedule: called once per slot per tick in
 	// commit order. Replays and tests use it; live play leaves it nil.
 	InputSource func(tick Tick, slot SlotID) (A, bool)
+	// Plausibility is the heuristic validator class of
+	// api:action-validator, run on the authoritative side before Legal.
+	// Nil accepts everything.
+	Plausibility PlausibilityValidator[A]
+	// OnSuspect fires when a slot's rejected-action count reaches the
+	// tuning profile's RejectionThreshold (the flag rung of the
+	// escalation ladder; the hosting layer decides whether to
+	// disconnect). Called at most once per slot per session.
+	OnSuspect func(slot SlotID, rejections int32)
 }
 
 // Session hosts one game run. Methods are not safe for concurrent use:
@@ -143,6 +152,8 @@ type Session[S, A, O any] struct {
 	tick       Tick
 	seq        uint64 // progress report sequence
 	actionHash uint64 // running digest over accepted actions
+	rejections map[SlotID]int32
+	suspected  map[SlotID]bool
 }
 
 // New validates the configuration and returns a session in StateCreated.
@@ -183,11 +194,13 @@ func New[S, A, O any](cfg Config[S, A, O]) (*Session[S, A, O], error) {
 		inboxes[slot] = &Inbox[A]{}
 	}
 	return &Session[S, A, O]{
-		cfg:     cfg,
-		slots:   slots,
-		agents:  make(map[SlotID]Agent[O, A], len(slots)),
-		inboxes: inboxes,
-		state:   StateCreated,
+		cfg:        cfg,
+		slots:      slots,
+		agents:     make(map[SlotID]Agent[O, A], len(slots)),
+		inboxes:    inboxes,
+		state:      StateCreated,
+		rejections: map[SlotID]int32{},
+		suspected:  map[SlotID]bool{},
 	}, nil
 }
 
@@ -333,14 +346,17 @@ func (s *Session[S, A, O]) decideLegal(ctx context.Context, slot SlotID, obs O, 
 		if !ok {
 			return action, false, nil
 		}
-		if verr := s.cfg.Validator.Legal(&s.world, slot, action); verr == nil {
+		verr := s.cfg.Validator.Legal(&s.world, slot, action)
+		if verr == nil && s.cfg.Plausibility != nil {
+			verr = s.cfg.Plausibility.Plausible(s.tick, slot, action)
+		}
+		if verr == nil {
 			if s.cfg.Recorder != nil {
 				s.cfg.Recorder.Decided(s.tick, slot, obs, action, sig, latency)
 			}
 			return action, true, nil
-		} else if s.cfg.Recorder != nil {
-			s.cfg.Recorder.Rejected(s.tick, slot, verr.Error())
 		}
+		s.rejected(slot, verr.Error())
 		// Rejected actions never touch the world; the next attempt
 		// sees the identical position.
 	}
@@ -452,6 +468,24 @@ func (s *Session[S, A, O]) abort(cause error) error {
 		s.cfg.Recorder.Ended(s.tick, outcomes)
 	}
 	return cause
+}
+
+// rejected books one refused action: record, count, and escalate at the
+// declared threshold (the drop → flag rungs of api:action-validator's
+// escalation ladder; disconnecting is the hosting layer's rung).
+func (s *Session[S, A, O]) rejected(slot SlotID, reason string) {
+	if s.cfg.Recorder != nil {
+		s.cfg.Recorder.Rejected(s.tick, slot, reason)
+	}
+	s.rejections[slot]++
+	threshold := int32(0)
+	if s.cfg.Tuning != nil {
+		threshold = s.cfg.Tuning.RejectionThreshold
+	}
+	if threshold > 0 && s.rejections[slot] >= threshold && !s.suspected[slot] && s.cfg.OnSuspect != nil {
+		s.suspected[slot] = true
+		s.cfg.OnSuspect(slot, s.rejections[slot])
+	}
 }
 
 func (s *Session[S, A, O]) report(r Report) error {

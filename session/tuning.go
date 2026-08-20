@@ -50,6 +50,12 @@ type TuningProfile struct {
 	// (concept:ack-transmission-policy): 0 piggyback_only, 1 dedicated,
 	// 2 delayed_piggyback. Consumed by the transport frontend.
 	AckMode uint8
+	// RejectionThreshold is the escalation threshold of
+	// api:action-validator: when one slot accumulates this many
+	// rejected actions (legality or plausibility), Config.OnSuspect
+	// fires so the hosting layer can flag or disconnect the
+	// connection. 0 disables escalation.
+	RejectionThreshold int32
 }
 
 // BaselineMode is concept:delta-baseline-policy.
