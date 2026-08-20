@@ -19,9 +19,13 @@ jobs:
         run: go test ./...
       # requirement:native-and-wasm-targets — every package keeps building on
       # the wasm targets and on a 32-bit arch (catches bare-int assumptions).
+      # Client entry points are the one exception on headless targets: they
+      # import the engine by design (decision:entry-points-over-build-tags),
+      # and Ebitengine has no wasip1/386 support. js/wasm builds everything —
+      # the browser is a rendering target.
       - name: Build js/wasm
         run: GOOS=js GOARCH=wasm go build ./...
       - name: Build wasip1/wasm
-        run: GOOS=wasip1 GOARCH=wasm go build ./...
+        run: GOOS=wasip1 GOARCH=wasm go build $(go list ./... | grep -v -e '/cmd/pong-client' -e '^github.com/shibukawa/ebigentserver$')
       - name: Build linux/386
-        run: GOOS=linux GOARCH=386 go build ./...
+        run: GOOS=linux GOARCH=386 go build $(go list ./... | grep -v -e '/cmd/pong-client' -e '^github.com/shibukawa/ebigentserver$')

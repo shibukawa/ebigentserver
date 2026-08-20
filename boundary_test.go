@@ -19,6 +19,9 @@ func TestModuleImportBoundary(t *testing.T) {
 		"examples/*/cmd/*client*",
 		"examples/*/cmd/*listen*",
 		"examples/*/cmd/*static*",
+		"samples/*/cmd/*client*",
+		"samples/*/cmd/*listen*",
+		"samples/*/cmd/*static*",
 	}
 	cfg.Rules[0].AllowedEntries = append(cfg.Rules[0].AllowedEntries, exampleEntries...)
 	cfg.AllowedCgoEntries = append(cfg.AllowedCgoEntries, exampleEntries...)
