@@ -6,6 +6,8 @@ github.com/klauspost/compress v1.19.1 h1:VsB4HPswih7mmZ8WleSFQ75c/Ui1M4trX5oAsJn
 github.com/klauspost/compress v1.19.1/go.mod h1:cwPg85FWrGar70rWktvGQj8/hthj3wpl0PGDogxkrSQ=
 github.com/savsgio/gotils v0.0.0-20240704082632-aef3928b8a38 h1:D0vL7YNisV2yqE55+q0lFuGse6U8lxlg7fYTctlT5Gc=
 github.com/savsgio/gotils v0.0.0-20240704082632-aef3928b8a38/go.mod h1:sM7Mt7uEoCeFSCBM+qBrqvEo+/9vdmj19wzp3yzUhmg=
+github.com/shibukawa/fixmath v0.9.0 h1:j0tNy1/Ixr1oSTt3BVcmoNdbaie1BGFHvkgkTBKV74M=
+github.com/shibukawa/fixmath v0.9.0/go.mod h1:wAhMHDZxEqcGtjUoOsWC6dPLqgVGbbqqHcRXI/m0nzI=
 github.com/shibukawa/tinybind-go v0.5.17 h1:25uNsm3Co87dVig0TOZs0tYvrO9l8AD1W2dP4usLLe0=
 github.com/shibukawa/tinybind-go v0.5.17/go.mod h1:+ENPVbiK6wvD6n4QqQK4hSyDELmTC5lKbBZJlkXFbQo=
 github.com/shibukawa/tinygodriver v1.2.6 h1:zXsex7fYGWm03G/1KvVPkpdhIrzz10xKJRIksFDXwtk=

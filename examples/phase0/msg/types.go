@@ -29,7 +29,7 @@ func (f Fixed1024) F64() fixmath.F64 { return fixmath.FromScaled(int64(f), 10) }
 
 // Fixed1024FromF64 quantizes a compute value onto the wire scale, rounding
 // half away from zero (fixmath FR-7).
-func Fixed1024FromF64(v fixmath.F64) Fixed1024 { return Fixed1024(fixmath.ToScaled(v, 10)) }
+func Fixed1024FromF64(v fixmath.F64) Fixed1024 { return Fixed1024(v.ToScaled(10, 64)) }
 
 // DecodeCBORFrom reads one scaled integer.
 func (f *Fixed1024) DecodeCBORFrom(data []byte) error {
@@ -57,7 +57,7 @@ func (f Fixed65536) F64() fixmath.F64 { return fixmath.FromScaled(int64(f), 16) 
 
 // Fixed65536FromF64 quantizes a compute value onto the wire scale, rounding
 // half away from zero.
-func Fixed65536FromF64(v fixmath.F64) Fixed65536 { return Fixed65536(fixmath.ToScaled(v, 16)) }
+func Fixed65536FromF64(v fixmath.F64) Fixed65536 { return Fixed65536(v.ToScaled(16, 64)) }
 
 // DecodeCBORFrom reads one scaled integer.
 func (f *Fixed65536) DecodeCBORFrom(data []byte) error {

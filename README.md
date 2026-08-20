@@ -8,7 +8,7 @@
 
 | 項目 | 状態 | 実装 |
 |---|---|---|
-| `api:fixed-point-math` | 済（ローカル） | [github.com/shibukawa/fixmath](https://github.com/shibukawa/fixmath) — F64 (s32.32)、BAM Angle、Vec2、宣言スケール変換。**未push・未tagのため `go.mod` は `replace => ../fixmath` を持つ。push と v1.0.0 tag 後に replace を外すこと** |
+| `api:fixed-point-math` | 済 | [github.com/shibukawa/fixmath](https://github.com/shibukawa/fixmath) v0.9.0 — F64 (s32.32)、BAM Angle、Vec2、宣言スケール変換（`ToScaled` はフィールド幅で飽和）。v1.0.0 tag で出力ビットが凍結される |
 | CBOR 生成（wire / world プロファイル、スケール対応） | 済 | tinybind-go v0.5.17 + tinygodriver v1.2.6 |
 | `rule:codegen-rejects-nondeterministic-types` | 済 | tinybind の生成時検査（[検証テスト](examples/phase0/msg/gencheck_test.go)） |
 | `data:protocol-version` | 済 | 生成コードの `CBORProtocolVersion` / `CBORSchema` |
