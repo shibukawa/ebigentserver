@@ -50,6 +50,14 @@ type TuningProfile struct {
 	// (concept:ack-transmission-policy): 0 piggyback_only, 1 dedicated,
 	// 2 delayed_piggyback. Consumed by the transport frontend.
 	AckMode uint8
+	// InputIntake selects the per-tick intake policy
+	// (decision:input-timing-owned-by-sync-mode): IntakeNewest (0)
+	// keeps only the freshest queued input — right for continuous
+	// control, where stale inputs are superseded; IntakeAll drains the
+	// queue in arrival order — right for command streams, where every
+	// order matters and per-slot FIFO is the deterministic sequence
+	// rule:deterministic-tick-commit asks for.
+	InputIntake InputIntake
 	// RejectionThreshold is the escalation threshold of
 	// api:action-validator: when one slot accumulates this many
 	// rejected actions (legality or plausibility), Config.OnSuspect
@@ -57,6 +65,18 @@ type TuningProfile struct {
 	// connection. 0 disables escalation.
 	RejectionThreshold int32
 }
+
+// InputIntake is the per-tick input intake policy.
+type InputIntake uint8
+
+const (
+	// IntakeNewest applies at most the newest queued input per slot per
+	// tick.
+	IntakeNewest InputIntake = iota
+	// IntakeAll applies every queued input per slot per tick, in
+	// arrival order.
+	IntakeAll
+)
 
 // BaselineMode is concept:delta-baseline-policy.
 type BaselineMode uint8

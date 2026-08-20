@@ -4,6 +4,21 @@
 
 要件と設計判断は [.knowledge/](.knowledge/) に概念として記録されている。実装順は [plan.md](plan.md) を参照。
 
+## 状態: Phase 6 — ハイブリッド同期 + RTS-lite
+
+| 項目 | 状態 | 実装 |
+|---|---|---|
+| `concept:hybrid-synchronization` | 済 | [samples/rtslite/](samples/rtslite/) — コマンド上り(wire profile datagram)、fog投影の delta 下り。`flow:hybrid-sync-exchange` を損失リンク上のフルスタックで検証 |
+| コマンドストリーム(1スロット→多数ユニット) | 済 | [session/tuning.go](session/tuning.go) の `InputIntake`: IntakeNewest(連続操作) / IntakeAll(命令列、slot内FIFO=`rule:deterministic-tick-commit`のper-slot sequence)。`decision:input-timing-owned-by-sync-mode`の実装点 |
+| fog of war と interest management | 済 | `ProjectPlayer` — 自軍全量+視界内の敵のみ。Phase 5の`ProjectedSender`の述語を書くだけで成立(基盤の正しさの証明) |
+| 2つのCBORプロファイル併用 | 済 | コマンド13B(wire profile固定配列) vs view snapshot 600B+(world profile map)、テストで実測 |
+| unit ID | 済 | owner slotを上位byteに詰めた`decision:owner-namespaced-entity-ids`のワイヤ簡約形。所有権validatorの根拠 |
+
+### 完了条件の対応
+
+- **大規模ワールドで delta-baseline-policy 各モードの差が実測できる** — [baseline_test.go](samples/rtslite/rtslite/baseline_test.go): 128ユニットの4人戦をfog投影senderに流し、ack遅延6send+RTTスパイクを注入して3モードを計測。**speculative 11068B < bounded(16) 13053B < confirmed_only 15809B(+43%)**。deltaサイズ・snapshot回数の内訳もログに出る。
+- 複数命令/tickの記録→再生ビット一致(decisions/outcomes/world全一致+checkpoint鎖一致。eventsは原走行のみvalidator拒否を含むため意図的に除外)、最終checkpointのクロスアーキ固定(tick 101)も継続。
+
 ## 状態: Phase 5 — 投影と非対称性 + Dungeon
 
 | 項目 | 状態 | 実装 |

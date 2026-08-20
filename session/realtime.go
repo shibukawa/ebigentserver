@@ -73,6 +73,20 @@ func (in *Inbox[A]) takeNewest() (a A, ok bool) {
 	return a, true
 }
 
+// takeAll empties the inbox in arrival order — the command-stream intake,
+// where every order matters and per-slot FIFO is the deterministic
+// sequence.
+func (in *Inbox[A]) takeAll() []A {
+	in.mu.Lock()
+	defer in.mu.Unlock()
+	if len(in.queue) == 0 {
+		return nil
+	}
+	out := in.queue
+	in.queue = nil
+	return out
+}
+
 // Inbox returns the slot's mailbox for realtime input submission.
 func (s *Session[S, A, O]) Inbox(slot SlotID) (*Inbox[A], error) {
 	in, ok := s.inboxes[slot]
@@ -148,32 +162,32 @@ func (s *Session[S, A, O]) RunRealtime(ctx context.Context, tc TimeControl) erro
 			}
 		}
 
-		// Intake: at most one input per slot per tick, commit order
-		// (rule:deterministic-tick-commit). Rejected input is dropped;
-		// realtime never retries a decision.
+		// Intake in commit order (rule:deterministic-tick-commit): slots
+		// by id, and within one slot the declared intake policy —
+		// newest-only for continuous control, arrival-order FIFO for
+		// command streams. Rejected input is dropped; realtime never
+		// retries a decision.
 		for _, slot := range s.slots {
-			action, ok := s.takeInput(slot)
-			if !ok {
-				continue
-			}
-			// Plausibility first (heuristic, authoritative-side only),
-			// then legality (deterministic) — the two validator
-			// classes of api:action-validator.
-			if s.cfg.Plausibility != nil {
-				if verr := s.cfg.Plausibility.Plausible(s.tick, slot, action); verr != nil {
+			for _, action := range s.takeInputs(slot) {
+				// Plausibility first (heuristic, authoritative-side
+				// only), then legality (deterministic) — the two
+				// validator classes of api:action-validator.
+				if s.cfg.Plausibility != nil {
+					if verr := s.cfg.Plausibility.Plausible(s.tick, slot, action); verr != nil {
+						s.rejected(slot, verr.Error())
+						continue
+					}
+				}
+				if verr := s.cfg.Validator.Legal(&s.world, slot, action); verr != nil {
 					s.rejected(slot, verr.Error())
 					continue
 				}
+				if s.cfg.Recorder != nil {
+					s.cfg.Recorder.Decided(s.tick, slot, game.Project(&s.world, slot), action, signals[slot], 0)
+				}
+				s.commitAction(slot, action)
+				game.Apply(&s.world, slot, action)
 			}
-			if verr := s.cfg.Validator.Legal(&s.world, slot, action); verr != nil {
-				s.rejected(slot, verr.Error())
-				continue
-			}
-			if s.cfg.Recorder != nil {
-				s.cfg.Recorder.Decided(s.tick, slot, game.Project(&s.world, slot), action, signals[slot], 0)
-			}
-			s.commitAction(slot, action)
-			game.Apply(&s.world, slot, action)
 		}
 
 		game.Advance(&s.world)
@@ -186,9 +200,34 @@ func (s *Session[S, A, O]) RunRealtime(ctx context.Context, tc TimeControl) erro
 	}
 }
 
-func (s *Session[S, A, O]) takeInput(slot SlotID) (A, bool) {
+// takeInputs collects this tick's inputs for one slot per the declared
+// intake policy. An InputSource is polled repeatedly under IntakeAll
+// (bounded by the inbox capacity) so scheduled replays can carry several
+// actions per slot per tick.
+func (s *Session[S, A, O]) takeInputs(slot SlotID) []A {
+	all := s.cfg.Tuning != nil && s.cfg.Tuning.InputIntake == IntakeAll
 	if s.cfg.InputSource != nil {
-		return s.cfg.InputSource(s.tick, slot)
+		if !all {
+			if a, ok := s.cfg.InputSource(s.tick, slot); ok {
+				return []A{a}
+			}
+			return nil
+		}
+		var out []A
+		for len(out) < inboxCap {
+			a, ok := s.cfg.InputSource(s.tick, slot)
+			if !ok {
+				break
+			}
+			out = append(out, a)
+		}
+		return out
 	}
-	return s.inboxes[slot].takeNewest()
+	if all {
+		return s.inboxes[slot].takeAll()
+	}
+	if a, ok := s.inboxes[slot].takeNewest(); ok {
+		return []A{a}
+	}
+	return nil
 }

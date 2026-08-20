@@ -90,9 +90,9 @@ func ReadReplay[A any](decisions io.Reader) (*Replay[A], error) {
 // ReadReplaySchedule parses a replay_complete decisions stream into a
 // per-tick input schedule for realtime replay: the returned function has
 // the session.Config.InputSource shape, feeding each recorded action back
-// at the tick it was accepted on. Realtime intake accepts at most one
-// input per slot per tick, so the (tick, slot) key is unique by
-// construction.
+// at the tick it was accepted on. A (tick, slot) pair may hold several
+// actions (IntakeAll command streams); they replay in recorded order,
+// one per call, then the schedule reports no action.
 func ReadReplaySchedule[A any](decisions io.Reader) (Header, func(tick session.Tick, slot session.SlotID) (A, bool), error) {
 	rep, err := parseReplay[A](decisions)
 	if err != nil {
@@ -102,13 +102,20 @@ func ReadReplaySchedule[A any](decisions io.Reader) (Header, func(tick session.T
 		tick session.Tick
 		slot session.SlotID
 	}
-	schedule := make(map[key]A, len(rep.rows))
+	schedule := make(map[key][]A, len(rep.rows))
 	for _, row := range rep.rows {
-		schedule[key{session.Tick(row.tick), session.SlotID(row.slot)}] = row.action
+		k := key{session.Tick(row.tick), session.SlotID(row.slot)}
+		schedule[k] = append(schedule[k], row.action)
 	}
 	return rep.Header, func(tick session.Tick, slot session.SlotID) (A, bool) {
-		a, ok := schedule[key{tick, slot}]
-		return a, ok
+		k := key{tick, slot}
+		q := schedule[k]
+		if len(q) == 0 {
+			var zero A
+			return zero, false
+		}
+		schedule[k] = q[1:]
+		return q[0], true
 	}, nil
 }
 
