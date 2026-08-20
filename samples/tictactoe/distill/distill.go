@@ -11,6 +11,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
+	"path/filepath"
 
 	"github.com/shibukawa/ebigentserver/behavior"
 	"github.com/shibukawa/ebigentserver/episode"
@@ -34,6 +36,7 @@ func Vocabulary() *behavior.Vocabulary {
 	for k := uint8(0); k < 9; k++ {
 		v.Features = append(v.Features, behavior.Feature{
 			Name:   fmt.Sprintf("cell_%d_empty", k),
+			Doc:    fmt.Sprintf("board cell %d (row-major, 0=top-left) holds no mark", k),
 			GoExpr: fmt.Sprintf("obs.Board[%d] == ttt.Empty", k),
 			Eval: func(raw json.RawMessage) (bool, error) {
 				var o obsShape
@@ -45,6 +48,7 @@ func Vocabulary() *behavior.Vocabulary {
 		})
 		v.Actions = append(v.Actions, behavior.ActionDef{
 			Name:   fmt.Sprintf("play_%d", k),
+			Doc:    fmt.Sprintf("place the own mark on cell %d", k),
 			GoExpr: fmt.Sprintf("ttt.Move{Cell: %d}", k),
 			Match: func(raw json.RawMessage) (bool, error) {
 				var m moveShape
@@ -169,6 +173,92 @@ func Synthesize(matches int) (*behavior.Library, []behavior.Record, error) {
 		}
 	}
 	return lib, records, nil
+}
+
+// ExportCorpus plays n bot-vs-random matches recording full episode
+// directories under root (the shape analysis and the behavior-analyze
+// skill read), then returns the bot's featurized records segmented back
+// from those files — so the exported analysis request describes exactly
+// what is on disk.
+func ExportCorpus(root string, n int) ([]behavior.Record, error) {
+	vocab := Vocabulary()
+	var records []behavior.Record
+	for i := 0; i < n; i++ {
+		id := fmt.Sprintf("ttt-%03d", i)
+		dir := filepath.Join(root, id)
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			return nil, err
+		}
+		files := make([]*os.File, 0, 4)
+		open := func(name string) (*os.File, error) {
+			f, err := os.Create(filepath.Join(dir, name))
+			if err == nil {
+				files = append(files, f)
+			}
+			return f, err
+		}
+		var streams episode.Streams
+		var err error
+		if streams.Decisions, err = open("decisions.jsonl"); err == nil {
+			if streams.Events, err = open("events.jsonl"); err == nil {
+				if streams.Outcomes, err = open("outcomes.jsonl"); err == nil {
+					streams.World, err = open("world.jsonl")
+				}
+			}
+		}
+		if err != nil {
+			return nil, err
+		}
+		w := episode.NewWriter[ttt.State, ttt.Move, ttt.Observation](
+			streams, episode.ReplayComplete,
+			episode.Meta{EpisodeID: id,
+				AgentKinds: map[session.SlotID]string{ttt.SlotX: "bot", ttt.SlotO: "random"}},
+		)
+		if err := playMatch(i, w); err != nil {
+			return nil, err
+		}
+		for _, f := range files {
+			if err := f.Close(); err != nil {
+				return nil, err
+			}
+		}
+		df, err := os.Open(filepath.Join(dir, "decisions.jsonl"))
+		if err != nil {
+			return nil, err
+		}
+		recs, err := behavior.Segment(vocab, id, df, func(slot uint16) bool {
+			return slot == uint16(ttt.SlotX)
+		})
+		df.Close()
+		if err != nil {
+			return nil, err
+		}
+		records = append(records, recs...)
+	}
+	return records, nil
+}
+
+// playMatch runs one recorded bot-vs-random match.
+func playMatch(i int, w *episode.Writer[ttt.State, ttt.Move, ttt.Observation]) error {
+	s, err := session.New(session.Config[ttt.State, ttt.Move, ttt.Observation]{
+		ID: fmt.Sprintf("ttt-%03d", i), Slots: ttt.Slots(),
+		Game: ttt.Game{}, Validator: ttt.Validator{},
+		Recorder: w, Seed: uint64(i)*2654435761 + 1,
+		Clock: func() int64 { return 0 },
+	})
+	if err != nil {
+		return err
+	}
+	if err := s.OpenAdmission(); err != nil {
+		return err
+	}
+	if err := s.Admit(ttt.SlotX, &ttt.Bot{}); err != nil {
+		return err
+	}
+	if err := s.Admit(ttt.SlotO, newRandomAgent(uint64(i))); err != nil {
+		return err
+	}
+	return s.Run(context.Background())
 }
 
 // CenterFirstLoadout assembles a different personality from the same

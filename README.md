@@ -31,7 +31,7 @@
 | Reversi蒸留(判断語の語彙) | 済 | [samples/reversi/distill/](samples/reversi/distill/) — `best_move_is_k`(argmax判断)を[dpred](samples/reversi/distill/dpred/)としてレビュー可能なGoに。61チップ(到達可能最大)、GreedyBotとビット一致 |
 | 分析 / `metric:balance-signals` | 済 | [analysis/](analysis/) + `cmd/corpus-report` — 純Go集計(kind別勝率・duration分布・拒否ランキング等)+ DuckDB用SQL生成(実duckdbで検証済み)。Parquet変換は未 |
 | `ui:behavior-tree-editor` / `ui:chip-benchmark` | 済(初版) | [cmd/behavior-editor](cmd/behavior-editor/) — チップ承認/却下(理由付き)、証拠ペイン(episode+tickの実局面)、述語使用状況、levelタグ行列、再生成diff、ベンチ表。`-library chips.json`で起動 |
-| LLM Analyzer | 未 | `behavior.Analyzer`インターフェースに差し込む形。決定的ベースラインが同一成果物形で先行 |
+| LLM Analyzer | 済(skill) | [skills/behavior-analyze/](skills/behavior-analyze/) — LLMは開発者自身のagentic環境(Claude Code等)でskillとして分析する。導入=skillフォルダ共有+duckdb CLI(任意)。scriptは純Python stdlib。`ttt-export`がanalysis-request.json(語彙+bit列化済み決定)を出力し、提案は`validate_proposals.py`とGo側`behavior.ValidateProposals`が二重に検証(語彙外条件の拒否・coverage再計算・証拠実在確認)してから`cmd/behavior-merge`でdiffマージ。**提案は助言であって権威ではない** |
 
 ### 完了条件の対応
 

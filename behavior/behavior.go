@@ -29,6 +29,9 @@ type Feature struct {
 	// GoExpr evaluates the predicate over the identifier `obs` in
 	// generated code, e.g. "obs.Board[4] == ttt.Empty".
 	GoExpr string
+	// Doc explains the judgement in prose for an external analyzer
+	// (the analysis-request export carries it).
+	Doc string
 	// Eval judges a recorded observation.
 	Eval func(obs json.RawMessage) (bool, error)
 }
@@ -40,6 +43,8 @@ type ActionDef struct {
 	// GoExpr constructs the action in generated code, e.g.
 	// "ttt.Move{Cell: 4}".
 	GoExpr string
+	// Doc explains the action for an external analyzer.
+	Doc string
 	// Match reports whether a recorded action is this one.
 	Match func(action json.RawMessage) (bool, error)
 }
