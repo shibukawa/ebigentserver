@@ -14,6 +14,7 @@ import (
 	"github.com/shibukawa/ebigentserver/samples/tron/msg"
 	"github.com/shibukawa/ebigentserver/samples/tron/tron"
 	"github.com/shibukawa/ebigentserver/session"
+	"github.com/shibukawa/ebigentserver/statesync"
 	"github.com/shibukawa/ebigentserver/transport"
 	"github.com/shibukawa/ebigentserver/transport/pipe"
 	"github.com/shibukawa/ebigentserver/transport/seqack"
@@ -93,10 +94,12 @@ func TestEightPlayersSpectatorsAndInjectedFailures(t *testing.T) {
 	var s *session.Session[tron.State, tron.Input, tron.Observation]
 
 	takeover := make(chan session.SlotID, 8)
-	server, err := netplay.NewServer(ctx, netplay.ServerConfig[tron.State, tron.Input, msg.TronStateDelta]{
+	server, err := netplay.NewServer(ctx, netplay.ServerConfig[tron.State, tron.Input]{
 		SessionID: "tron-1", Protocol: msg.CBORProtocolVersion,
 		Verifier: verifier, Seed: 9, Tuning: tuning, Budget: bud,
-		Codec: tron.Codec(),
+		MakeSender: func(session.SlotID, string) (statesync.ViewSender[tron.State], error) {
+			return statesync.NewSender(tron.Codec(), tuning)
+		},
 		DecodeInput: func(data []byte) (tron.Input, error) {
 			var in msg.TurnInput
 			err := in.DecodeCBORFrom(data)
@@ -259,12 +262,11 @@ func TestEightPlayersSpectatorsAndInjectedFailures(t *testing.T) {
 	// Baseline retention cost at eight-plus receivers, sampled while the
 	// match runs and every surviving peer stands
 	// (decision:framework-side-delta-generation's cost note).
-	type retention struct{ receivers, versions, bytesPer int }
+	type retention struct{ receivers, versions int }
 	measured := make(chan retention, 1)
 	time.AfterFunc(3*time.Second, func() {
-		var sample tron.State
-		r, v, b := server.RetainedCost(&sample)
-		measured <- retention{r, int(v), b}
+		r, v := server.RetainedCost()
+		measured <- retention{r, int(v)}
 	})
 
 	// Run the match.
@@ -273,7 +275,7 @@ func TestEightPlayersSpectatorsAndInjectedFailures(t *testing.T) {
 	}
 	finalTick := s.Tick()
 	ret := <-measured
-	receivers, versions, bytesPer := ret.receivers, int32(ret.versions), ret.bytesPer
+	receivers, versions, bytesPer := ret.receivers, int32(ret.versions), 0
 	cancel()
 	mu.Lock()
 	for _, c := range clientConns {
@@ -369,10 +371,13 @@ func TestAdmissionCapacityFailsClosed(t *testing.T) {
 		DrainDeadlineMillis: 100,
 	}
 	ctx := context.Background()
-	server, err := netplay.NewServer(ctx, netplay.ServerConfig[tron.State, tron.Input, msg.TronStateDelta]{
+	server, err := netplay.NewServer(ctx, netplay.ServerConfig[tron.State, tron.Input]{
 		SessionID: "cap", Protocol: msg.CBORProtocolVersion,
 		Verifier: &admission.Verifier{Keys: map[string]ed25519.PublicKey{"k1": pub}, Audience: netAudience},
-		Tuning:   testTuning, Budget: bud, Codec: tron.Codec(),
+		Tuning:   testTuning, Budget: bud,
+		MakeSender: func(session.SlotID, string) (statesync.ViewSender[tron.State], error) {
+			return statesync.NewSender(tron.Codec(), testTuning)
+		},
 		DecodeInput: func(data []byte) (tron.Input, error) {
 			var in msg.TurnInput
 			err := in.DecodeCBORFrom(data)

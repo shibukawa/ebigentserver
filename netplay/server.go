@@ -45,7 +45,7 @@ const RoleSpectator = "spectator"
 const abuseDisconnectThreshold = 32
 
 // ServerConfig assembles the server side for one session.
-type ServerConfig[S, A, D any] struct {
+type ServerConfig[S, A any] struct {
 	// SessionID names events.
 	SessionID string
 	// Protocol is the exact wire version (rule:protocol-version-must-match).
@@ -57,8 +57,12 @@ type ServerConfig[S, A, D any] struct {
 	// Tuning is the declared profile; Budget the declared ceilings.
 	Tuning session.TuningProfile
 	Budget budget.Budget
-	// Codec wires the generated state functions.
-	Codec statesync.Codec[S, D]
+	// MakeSender builds the outbound pipeline for one admitted
+	// receiver. Global-visibility games return a plain statesync.Sender;
+	// scoped games return a statesync.ProjectedSender whose projection
+	// depends on the seat and role — this is where concept:agent-view
+	// attaches, and why hidden state never reaches serialization.
+	MakeSender func(slot session.SlotID, role string) (statesync.ViewSender[S], error)
 	// DecodeInput parses one wire-profile input payload.
 	DecodeInput func([]byte) (A, error)
 	// Inbox resolves a seat's mailbox — pass the session's Inbox method.
@@ -75,32 +79,35 @@ type ServerConfig[S, A, D any] struct {
 }
 
 // Server owns the admitted peers.
-type Server[S, A, D any] struct {
-	cfg     ServerConfig[S, A, D]
+type Server[S, A any] struct {
+	cfg     ServerConfig[S, A]
 	ctx     context.Context
 	mu      sync.Mutex
-	peers   []*Peer[S, A, D]
+	peers   []*Peer[S, A]
 	pending int32 // handshakes in flight; they hold capacity too
 }
 
 // NewServer validates the declarations and builds the server.
-func NewServer[S, A, D any](ctx context.Context, cfg ServerConfig[S, A, D]) (*Server[S, A, D], error) {
+func NewServer[S, A any](ctx context.Context, cfg ServerConfig[S, A]) (*Server[S, A], error) {
 	if err := cfg.Tuning.Validate(); err != nil {
 		return nil, err
 	}
 	if err := cfg.Budget.Validate(); err != nil {
 		return nil, err
 	}
-	if cfg.DecodeInput == nil || cfg.Inbox == nil || cfg.Verifier == nil {
-		return nil, errors.New("netplay: DecodeInput, Inbox, and Verifier are required")
+	if cfg.DecodeInput == nil || cfg.Inbox == nil || cfg.Verifier == nil || cfg.MakeSender == nil {
+		return nil, errors.New("netplay: DecodeInput, Inbox, Verifier, and MakeSender are required")
 	}
-	return &Server[S, A, D]{cfg: cfg, ctx: ctx}, nil
+	if cfg.Metrics == nil {
+		cfg.Metrics = &observe.Metrics{} // unobserved but never nil
+	}
+	return &Server[S, A]{cfg: cfg, ctx: ctx}, nil
 }
 
 // Admit runs the handshake on a fresh connection and registers the peer.
 // Capacity exhaustion fails closed before any allocation
 // (policy:realtime-abuse-protection).
-func (sv *Server[S, A, D]) Admit(ctx context.Context, conn transport.Conn) (*Peer[S, A, D], error) {
+func (sv *Server[S, A]) Admit(ctx context.Context, conn transport.Conn) (*Peer[S, A], error) {
 	// A handshake in flight holds capacity, so a burst of half-open
 	// connections cannot exceed the declared ceiling.
 	sv.mu.Lock()
@@ -126,7 +133,7 @@ func (sv *Server[S, A, D]) Admit(ctx context.Context, conn transport.Conn) (*Pee
 		sv.event(observe.Event{Kind: "admission_reject", Reason: err.Error()})
 		return nil, err
 	}
-	p := &Peer[S, A, D]{
+	p := &Peer[S, A]{
 		sv:    sv,
 		conn:  conn,
 		Slot:  session.SlotID(claims.Seat),
@@ -142,7 +149,7 @@ func (sv *Server[S, A, D]) Admit(ctx context.Context, conn transport.Conn) (*Pee
 		}
 		p.inbox = inbox
 	}
-	snd, err := statesync.NewSender(sv.cfg.Codec, sv.cfg.Tuning)
+	snd, err := sv.cfg.MakeSender(p.Slot, p.Role)
 	if err != nil {
 		return nil, err
 	}
@@ -158,14 +165,14 @@ func (sv *Server[S, A, D]) Admit(ctx context.Context, conn transport.Conn) (*Pee
 
 // Broadcast matches session.Config.Broadcast: encode and send the
 // committed world to every live peer, and sweep for silent ones.
-func (sv *Server[S, A, D]) Broadcast(tick session.Tick, world *S) {
+func (sv *Server[S, A]) Broadcast(tick session.Tick, world *S) {
 	sv.cfg.Metrics.TicksCommitted.Add(1)
 	deadline := time.Duration(0)
 	if sv.cfg.Tuning.SilenceDeadline > 0 {
 		deadline = time.Duration(sv.cfg.Tuning.SilenceDeadline) * time.Second / time.Duration(sv.cfg.Tuning.TickRate)
 	}
 	sv.mu.Lock()
-	peers := append([]*Peer[S, A, D](nil), sv.peers...)
+	peers := append([]*Peer[S, A](nil), sv.peers...)
 	sv.mu.Unlock()
 	now := time.Now()
 	for _, p := range peers {
@@ -183,20 +190,20 @@ func (sv *Server[S, A, D]) Broadcast(tick session.Tick, world *S) {
 
 // RetainedCost measures the per-receiver baseline retention of
 // decision:framework-side-delta-generation: receivers times retained
-// versions, and the approximate bytes one canonical snapshot occupies —
-// the material for judging history_depth (Phase 4 acceptance).
-func (sv *Server[S, A, D]) RetainedCost(sample *S) (receivers int, versionsPerReceiver int32, bytesPerVersion int) {
+// versions — the material for judging history_depth (Phase 4
+// acceptance); callers size one version with their own codec.
+func (sv *Server[S, A]) RetainedCost() (receivers int, versionsPerReceiver int32) {
 	sv.mu.Lock()
 	defer sv.mu.Unlock()
-	return len(sv.peers), sv.cfg.Tuning.HistoryDepth, len(sv.cfg.Codec.AppendSnapshot(nil, sample))
+	return len(sv.peers), sv.cfg.Tuning.HistoryDepth
 }
 
-func (sv *Server[S, A, D]) event(ev observe.Event) {
+func (sv *Server[S, A]) event(ev observe.Event) {
 	ev.SessionID = sv.cfg.SessionID
 	sv.cfg.Events.Emit(ev)
 }
 
-func (sv *Server[S, A, D]) removePeer(p *Peer[S, A, D]) {
+func (sv *Server[S, A]) removePeer(p *Peer[S, A]) {
 	sv.mu.Lock()
 	for i, q := range sv.peers {
 		if q == p {

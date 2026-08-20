@@ -4,6 +4,24 @@
 
 要件と設計判断は [.knowledge/](.knowledge/) に概念として記録されている。実装順は [plan.md](plan.md) を参照。
 
+## 状態: Phase 5 — 投影と非対称性 + Dungeon
+
+| 項目 | 状態 | 実装 |
+|---|---|---|
+| `concept:agent-view` | 済 | [statesync/view.go](statesync/view.go) — `ProjectedSender`: world→**slot別view**→保持→diff→送信。deltaの機構をそのまま再利用 |
+| `concept:visibility-scope` | 済 | self / team / role を dungeon サンプルで実証(global は既存サンプル)。**投影がシリアライズより前**なので、隠れた状態はエンコードすらされない |
+| `data:visibility-annotation` | 済 | [session/visibility.go](session/visibility.go) — scope / schema / visible_entities / derived / affordances / evaluation_scope。ゲームが明示発行し、観測に埋めて記録される |
+| `rule:observation-content-owned-by-game` | 済 | 可視性述語とフィールド選択は [project.go](samples/dungeon/dungeon/project.go)(ゲーム側)、保持・diff・配送は framework |
+| 役割とチーム | 済 | scout(視界広) / engineer(罠解除) / carrier(宝運搬) / navigator(出口既知)。行動も情報も役割でゲート |
+| `rule:evaluation-respects-visibility-scope` | 済 | パーティのsignalはチーム可視の事実のみから計算(隠し罠を置いても不変、テストで検証)。DMはprivilegedをannotationで宣言 |
+| `sample:cooperative-maze` → `sample:dungeon-master` | 済(統合) | [samples/dungeon/](samples/dungeon/) — 両サンプルの能力(チーム協力+役割 / 種類の違うview)を1本に統合。梯子の粒度からの意図的な逸脱 |
+
+### 完了条件の対応
+
+- **DMとパーティが種類の違う世界像を受け取る** — `DMView`(全マップ)と`AdventurerView`(探索済みセル+発見済み罠のみ)は**別の生成struct**。netplayクライアントも別のview型でインスタンス化される。
+- **隠れた情報が送信されていないことをテストで検証** — `TestHiddenInfoNeverOnTheWire`: scoutクライアントに届いた**全バイト列**を捕捉し、独立したdecode鎖で再構成。180パケット全てで「未発見罠なし・未探索セルの壁情報なし・出口座標なし」を検証(その間サーバ側にはDMの罠が8個存在)。表示フィルタではなく、ワイヤに載っていない。
+- **人間/AIの4通りの組み合わせ** — `TestAllFourControllerCombos`: DM{bot, scripted human} × party{bot, scripted human} の4セッション全てが完走し、両側が各自のview型を受信。
+
 ## 状態: Phase 4 — 多人数と運用堅牢性 + Tron
 
 | 項目 | 状態 | 実装 |
@@ -118,7 +136,7 @@
 - `episode` — `data:episode-log` の JSONL 読み書き。session.Recorder 実装の Writer と、replay 用 Reader。
 - `entity` — owner 名前空間つきエンティティ ID と決定的 allocator。
 - `samples/tictactoe` — 最小サンプル兼回帰ハーネス（`decision:samples-as-test-infrastructure`）。`go run ./samples/tictactoe/cmd/ttt` で人間対ボット。
-- `netplay` — セッションを実トランスポートに接続する汎用層(ゲームのS/A/D/Oでgeneric)。admission→peer、状態配信、観戦者enforcement、離脱検出、abuse対策。
+- `netplay` — セッションを実トランスポートに接続する汎用層。admission→peer、view別状態配信(`MakeSender`ファクトリで席・役割ごとに投影を選択)、観戦者enforcement、離脱検出、abuse対策。
 - `budget` — `data:runtime-resource-budget` の宣言と起動時検証。
 - `observe` — 有界カウンタと構造化イベント(`api:runtime-observability`)。
 - `transport` — トランスポート抽象とその実装(pipe/ws/wt)、framing、sequence/ack層。

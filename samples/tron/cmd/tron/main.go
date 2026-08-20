@@ -23,6 +23,7 @@ import (
 	"github.com/shibukawa/ebigentserver/samples/tron/msg"
 	"github.com/shibukawa/ebigentserver/samples/tron/tron"
 	"github.com/shibukawa/ebigentserver/session"
+	"github.com/shibukawa/ebigentserver/statesync"
 	"github.com/shibukawa/ebigentserver/transport/pipe"
 )
 
@@ -63,10 +64,12 @@ func main() {
 	defer cancel()
 
 	var s *session.Session[tron.State, tron.Input, tron.Observation]
-	server, err := netplay.NewServer(ctx, netplay.ServerConfig[tron.State, tron.Input, msg.TronStateDelta]{
+	server, err := netplay.NewServer(ctx, netplay.ServerConfig[tron.State, tron.Input]{
 		SessionID: "tron-local", Protocol: msg.CBORProtocolVersion,
 		Verifier: verifier, Seed: uint64(time.Now().UnixNano()), Tuning: tuning, Budget: bud,
-		Codec: tron.Codec(),
+		MakeSender: func(session.SlotID, string) (statesync.ViewSender[tron.State], error) {
+			return statesync.NewSender(tron.Codec(), tuning)
+		},
 		DecodeInput: func(data []byte) (tron.Input, error) {
 			var in msg.TurnInput
 			err := in.DecodeCBORFrom(data)
