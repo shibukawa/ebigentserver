@@ -171,6 +171,32 @@ func Synthesize(matches int) (*behavior.Library, []behavior.Record, error) {
 	return lib, records, nil
 }
 
+// CenterFirstLoadout assembles a different personality from the same
+// chip library (decision:shared-chip-library): a tactic that claims the
+// center while it is open, falling back to the full leftmost list. Same
+// chips, different loadout, different play — no new analysis needed.
+func CenterFirstLoadout() *behavior.Loadout {
+	return &behavior.Loadout{
+		Name: "center-first",
+		Tactics: []behavior.Tactic{
+			{
+				Name:      "claim_center",
+				Condition: "cell_4_empty",
+				ChipKeys:  []string{"cell_4_empty→play_4"},
+			},
+			{
+				Name: "leftmost",
+				ChipKeys: []string{
+					"cell_0_empty→play_0", "cell_1_empty→play_1", "cell_2_empty→play_2",
+					"cell_3_empty→play_3", "cell_5_empty→play_5", "cell_6_empty→play_6",
+					"cell_7_empty→play_7", "cell_8_empty→play_8",
+				},
+			},
+		},
+		Profile: map[string]string{"style": "center-first"},
+	}
+}
+
 // Spec is the tic-tac-toe codegen target.
 func Spec() behavior.CodegenSpec {
 	return behavior.CodegenSpec{

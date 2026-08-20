@@ -1,0 +1,140 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Behavior Editor</title>
+<style>
+  :root { --fg:#222; --muted:#777; --line:#ddd; --ok:#0a7d33; --no:#b3261e; --accent:#2456c4; }
+  body { font: 14px/1.5 system-ui, sans-serif; color: var(--fg); margin: 0; }
+  header { padding: 10px 16px; border-bottom: 1px solid var(--line); display:flex; gap:16px; align-items:baseline; }
+  header h1 { font-size: 16px; margin: 0; }
+  nav button { border:none; background:none; padding:4px 8px; cursor:pointer; font:inherit; color:var(--muted); }
+  nav button.active { color: var(--accent); font-weight: 600; }
+  main { display: grid; grid-template-columns: 1fr 1fr; gap: 0; }
+  section { padding: 12px 16px; border-right: 1px solid var(--line); min-height: 70vh; }
+  h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin: 4px 0 8px; }
+  table { border-collapse: collapse; width: 100%; }
+  th, td { text-align: left; padding: 3px 8px 3px 0; border-bottom: 1px solid var(--line); font-size: 13px; }
+  tr.sel { background: #eef3ff; }
+  tr:hover { background: #f6f8fc; cursor: pointer; }
+  .ok { color: var(--ok); } .no { color: var(--no); } .muted { color: var(--muted); }
+  .detail dt { font-weight: 600; margin-top: 8px; } .detail dd { margin: 0; }
+  button.act { margin: 8px 8px 0 0; padding: 4px 12px; font: inherit; cursor: pointer; }
+  pre { background: #f5f5f5; padding: 8px; overflow: auto; max-height: 260px; font-size: 12px; }
+  .tag { display:inline-block; background:#eef; border-radius:8px; padding:0 8px; margin:2px; font-size:12px; }
+  .levels label { margin-right: 12px; }
+  .hidden { display: none; }
+</style>
+<header>
+  <h1>Behavior Editor</h1>
+  <nav>
+    <button data-tab="chips" class="active">Chips</button>
+    <button data-tab="predicates">Predicates</button>
+    <button data-tab="diff">Regeneration Diff</button>
+    <button data-tab="bench">Benchmark</button>
+  </nav>
+  <span id="game" class="muted"></span>
+</header>
+<main>
+  <section id="left"></section>
+  <section id="right"><h2>Detail</h2><div id="detail" class="muted">Select a chip.</div></section>
+</main>
+<script>
+let LIB = null, TAB = "chips", SEL = null;
+const $ = (s) => document.querySelector(s);
+const esc = (s) => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+async function load() {
+  LIB = await (await fetch("/api/library")).json();
+  $("#game").textContent = "library: " + LIB.game + " (" + LIB.chips.length + " chips)";
+  render();
+}
+
+function statusOf(c) {
+  if (c.rejected) return '<span class="no">rejected</span>';
+  if (c.approved) return '<span class="ok">approved</span>';
+  return '<span class="muted">candidate</span>';
+}
+
+function render() {
+  const left = $("#left");
+  if (TAB === "chips") {
+    let rows = LIB.chips.map((c, i) =>
+      `<tr data-i="${i}" class="${SEL===i?"sel":""}"><td>${c.priority}</td><td>${esc(c.condition)}</td>` +
+      `<td>${esc(c.action)}</td><td>${c.coverage}</td><td>${c.counterexamples}</td><td>${statusOf(c)}</td></tr>`).join("");
+    left.innerHTML = `<h2>Chip Library</h2><table><tr><th>#</th><th>condition</th><th>action</th>` +
+      `<th>coverage</th><th>counter</th><th>status</th></tr>${rows}</table>`;
+    left.querySelectorAll("tr[data-i]").forEach(tr => tr.onclick = () => { SEL = +tr.dataset.i; render(); detail(); });
+  } else if (TAB === "predicates") {
+    const use = {};
+    LIB.chips.forEach(c => { (use[c.condition] ||= []).push(c); });
+    let rows = Object.keys(use).sort().map(p =>
+      `<tr><td>${esc(p)}</td><td>${use[p].length}</td><td>${use[p].map(c=>esc(c.action)).join(", ")}</td></tr>`).join("");
+    left.innerHTML = `<h2>Predicate Vocabulary (usage)</h2><table><tr><th>predicate</th><th>chips</th><th>actions</th></tr>${rows}</table>`;
+  } else if (TAB === "diff") {
+    fetch("/api/diff").then(r => r.json()).then(d => {
+      if (!d) { left.innerHTML = "<h2>Regeneration Diff</h2><p class='muted'>No diff file loaded (-diff).</p>"; return; }
+      let rows = d.map(e => `<tr><td>${esc(e.Class)}</td><td>${esc(e.Candidate.condition)}</td>` +
+        `<td>${esc(e.Candidate.action)}</td><td>${e.Candidate.coverage}</td></tr>`).join("");
+      left.innerHTML = `<h2>Regeneration Diff</h2><table><tr><th>class</th><th>condition</th><th>action</th><th>coverage</th></tr>${rows}</table>`;
+    });
+  } else if (TAB === "bench") {
+    fetch("/api/bench").then(r => r.json()).then(b => {
+      if (!b) { left.innerHTML = "<h2>Benchmark</h2><p class='muted'>No benchmark file loaded (-bench).</p>"; return; }
+      let rows = b.map(e => `<tr><td>${esc(e.name)}</td><td>${e.matches}</td><td>${(e.win_rate*100).toFixed(1)}%</td>` +
+        `<td>${e.avg_ticks}</td></tr>`).join("");
+      left.innerHTML = `<h2>Loadout Benchmark</h2><table><tr><th>loadout</th><th>matches</th><th>win rate</th><th>avg ticks</th></tr>${rows}</table>`;
+    });
+  }
+}
+
+const LEVELS = ["level:beginner", "level:intermediate", "level:expert"];
+
+function detail() {
+  const c = LIB.chips[SEL];
+  if (!c) return;
+  const tags = (c.tags || []);
+  const levels = LEVELS.map(l =>
+    `<label><input type="checkbox" data-l="${l}" ${tags.includes(l)?"checked":""}> ${l.slice(6)}</label>`).join("");
+  const ev = (c.evidence || []).map((e, i) =>
+    `<a href="#" data-ev="${i}">${esc(e.episode)} @${e.tick}</a>`).join(" · ") || '<span class="muted">none</span>';
+  $("#detail").innerHTML = `<dl class="detail">
+    <dt>Rule</dt><dd><b>${esc(c.condition)}</b> → <b>${esc(c.action)}</b> (priority ${c.priority})</dd>
+    <dt>Why the analyzer proposed this</dt><dd>${esc(c.rationale || "—")}</dd>
+    <dt>Coverage / counterexamples</dt><dd>${c.coverage} / ${c.counterexamples}</dd>
+    <dt>Status</dt><dd>${statusOf(c)} ${c.reject_reason?("— "+esc(c.reject_reason)):""}</dd>
+    <dt>Level gates</dt><dd class="levels">${levels}</dd>
+    <dt>Other tags</dt><dd>${tags.filter(t=>!LEVELS.includes(t)).map(t=>`<span class="tag">${esc(t)}</span>`).join("")||"—"}</dd>
+    <dt>Evidence</dt><dd>${ev}</dd></dl>
+    <button class="act" id="approve">Accept</button>
+    <button class="act" id="reject">Reject with reason</button>
+    <button class="act" id="clear">Back to candidate</button>
+    <pre id="evbox" class="hidden"></pre>`;
+  $("#approve").onclick = () => op({key: key(c), op: "approve"});
+  $("#reject").onclick = () => { const r = prompt("Reject reason:"); if (r !== null) op({key: key(c), op: "reject", reason: r}); };
+  $("#clear").onclick = () => op({key: key(c), op: "clear"});
+  document.querySelectorAll("[data-l]").forEach(cb => cb.onchange = () => {
+    const next = tags.filter(t => !LEVELS.includes(t));
+    document.querySelectorAll("[data-l]").forEach(x => { if (x.checked) next.push(x.dataset.l); });
+    op({key: key(c), op: "tags", tags: next});
+  });
+  document.querySelectorAll("[data-ev]").forEach(a => a.onclick = async (e) => {
+    e.preventDefault();
+    const ev = c.evidence[+a.dataset.ev];
+    const r = await fetch(`/api/evidence?episode=${encodeURIComponent(ev.episode)}&tick=${ev.tick}`);
+    $("#evbox").classList.remove("hidden");
+    $("#evbox").textContent = r.ok ? JSON.stringify(await r.json(), null, 2) : ("evidence unavailable: " + await r.text());
+  });
+}
+
+const key = (c) => c.condition + "→" + c.action;
+async function op(body) {
+  await fetch("/api/chip", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body)});
+  await load(); detail();
+}
+
+document.querySelectorAll("nav button").forEach(b => b.onclick = () => {
+  TAB = b.dataset.tab;
+  document.querySelectorAll("nav button").forEach(x => x.classList.toggle("active", x === b));
+  render();
+});
+load();
+</script>

@@ -256,3 +256,76 @@ func (a *outcomeAgent) Ended(r session.Result) {
 	a.inner.Ended(r)
 }
 func (a *outcomeAgent) Result() session.Terminal { return a.term }
+
+// One library, two personalities: the loadout's tactic selector claims
+// the center while the plain decision list stays leftmost — assembled
+// without any new analysis (decision:shared-chip-library,
+// concept:tactic-selector).
+func TestLoadoutAssemblesADifferentPersonality(t *testing.T) {
+	var empty ttt.Observation // blank board
+	if m, ok := gen.Decide(empty); !ok || m.Cell != 0 {
+		t.Fatalf("base list opens with %v, want cell 0", m)
+	}
+	if m, ok := gen.TacticDecide(empty); !ok || m.Cell != 4 {
+		t.Fatalf("center-first loadout opens with %v, want cell 4", m)
+	}
+	// Once the center is gone, the tactic falls through to leftmost.
+	taken := empty
+	taken.Board[4] = ttt.MarkO
+	if m, ok := gen.TacticDecide(taken); !ok || m.Cell != 0 {
+		t.Fatalf("fallback tactic plays %v, want cell 0", m)
+	}
+	// The loadout agent completes real matches.
+	sum, err := matchloop.Run(10, 77, func(match int, seed uint64) (matchloop.Result, error) {
+		s, err := session.New(session.Config[ttt.State, ttt.Move, ttt.Observation]{
+			ID: "loadout", Slots: ttt.Slots(), Game: ttt.Game{}, Validator: ttt.Validator{},
+			Seed: seed, Clock: func() int64 { return 0 },
+		})
+		if err != nil {
+			return matchloop.Result{}, err
+		}
+		if err := s.OpenAdmission(); err != nil {
+			return matchloop.Result{}, err
+		}
+		x := &outcomeAgent{inner: &gen.TacticAgent{}}
+		if err := s.Admit(ttt.SlotX, x); err != nil {
+			return matchloop.Result{}, err
+		}
+		if err := s.Admit(ttt.SlotO, distill.NewRandomOpponent(seed)); err != nil {
+			return matchloop.Result{}, err
+		}
+		if err := s.Run(context.Background()); err != nil {
+			return matchloop.Result{}, err
+		}
+		return matchloop.Result{
+			Outcomes: map[session.SlotID]session.Terminal{ttt.SlotX: x.Result()},
+			Ticks:    s.Tick(),
+		}, nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if sum.Matches != 10 {
+		t.Fatalf("matches = %d", sum.Matches)
+	}
+}
+
+// The committed loadout source is exactly what regeneration produces.
+func TestGeneratedLoadoutIsCurrent(t *testing.T) {
+	lib, _, err := distill.Synthesize(corpusMatches)
+	if err != nil {
+		t.Fatal(err)
+	}
+	src, err := behavior.GenerateLoadoutAgent(distill.Spec(), distill.Vocabulary(), lib,
+		distill.CenterFirstLoadout(), "TacticDecide", "TacticAgent")
+	if err != nil {
+		t.Fatal(err)
+	}
+	committed, err := os.ReadFile("gen/loadout_gen.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(src) != string(committed) {
+		t.Fatal("gen/loadout_gen.go is stale: regenerate it")
+	}
+}
