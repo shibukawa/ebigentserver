@@ -20,18 +20,19 @@ import (
 // The session-side seat is a session.Detached stub; the real agent lives
 // here, wholly fed by the state stream.
 type Client struct {
-	Slot  session.SlotID
-	Agent session.Agent[Observation, Input]
-	Inbox *session.Inbox[Input]
-	Hub   *statesync.Hub[State, msg.PongStateDelta]
-	Down  <-chan statesync.Packet
+	Slot   session.SlotID
+	Agent  session.Agent[Observation, Input]
+	Inbox  *session.Inbox[Input]
+	Hub    *statesync.Hub[State, msg.PongStateDelta]
+	Down   <-chan statesync.Packet
+	Tuning session.TuningProfile
 }
 
 // Run consumes packets until the channel closes or ctx is cancelled.
 // Call it on its own goroutine; wg tracks completion.
 func (c *Client) Run(ctx context.Context, wg *sync.WaitGroup) {
 	defer wg.Done()
-	receiver, err := statesync.NewReceiver(Codec())
+	receiver, err := statesync.NewReceiver(Codec(), c.Tuning)
 	if err != nil {
 		panic(err) // static misconfiguration, not a runtime condition
 	}

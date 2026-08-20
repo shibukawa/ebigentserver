@@ -12,6 +12,7 @@
 package statesync
 
 import (
+	"encoding/binary"
 	"errors"
 	"fmt"
 
@@ -36,6 +37,30 @@ type Packet struct {
 	Tick     session.Tick
 	Baseline session.Tick // deltas only
 	Payload  []byte
+}
+
+// AppendWire encodes the packet for transit: kind(1), tick(8),
+// baseline(8), payload. The layout is frozen; it travels inside the
+// datagrams of api:sequence-ack-layer.
+func (p Packet) AppendWire(dst []byte) []byte {
+	dst = append(dst, byte(p.Kind))
+	dst = binary.BigEndian.AppendUint64(dst, uint64(p.Tick))
+	dst = binary.BigEndian.AppendUint64(dst, uint64(p.Baseline))
+	return append(dst, p.Payload...)
+}
+
+// DecodeWire parses one transit-encoded packet; the payload borrows from
+// data.
+func DecodeWire(data []byte) (Packet, error) {
+	if len(data) < 17 {
+		return Packet{}, errors.New("statesync: short packet")
+	}
+	return Packet{
+		Kind:     Kind(data[0]),
+		Tick:     session.Tick(binary.BigEndian.Uint64(data[1:9])),
+		Baseline: session.Tick(binary.BigEndian.Uint64(data[9:17])),
+		Payload:  data[17:],
+	}, nil
 }
 
 // Codec wires a game's tinybind-generated functions into the framework.
@@ -93,6 +118,11 @@ type Sender[S, D any] struct {
 	lastSent  session.Tick
 	started   bool
 	needSnap  bool
+
+	mode        session.BaselineMode
+	specDepth   int32
+	confirmed   session.Tick
+	confirmedOK bool
 }
 
 // NewSender builds a sender for one receiver from the declared tuning
@@ -108,12 +138,39 @@ func NewSender[S, D any](codec Codec[S, D], tuning session.TuningProfile) (*Send
 		codec:     codec,
 		depth:     tuning.HistoryDepth,
 		snapEvery: tuning.SnapshotEvery,
+		mode:      tuning.BaselineMode,
+		specDepth: tuning.SpeculationDepth,
 	}, nil
 }
 
 // ResyncRequested forces the next packet to be a full snapshot — the
 // receiver reported a baseline it does not hold.
 func (s *Sender[S, D]) ResyncRequested() { s.needSnap = true }
+
+// Confirm records the newest version the peer is known to hold, as
+// reported by api:sequence-ack-layer. The confirmed and bounded baseline
+// modes diff against it.
+func (s *Sender[S, D]) Confirm(tick session.Tick) {
+	if !s.confirmedOK || tick > s.confirmed {
+		s.confirmed, s.confirmedOK = tick, true
+	}
+}
+
+// baseline picks the version to diff against per the declared mode
+// (concept:delta-baseline-policy); ok=false forces a snapshot.
+func (s *Sender[S, D]) baseline(tick session.Tick) (session.Tick, bool) {
+	switch s.mode {
+	case session.BaselineConfirmedOnly:
+		return s.confirmed, s.confirmedOK
+	case session.BaselineBounded:
+		if s.confirmedOK && tick-s.confirmed <= session.Tick(s.specDepth) {
+			return s.lastSent, true
+		}
+		return s.confirmed, s.confirmedOK
+	default: // BaselineSpeculative
+		return s.lastSent, true
+	}
+}
 
 // Send produces the packet for the committed world at tick. The first
 // send is always a snapshot (it is what carries the joining receiver's
@@ -125,10 +182,15 @@ func (s *Sender[S, D]) Send(tick session.Tick, world *S) Packet {
 	if !snap && s.snapEvery > 0 && s.sends >= s.snapEvery {
 		snap = true
 	}
-	if !snap && s.find(s.lastSent) == nil {
-		// The baseline aged out of retention: forced snapshot rather
-		// than an unbounded buffer (rule:delta-baseline-must-be-retained).
-		snap = true
+	var base *retained[S]
+	if !snap {
+		baseTick, ok := s.baseline(tick)
+		if base = s.find(baseTick); !ok || base == nil {
+			// No usable baseline, or it aged out of retention: forced
+			// snapshot rather than an unbounded buffer
+			// (rule:delta-baseline-must-be-retained).
+			snap = true
+		}
 	}
 	var pkt Packet
 	if snap {
@@ -136,7 +198,6 @@ func (s *Sender[S, D]) Send(tick session.Tick, world *S) Packet {
 		s.sends = 0
 		s.needSnap = false
 	} else {
-		base := s.find(s.lastSent)
 		d := s.codec.Diff(&base.state, world)
 		pkt = Packet{Kind: KindDelta, Tick: tick, Baseline: base.tick, Payload: s.codec.AppendDelta(nil, &d)}
 		s.sends++
@@ -166,53 +227,94 @@ func (s *Sender[S, D]) find(tick session.Tick) *retained[S] {
 // hold; the receiver must request a snapshot (Sender.ResyncRequested).
 var ErrResyncNeeded = errors.New("statesync: delta baseline not held, resync needed")
 
-// Receiver reconstructs the world from the packet stream.
+// Receiver reconstructs the world from the packet stream. It retains its
+// own recent versions: under an acked link the sender may legitimately
+// diff against any version the receiver reported holding, not only the
+// newest one it happens to have.
 type Receiver[S, D any] struct {
-	codec  Codec[S, D]
-	state  S
-	tick   session.Tick
-	synced bool
+	codec   Codec[S, D]
+	history []retained[S] // newest last
+	depth   int32
+	synced  bool
 }
 
-// NewReceiver builds a receiver.
-func NewReceiver[S, D any](codec Codec[S, D]) (*Receiver[S, D], error) {
+// NewReceiver builds a receiver retaining up to the tuning profile's
+// history depth.
+func NewReceiver[S, D any](codec Codec[S, D], tuning session.TuningProfile) (*Receiver[S, D], error) {
 	if err := codec.validate(); err != nil {
 		return nil, err
 	}
-	return &Receiver[S, D]{codec: codec}, nil
+	if err := tuning.Validate(); err != nil {
+		return nil, err
+	}
+	return &Receiver[S, D]{codec: codec, depth: tuning.HistoryDepth}, nil
 }
 
 // Apply consumes one packet. A delta against a version the receiver does
-// not hold returns ErrResyncNeeded and changes nothing.
+// not hold returns ErrResyncNeeded and changes nothing; a packet older
+// than the newest applied one is ignored (the state stream is
+// last-writer-wins).
 func (r *Receiver[S, D]) Apply(pkt Packet) error {
+	if r.synced && pkt.Tick <= r.newest().tick {
+		return nil // stale arrival
+	}
 	switch pkt.Kind {
 	case KindSnapshot:
 		var s S
 		if err := r.codec.DecodeSnapshot(&s, pkt.Payload); err != nil {
 			return fmt.Errorf("statesync: snapshot at tick %d: %w", pkt.Tick, err)
 		}
-		r.state, r.tick, r.synced = s, pkt.Tick, true
+		r.push(pkt.Tick, s)
+		r.synced = true
 		return nil
 	case KindDelta:
-		if !r.synced || pkt.Baseline != r.tick {
+		if !r.synced {
 			return ErrResyncNeeded
 		}
+		base := r.find(pkt.Baseline)
+		if base == nil {
+			return ErrResyncNeeded
+		}
+		next := r.codec.clone(&base.state)
 		var d D
 		if err := r.codec.DecodeDelta(&d, pkt.Payload); err != nil {
 			return fmt.Errorf("statesync: delta at tick %d: %w", pkt.Tick, err)
 		}
-		if err := r.codec.ApplyDelta(&r.state, d); err != nil {
+		if err := r.codec.ApplyDelta(&next, d); err != nil {
 			return fmt.Errorf("statesync: apply delta at tick %d: %w", pkt.Tick, err)
 		}
-		r.tick = pkt.Tick
+		r.push(pkt.Tick, next)
 		return nil
 	default:
 		return fmt.Errorf("statesync: unknown packet kind %d", pkt.Kind)
 	}
 }
 
-// State returns the reconstructed world and its tick; ok is false until
-// the first snapshot lands.
+func (r *Receiver[S, D]) push(tick session.Tick, s S) {
+	r.history = append(r.history, retained[S]{tick: tick, state: s})
+	if int32(len(r.history)) > r.depth {
+		r.history = r.history[1:]
+	}
+}
+
+func (r *Receiver[S, D]) newest() *retained[S] { return &r.history[len(r.history)-1] }
+
+func (r *Receiver[S, D]) find(tick session.Tick) *retained[S] {
+	for i := range r.history {
+		if r.history[i].tick == tick {
+			return &r.history[i]
+		}
+	}
+	return nil
+}
+
+// State returns the newest reconstructed world and its tick; ok is false
+// until the first snapshot lands.
 func (r *Receiver[S, D]) State() (world *S, tick session.Tick, ok bool) {
-	return &r.state, r.tick, r.synced
+	if !r.synced {
+		var zero S
+		return &zero, 0, false
+	}
+	n := r.newest()
+	return &n.state, n.tick, true
 }

@@ -96,7 +96,7 @@ func main() {
 		if err != nil {
 			fatal(err)
 		}
-		client := &pong.Client{Slot: slot, Agent: &pong.Bot{}, Inbox: inbox, Hub: hub, Down: down}
+		client := &pong.Client{Slot: slot, Agent: &pong.Bot{}, Inbox: inbox, Hub: hub, Down: down, Tuning: tuning}
 		wg.Add(1)
 		go client.Run(ctx, &wg)
 	}
@@ -106,7 +106,7 @@ func main() {
 		fatal(err)
 	}
 	wg.Add(1)
-	go scoreboard(ctx, hub, spectate, &wg)
+	go scoreboard(ctx, hub, spectate, tuning, &wg)
 
 	fmt.Printf("pong: bot vs bot, %dHz, first to %d (max %v)\n", tuning.TickRate, pong.WinScore, *duration)
 	if err := s.RunRealtime(ctx, session.Paced); err != nil {
@@ -119,9 +119,9 @@ func main() {
 }
 
 // scoreboard renders the receive-only view.
-func scoreboard(ctx context.Context, hub *statesync.Hub[pong.State, msg.PongStateDelta], down <-chan statesync.Packet, wg *sync.WaitGroup) {
+func scoreboard(ctx context.Context, hub *statesync.Hub[pong.State, msg.PongStateDelta], down <-chan statesync.Packet, tuning session.TuningProfile, wg *sync.WaitGroup) {
 	defer wg.Done()
-	receiver, err := statesync.NewReceiver(pong.Codec())
+	receiver, err := statesync.NewReceiver(pong.Codec(), tuning)
 	if err != nil {
 		panic(err)
 	}

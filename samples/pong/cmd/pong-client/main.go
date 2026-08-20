@@ -90,7 +90,7 @@ func main() {
 		if err != nil {
 			fatal(err)
 		}
-		c := &pong.Client{Slot: slot, Agent: &pong.Bot{}, Inbox: inbox, Hub: hub, Down: down}
+		c := &pong.Client{Slot: slot, Agent: &pong.Bot{}, Inbox: inbox, Hub: hub, Down: down, Tuning: tuning}
 		wg.Add(1)
 		go c.Run(ctx, &wg)
 	}
@@ -108,7 +108,7 @@ func main() {
 	if err != nil {
 		fatal(err)
 	}
-	receiver, err := statesync.NewReceiver(pong.Codec())
+	receiver, err := statesync.NewReceiver(pong.Codec(), tuning)
 	if err != nil {
 		fatal(err)
 	}

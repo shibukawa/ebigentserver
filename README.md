@@ -4,6 +4,24 @@
 
 要件と設計判断は [.knowledge/](.knowledge/) に概念として記録されている。実装順は [plan.md](plan.md) を参照。
 
+## 状態: Phase 3b — ネットワーク
+
+| 項目 | 状態 | 実装 |
+|---|---|---|
+| `api:transport-interface` | 済 | [transport/](transport/transport.go) — capability宣言つきConn。実装: [pipe](transport/pipe/pipe.go)(プロセス内+障害注入)、[ws](transport/ws/ws.go)(WebSocket、reliable-onlyフォールバック)。WebTransportは未実装(トランスポート抽象が正しければ差し込むだけ、`decision:webtransport-primary-for-wasm`) |
+| `api:message-framing` | 済 | [transport/framing/](transport/framing/framing.go) — 12KB分割・再構成・不正フレーム破棄・部分フラッド上限 |
+| `api:sequence-ack-layer` | 済 | [transport/seqack/](transport/seqack/seqack.go) — seq番号+ack bitfield、confirmed tag、RTT/loss推定、沈黙検出素材 |
+| `concept:delta-baseline-policy` | 済 | statesyncに speculative / confirmed_only / bounded_speculation。tuning profileで宣言 |
+| `concept:ack-transmission-policy` | 済 | piggyback_only / dedicated / delayed_piggyback |
+| `flow:session-admission` | 済 | [admission/](admission/ticket.go) — Ed25519 JWT(`rule:asymmetric-ticket-signature`)、ローカル検証、jti一回償還、kid複数受理。handshakeはバージョン照合が最初 |
+| `policy:protocol-rollout` | 概念のみ | エンドポイント分離は運用事項。バージョン照合とチケットaudienceが機構側の担保 |
+
+### 完了条件の対応
+
+- **損失と遅延を注入した状態でPongが破綻しない** — `TestPongSurvivesLossAndLatency`: 20%損失+25ms遅延+jitter+並べ替えの両方向注入でフルスタック(admission→seqack→statesync bounded_speculation→resync)を3秒走行。全クライアントが終局tickの7割以上まで再構成を維持し、RTT/loss計測も生きている。
+- **バージョン不一致の接続がhandshakeで明示的に拒否される** — `TestVersionMismatchIsRejectedExplicitly`: 双方のバージョンを名指しする明示エラーで拒否(`rule:protocol-version-must-match`、交渉はしない)。
+- 実WebSocketでも同スタックが走る(`TestPongOverWebSocket`、localhost実対局)。
+
 ## 状態: Phase 3a — ローカルリアルタイム + Pong
 
 | 項目 | 状態 | 実装 |
@@ -82,7 +100,9 @@
 - `episode` — `data:episode-log` の JSONL 読み書き。session.Recorder 実装の Writer と、replay 用 Reader。
 - `entity` — owner 名前空間つきエンティティ ID と決定的 allocator。
 - `samples/tictactoe` — 最小サンプル兼回帰ハーネス（`decision:samples-as-test-infrastructure`）。`go run ./samples/tictactoe/cmd/ttt` で人間対ボット。
-- `statesync` — framework側delta生成。生成コーデックを差し込む`Codec`、受信者ごとの`Sender`/`Receiver`、ループバック`Hub`。
+- `transport` — トランスポート抽象とその実装(pipe/ws)、framing、sequence/ack層。
+- `admission` — Ed25519署名のsession ticketとhandshake(バージョン照合→ローカル検証→着席)。
+- `statesync` — framework側delta生成。生成コーデックを差し込む`Codec`、受信者ごとの`Sender`/`Receiver`(双方が履歴保持)、baseline mode 3種、ループバック`Hub`。
 - `samples/reversi` — 合法手列挙つき観測と記録/再生の実証。`go run ./samples/reversi/cmd/reversi` で人間対greedy bot、`-record=DIR` でエピソード記録。
 - `samples/pong` — 最小リアルタイム。`go run ./samples/pong/cmd/pong` でbot対bot(観戦チャネルがスコア表示)、`-record=DIR` 対応。`go run ./samples/pong/cmd/pong-client` でEbitengine描画クライアント(W/S・↑/↓で左パドル操作、`-left=bot`で観戦)。clientエントリだけがengineをimportでき(`samples/*/cmd/*client*`)、headlessターゲット(wasip1/386)のビルドマトリクスからは除外される。
 - `importcheck` — 依存の閉じ込め検査。ゲームモジュールは `importcheck.Enforce(t, ".", importcheck.Default())` を 1 テスト持つ。

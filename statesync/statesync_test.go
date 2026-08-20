@@ -57,7 +57,7 @@ func pair(t *testing.T, p session.TuningProfile) (*statesync.Sender[world, delta
 	if err != nil {
 		t.Fatal(err)
 	}
-	rcv, err := statesync.NewReceiver(codec())
+	rcv, err := statesync.NewReceiver(codec(), p)
 	if err != nil {
 		t.Fatal(err)
 	}

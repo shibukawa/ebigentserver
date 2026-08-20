@@ -162,7 +162,7 @@ func TestLoopbackBotMatch(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		client := &pong.Client{Slot: slot, Agent: &pong.Bot{}, Inbox: inbox, Hub: hub, Down: down}
+		client := &pong.Client{Slot: slot, Agent: &pong.Bot{}, Inbox: inbox, Hub: hub, Down: down, Tuning: fast}
 		wg.Add(1)
 		go client.Run(ctx, &wg)
 	}

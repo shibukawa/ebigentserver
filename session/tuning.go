@@ -40,7 +40,34 @@ type TuningProfile struct {
 	// SilenceDeadline is expressed in missed ticks, not seconds; 0
 	// until Phase 3b's silence detection consumes it.
 	SilenceDeadline int32
+	// BaselineMode selects which retained version deltas are computed
+	// against (concept:delta-baseline-policy).
+	BaselineMode BaselineMode
+	// SpeculationDepth bounds how far past the confirmed baseline
+	// BaselineBounded may speculate; required for that mode.
+	SpeculationDepth int32
+	// AckMode selects how ack records reach the peer
+	// (concept:ack-transmission-policy): 0 piggyback_only, 1 dedicated,
+	// 2 delayed_piggyback. Consumed by the transport frontend.
+	AckMode uint8
 }
+
+// BaselineMode is concept:delta-baseline-policy.
+type BaselineMode uint8
+
+const (
+	// BaselineSpeculative diffs against the last sent version: minimum
+	// bandwidth, but one lost message invalidates the chain until
+	// resync. The right declaration for loss-free local links.
+	BaselineSpeculative BaselineMode = iota
+	// BaselineConfirmedOnly diffs against the newest version the peer
+	// acked: every delta decodes on arrival, at the cost of deltas that
+	// grow with RTT and loss.
+	BaselineConfirmedOnly
+	// BaselineBounded speculates up to SpeculationDepth versions past
+	// the confirmed baseline, then falls back to it.
+	BaselineBounded
+)
 
 // Validate checks the declaration for presence and internal consistency.
 func (p TuningProfile) Validate() error {
@@ -61,8 +88,14 @@ func (p TuningProfile) Validate() error {
 			errs = append(errs, fmt.Errorf("TickRate %d is not a multiple of SendRate %d", p.TickRate, p.SendRate))
 		}
 	}
-	if p.SnapshotEvery < 0 || p.MaxSnapshotSize < 0 || p.BandwidthBudget < 0 || p.SilenceDeadline < 0 {
+	if p.SnapshotEvery < 0 || p.MaxSnapshotSize < 0 || p.BandwidthBudget < 0 || p.SilenceDeadline < 0 || p.SpeculationDepth < 0 {
 		errs = append(errs, errors.New("no tuning value may be negative"))
+	}
+	if p.BaselineMode == BaselineBounded && p.SpeculationDepth < 1 {
+		errs = append(errs, errors.New("BaselineBounded requires SpeculationDepth"))
+	}
+	if p.BaselineMode == BaselineBounded && p.HistoryDepth > 0 && p.SpeculationDepth >= p.HistoryDepth {
+		errs = append(errs, errors.New("SpeculationDepth must stay below HistoryDepth so the confirmed fallback is still retained"))
 	}
 	if len(errs) > 0 {
 		return fmt.Errorf("session: invalid tuning profile: %w", errors.Join(errs...))
