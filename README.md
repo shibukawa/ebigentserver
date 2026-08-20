@@ -4,6 +4,24 @@
 
 要件と設計判断は [.knowledge/](.knowledge/) に概念として記録されている。実装順は [plan.md](plan.md) を参照。
 
+## 状態: Phase 2 — 記録と決定性の検証 + Reversi
+
+| 項目 | 状態 | 実装 |
+|---|---|---|
+| 合法手列挙を observation に載せる | 済 | [reversi.go](samples/reversi/reversi/reversi.go) — `Observation.Legal`（flip数=affordance付き）。botはルールエンジンを持たない |
+| 探索AIと AI vs AI 対戦 | 済 | [bot.go](samples/reversi/reversi/bot.go) — GreedyBot(1-ply) vs FirstBot。方針: AIの深さはBT蒸留(Phase 7)で得るため意図的に最小 |
+| `data:episode-log`（JSONL 4ストリーム） | 済 | [episode/](episode/) — decisions / events / outcomes / world、全ストリーム共通ヘッダ行 |
+| `concept:episode-recording-mode` | 済 | replay_complete / analysis_sampled。sampledはworld+checkpointを落とし、replay readerが拒否 |
+| `data:decision-record` | 済 | 配信された観測そのものを記録、action/evaluation/agent_kind/latency付き |
+| `actor:replay-agent` | 済 | [session/replay.go](session/replay.go) + [episode/reader.go](episode/reader.go) — 記録から着席する通常のagent |
+| `rule:shared-rng-seed` | 済 | `Config.Seed` → `Game.Start(seed)`、ヘッダに記録 |
+| `data:state-checkpoint` | 済 | [session/record.go](session/record.go) — tick + world hash + accepted action hash、毎tick発行 |
+
+### 完了条件の対応
+
+- **記録した対局の再生がビット一致する** — [record_test.go](samples/reversi/reversi/record_test.go) `TestRecordedMatchReplaysBitIdentical`: ログだけからreplay agentを着席させ、4ストリーム全てがバイト単位で一致。
+- **arm64とamd64で同じエピソードのダイジェストが一致する** — `TestFinalCheckpointIsPinnedAcrossArchitectures`: 正準対局(greedy vs first、64手)の最終checkpointを定数で固定。開発機(darwin/arm64)とCI(linux/amd64)の両方で走ることで一致を実証。
+
 ## 状態: Phase 1 — セッション核 + Tic-Tac-Toe
 
 | 項目 | 状態 | 実装 |
@@ -43,9 +61,11 @@
 
 ## パッケージ
 
-- `session` — セッション核。lifecycle 状態機械、slot 順の決定的コミット、agent interface、evaluation signal、action validator フック、progress report 発行点。
+- `session` — セッション核。lifecycle 状態機械、slot 順の決定的コミット、agent interface、evaluation signal、action validator フック、progress report 発行点、記録フック(Recorder)とcheckpoint。
+- `episode` — `data:episode-log` の JSONL 読み書き。session.Recorder 実装の Writer と、replay 用 Reader。
 - `entity` — owner 名前空間つきエンティティ ID と決定的 allocator。
 - `samples/tictactoe` — 最小サンプル兼回帰ハーネス（`decision:samples-as-test-infrastructure`）。`go run ./samples/tictactoe/cmd/ttt` で人間対ボット。
+- `samples/reversi` — 合法手列挙つき観測と記録/再生の実証。`go run ./samples/reversi/cmd/reversi` で人間対greedy bot、`-record=DIR` でエピソード記録。
 - `importcheck` — 依存の閉じ込め検査。ゲームモジュールは `importcheck.Enforce(t, ".", importcheck.Default())` を 1 テスト持つ。
 - `examples/phase0` — Phase 0 の証明: 固定小数点型 + 生成 CBOR コーデック + delta、build target ごとの cmd エントリポイント。
 - `examples/phase0/sim` — Phase 0 スタック全体（fixmath の Sin/Atan2/Sqrt → 宣言スケール量子化 → 生成 delta エンコード）を通した決定的エピソード。digest をテストで固定しており、これが Phase 2 のクロスアーキテクチャ検証の種になる。

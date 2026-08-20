@@ -87,7 +87,7 @@ func TestBotVsBotIsDeterministic(t *testing.T) {
 
 func TestIllegalMovesAreRejectedWithoutStateChange(t *testing.T) {
 	v := ttt.Validator{}
-	s := ttt.Game{}.Start()
+	s := ttt.Game{}.Start(0)
 	ttt.Game{}.Apply(&s, ttt.SlotX, ttt.Move{Cell: 4})
 
 	if err := v.Legal(&s, ttt.SlotO, ttt.Move{Cell: 4}); err == nil {

@@ -75,7 +75,7 @@ type Observation struct {
 type Game struct{}
 
 // Start deals an empty board with X to move.
-func (Game) Start() State { return State{Next: SlotX} }
+func (Game) Start(uint64) State { return State{Next: SlotX} }
 
 // ActingSlots returns the slot whose turn it is: strict alternation, one
 // decision per step.

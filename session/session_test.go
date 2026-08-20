@@ -29,7 +29,7 @@ type addObs struct {
 // agents themselves never see the world state.
 type addGame struct{ log *[]string }
 
-func (addGame) Start() addState { return addState{} }
+func (addGame) Start(uint64) addState { return addState{} }
 
 func (addGame) ActingSlots(s *addState) []session.SlotID {
 	if s.Total >= target {
