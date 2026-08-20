@@ -8,7 +8,7 @@
 
 | 項目 | 状態 | 実装 |
 |---|---|---|
-| `api:transport-interface` | 済 | [transport/](transport/transport.go) — capability宣言つきConn。実装: [pipe](transport/pipe/pipe.go)(プロセス内+障害注入)、[ws](transport/ws/ws.go)(WebSocket、reliable-onlyフォールバック)。WebTransportは未実装(トランスポート抽象が正しければ差し込むだけ、`decision:webtransport-primary-for-wasm`) |
+| `api:transport-interface` | 済 | [transport/](transport/transport.go) — capability宣言つきConn。実装: [pipe](transport/pipe/pipe.go)(プロセス内+障害注入)、[ws](transport/ws/ws.go)(WebSocket、reliable-onlyフォールバック)、[wt](transport/wt/wt.go)(WebTransport: QUIC datagram+reliable stream、`decision:webtransport-primary-for-wasm`。ネイティブのみ、js側はブラウザAPIブリッジ待ち) |
 | `api:message-framing` | 済 | [transport/framing/](transport/framing/framing.go) — 12KB分割・再構成・不正フレーム破棄・部分フラッド上限 |
 | `api:sequence-ack-layer` | 済 | [transport/seqack/](transport/seqack/seqack.go) — seq番号+ack bitfield、confirmed tag、RTT/loss推定、沈黙検出素材 |
 | `concept:delta-baseline-policy` | 済 | statesyncに speculative / confirmed_only / bounded_speculation。tuning profileで宣言 |
@@ -20,7 +20,7 @@
 
 - **損失と遅延を注入した状態でPongが破綻しない** — `TestPongSurvivesLossAndLatency`: 20%損失+25ms遅延+jitter+並べ替えの両方向注入でフルスタック(admission→seqack→statesync bounded_speculation→resync)を3秒走行。全クライアントが終局tickの7割以上まで再構成を維持し、RTT/loss計測も生きている。
 - **バージョン不一致の接続がhandshakeで明示的に拒否される** — `TestVersionMismatchIsRejectedExplicitly`: 双方のバージョンを名指しする明示エラーで拒否(`rule:protocol-version-must-match`、交渉はしない)。
-- 実WebSocketでも同スタックが走る(`TestPongOverWebSocket`、localhost実対局)。
+- 実WebSocket(`TestPongOverWebSocket`)と実WebTransport(`TestPongOverWebTransport`、QUIC datagramで状態ストリーム)でも同スタックがlocalhost実対局で走る。
 
 ## 状態: Phase 3a — ローカルリアルタイム + Pong
 
@@ -100,7 +100,7 @@
 - `episode` — `data:episode-log` の JSONL 読み書き。session.Recorder 実装の Writer と、replay 用 Reader。
 - `entity` — owner 名前空間つきエンティティ ID と決定的 allocator。
 - `samples/tictactoe` — 最小サンプル兼回帰ハーネス（`decision:samples-as-test-infrastructure`）。`go run ./samples/tictactoe/cmd/ttt` で人間対ボット。
-- `transport` — トランスポート抽象とその実装(pipe/ws)、framing、sequence/ack層。
+- `transport` — トランスポート抽象とその実装(pipe/ws/wt)、framing、sequence/ack層。
 - `admission` — Ed25519署名のsession ticketとhandshake(バージョン照合→ローカル検証→着席)。
 - `statesync` — framework側delta生成。生成コーデックを差し込む`Codec`、受信者ごとの`Sender`/`Receiver`(双方が履歴保持)、baseline mode 3種、ループバック`Hub`。
 - `samples/reversi` — 合法手列挙つき観測と記録/再生の実証。`go run ./samples/reversi/cmd/reversi` で人間対greedy bot、`-record=DIR` でエピソード記録。
