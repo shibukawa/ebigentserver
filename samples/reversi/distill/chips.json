@@ -1,0 +1,2136 @@
+{
+  "game": "reversi",
+  "chips": [
+    {
+      "condition": "must_pass",
+      "action": "pass",
+      "priority": 0,
+      "coverage": 70,
+      "counterexamples": 0,
+      "evidence": [
+        {
+          "episode": "reversi-000",
+          "tick": 16
+        },
+        {
+          "episode": "reversi-001",
+          "tick": 16
+        },
+        {
+          "episode": "reversi-004",
+          "tick": 40
+        },
+        {
+          "episode": "reversi-004",
+          "tick": 58
+        },
+        {
+          "episode": "reversi-004",
+          "tick": 60
+        }
+      ],
+      "rationale": "when must_pass held, pass was taken 70/70 times at this list position",
+      "approved": true,
+      "tags": [
+        "level:intermediate",
+        "style:greedy"
+      ]
+    },
+    {
+      "condition": "best_move_is_19",
+      "action": "play_19",
+      "priority": 1,
+      "coverage": 60,
+      "counterexamples": 0,
+      "evidence": [
+        {
+          "episode": "reversi-000",
+          "tick": 0
+        },
+        {
+          "episode": "reversi-001",
+          "tick": 0
+        },
+        {
+          "episode": "reversi-002",
+          "tick": 0
+        },
+        {
+          "episode": "reversi-003",
+          "tick": 0
+        },
+        {
+          "episode": "reversi-004",
+          "tick": 0
+        }
+      ],
+      "rationale": "when best_move_is_19 held, play_19 was taken 60/60 times at this list position",
+      "approved": true,
+      "tags": [
+        "level:intermediate",
+        "style:greedy"
+      ]
+    },
+    {
+      "condition": "best_move_is_3",
+      "action": "play_3",
+      "priority": 2,
+      "coverage": 48,
+      "counterexamples": 0,
+      "evidence": [
+        {
+          "episode": "reversi-000",
+          "tick": 14
+        },
+        {
+          "episode": "reversi-001",
+          "tick": 14
+        },
+        {
+          "episode": "reversi-002",
+          "tick": 22
+        },
+        {
+          "episode": "reversi-003",
+          "tick": 22
+        },
+        {
+          "episode": "reversi-006",
+          "tick": 20
+        }
+      ],
+      "rationale": "when best_move_is_3 held, play_3 was taken 48/48 times at this list position",
+      "approved": true,
+      "tags": [
+        "level:intermediate",
+        "style:greedy"
+      ]
+    },
+    {
+      "condition": "best_move_is_37",
+      "action": "play_37",
+      "priority": 3,
+      "coverage": 48,
+      "counterexamples": 0,
+      "evidence": [
+        {
+          "episode": "reversi-000",
+          "tick": 4
+        },
+        {
+          "episode": "reversi-001",
+          "tick": 4
+        },
+        {
+          "episode": "reversi-002",
+          "tick": 4
+        },
+        {
+          "episode": "reversi-003",
+          "tick": 4
+        },
+        {
+          "episode": "reversi-004",
+          "tick": 4
+        }
+      ],
+      "rationale": "when best_move_is_37 held, play_37 was taken 48/48 times at this list position",
+      "approved": true,
+      "tags": [
+        "level:intermediate",
+        "style:greedy"
+      ]
+    },
+    {
+      "condition": "best_move_is_41",
+      "action": "play_41",
+      "priority": 4,
+      "coverage": 48,
+      "counterexamples": 0,
+      "evidence": [
+        {
+          "episode": "reversi-000",
+          "tick": 2
+        },
+        {
+          "episode": "reversi-001",
+          "tick": 2
+        },
+        {
+          "episode": "reversi-002",
+          "tick": 2
+        },
+        {
+          "episode": "reversi-003",
+          "tick": 2
+        },
+        {
+          "episode": "reversi-006",
+          "tick": 2
+        }
+      ],
+      "rationale": "when best_move_is_41 held, play_41 was taken 48/48 times at this list position",
+      "approved": true,
+      "tags": [
+        "level:intermediate",
+        "style:greedy"
+      ]
+    },
+    {
+      "condition": "best_move_is_17",
+      "action": "play_17",
+      "priority": 5,
+      "coverage": 46,
+      "counterexamples": 0,
+      "evidence": [
+        {
+          "episode": "reversi-002",
+          "tick": 14
+        },
+        {
+          "episode": "reversi-003",
+          "tick": 14
+        },
+        {
+          "episode": "reversi-004",
+          "tick": 2
+        },
+        {
+          "episode": "reversi-005",
+          "tick": 2
+        },
+        {
+          "episode": "reversi-008",
+          "tick": 2
+        }
+      ],
+      "rationale": "when best_move_is_17 held, play_17 was taken 46/46 times at this list position",
+      "approved": true,
+      "tags": [
+        "level:intermediate",
+        "style:greedy"
+      ]
+    },
+    {
+      "condition": "best_move_is_57",
+      "action": "play_57",
+      "priority": 6,
+      "coverage": 44,
+      "counterexamples": 0,
+      "evidence": [
+        {
+          "episode": "reversi-002",
+          "tick": 28
+        },
+        {
+          "episode": "reversi-003",
+          "tick": 28
+        },
+        {
+          "episode": "reversi-004",
+          "tick": 38
+        },
+        {
+          "episode": "reversi-005",
+          "tick": 38
+        },
+        {
+          "episode": "reversi-006",
+          "tick": 44
+        }
+      ],
+      "rationale": "when best_move_is_57 held, play_57 was taken 44/44 times at this list position",
+      "approved": true,
+      "tags": [
+        "level:intermediate",
+        "style:greedy"
+      ]
+    },
+    {
+      "condition": "best_move_is_25",
+      "action": "play_25",
+      "priority": 7,
+      "coverage": 40,
+      "counterexamples": 0,
+      "evidence": [
+        {
+          "episode": "reversi-002",
+          "tick": 32
+        },
+        {
+          "episode": "reversi-003",
+          "tick": 32
+        },
+        {
+          "episode": "reversi-004",
+          "tick": 14
+        },
+        {
+          "episode": "reversi-005",
+          "tick": 14
+        },
+        {
+          "episode": "reversi-008",
+          "tick": 38
+        }
+      ],
+      "rationale": "when best_move_is_25 held, play_25 was taken 40/40 times at this list position",
+      "approved": true,
+      "tags": [
+        "level:intermediate",
+        "style:greedy"
+      ]
+    },
+    {
+      "condition": "best_move_is_39",
+      "action": "play_39",
+      "priority": 8,
+      "coverage": 40,
+      "counterexamples": 0,
+      "evidence": [
+        {
+          "episode": "reversi-000",
+          "tick": 10
+        },
+        {
+          "episode": "reversi-001",
+          "tick": 10
+        },
+        {
+          "episode": "reversi-004",
+          "tick": 16
+        },
+        {
+          "episode": "reversi-005",
+          "tick": 16
+        },
+        {
+          "episode": "reversi-006",
+          "tick": 10
+        }
+      ],
+      "rationale": "when best_move_is_39 held, play_39 was taken 40/40 times at this list position",
+      "approved": true,
+      "tags": [
+        "level:intermediate",
+        "style:greedy"
+      ]
+    },
+    {
+      "condition": "best_move_is_4",
+      "action": "play_4",
+      "priority": 9,
+      "coverage": 38,
+      "counterexamples": 0,
+      "evidence": [
+        {
+          "episode": "reversi-002",
+          "tick": 34
+        },
+        {
+          "episode": "reversi-003",
+          "tick": 34
+        },
+        {
+          "episode": "reversi-004",
+          "tick": 42
+        },
+        {
+          "episode": "reversi-005",
+          "tick": 42
+        },
+        {
+          "episode": "reversi-006",
+          "tick": 34
+        }
+      ],
+      "rationale": "when best_move_is_4 held, play_4 was taken 38/38 times at this list position",
+      "approved": true,
+      "tags": [
+        "level:intermediate",
+        "style:greedy"
+      ]
+    },
+    {
+      "condition": "best_move_is_10",
+      "action": "play_10",
+      "priority": 10,
+      "coverage": 38,
+      "counterexamples": 0,
+      "evidence": [
+        {
+          "episode": "reversi-002",
+          "tick": 44
+        },
+        {
+          "episode": "reversi-003",
+          "tick": 44
+        },
+        {
+          "episode": "reversi-004",
+          "tick": 52
+        },
+        {
+          "episode": "reversi-005",
+          "tick": 52
+        },
+        {
+          "episode": "reversi-010",
+          "tick": 20
+        }
+      ],
+      "rationale": "when best_move_is_10 held, play_10 was taken 38/38 times at this list position",
+      "approved": true,
+      "tags": [
+        "level:intermediate",
+        "style:greedy"
+      ]
+    },
+    {
+      "condition": "best_move_is_21",
+      "action": "play_21",
+      "priority": 11,
+      "coverage": 38,
+      "counterexamples": 0,
+      "evidence": [
+        {
+          "episode": "reversi-000",
+          "tick": 6
+        },
+        {
+          "episode": "reversi-001",
+          "tick": 6
+        },
+        {
+          "episode": "reversi-010",
+          "tick": 42
+        },
+        {
+          "episode": "reversi-011",
+          "tick": 42
+        },
+        {
+          "episode": "reversi-012",
+          "tick": 18
+        }
+      ],
+      "rationale": "when best_move_is_21 held, play_21 was taken 38/38 times at this list position",
+      "approved": true,
+      "tags": [
+        "level:intermediate",
+        "style:greedy"
+      ]
+    },
+    {
+      "condition": "best_move_is_51",
+      "action": "play_51",
+      "priority": 12,
+      "coverage": 38,
+      "counterexamples": 0,
+      "evidence": [
+        {
+          "episode": "reversi-004",
+          "tick": 6
+        },
+        {
+          "episode": "reversi-005",
+          "tick": 6
+        },
+        {
+          "episode": "reversi-008",
+          "tick": 24
+        },
+        {
+          "episode": "reversi-009",
+          "tick": 24
+        },
+        {
+          "episode": "reversi-010",
+          "tick": 16
+        }
+      ],
+      "rationale": "when best_move_is_51 held, play_51 was taken 38/38 times at this list position",
+      "approved": true,
+      "tags": [
+        "level:intermediate",
+        "style:greedy"
+      ]
+    },
+    {
+      "condition": "best_move_is_1",
+      "action": "play_1",
+      "priority": 13,
+      "coverage": 36,
+      "counterexamples": 0,
+      "evidence": [
+        {
+          "episode": "reversi-004",
+          "tick": 20
+        },
+        {
+          "episode": "reversi-005",
+          "tick": 20
+        },
+        {
+          "episode": "reversi-006",
+          "tick": 14
+        },
+        {
+          "episode": "reversi-007",
+          "tick": 14
+        },
+        {
+          "episode": "reversi-008",
+          "tick": 6
+        }
+      ],
+      "rationale": "when best_move_is_1 held, play_1 was taken 36/36 times at this list position",
+      "approved": true,
+      "tags": [
+        "level:intermediate",
+        "style:greedy"
+      ]
+    },
+    {
+      "condition": "best_move_is_32",
+      "action": "play_32",
+      "priority": 14,
+      "coverage": 36,
+      "counterexamples": 0,
+      "evidence": [
+        {
+          "episode": "reversi-002",
+          "tick": 26
+        },
+        {
+          "episode": "reversi-003",
+          "tick": 26
+        },
+        {
+          "episode": "reversi-004",
+          "tick": 34
+        },
+        {
+          "episode": "reversi-005",
+          "tick": 34
+        },
+        {
+          "episode": "reversi-006",
+          "tick": 18
+        }
+      ],
+      "rationale": "when best_move_is_32 held, play_32 was taken 36/36 times at this list position",
+      "approved": true,
+      "tags": [
+        "level:intermediate",
+        "style:greedy"
+      ]
+    },
+    {
+      "condition": "best_move_is_5",
+      "action": "play_5",
+      "priority": 15,
+      "coverage": 34,
+      "counterexamples": 0,
+      "evidence": [
+        {
+          "episode": "reversi-004",
+          "tick": 18
+        },
+        {
+          "episode": "reversi-005",
+          "tick": 18
+        },
+        {
+          "episode": "reversi-006",
+          "tick": 38
+        },
+        {
+          "episode": "reversi-007",
+          "tick": 38
+        },
+        {
+          "episode": "reversi-010",
+          "tick": 12
+        }
+      ],
+      "rationale": "when best_move_is_5 held, play_5 was taken 34/34 times at this list position",
+      "approved": true,
+      "tags": [
+        "level:intermediate",
+        "style:greedy"
+      ]
+    },
+    {
+      "condition": "best_move_is_55",
+      "action": "play_55",
+      "priority": 16,
+      "coverage": 34,
+      "counterexamples": 0,
+      "evidence": [
+        {
+          "episode": "reversi-004",
+          "tick": 24
+        },
+        {
+          "episode": "reversi-005",
+          "tick": 24
+        },
+        {
+          "episode": "reversi-008",
+          "tick": 34
+        },
+        {
+          "episode": "reversi-009",
+          "tick": 34
+        },
+        {
+          "episode": "reversi-014",
+          "tick": 18
+        }
+      ],
+      "rationale": "when best_move_is_55 held, play_55 was taken 34/34 times at this list position",
+      "approved": true,
+      "tags": [
+        "level:intermediate",
+        "style:greedy"
+      ]
+    },
+    {
+      "condition": "best_move_is_8",
+      "action": "play_8",
+      "priority": 17,
+      "coverage": 32,
+      "counterexamples": 0,
+      "evidence": [
+        {
+          "episode": "reversi-004",
+          "tick": 46
+        },
+        {
+          "episode": "reversi-005",
+          "tick": 46
+        },
+        {
+          "episode": "reversi-008",
+          "tick": 44
+        },
+        {
+          "episode": "reversi-009",
+          "tick": 44
+        },
+        {
+          "episode": "reversi-010",
+          "tick": 22
+        }
+      ],
+      "rationale": "when best_move_is_8 held, play_8 was taken 32/32 times at this list position",
+      "approved": true,
+      "tags": [
+        "level:intermediate",
+        "style:greedy"
+      ]
+    },
+    {
+      "condition": "best_move_is_9",
+      "action": "play_9",
+      "priority": 18,
+      "coverage": 32,
+      "counterexamples": 0,
+      "evidence": [
+        {
+          "episode": "reversi-002",
+          "tick": 40
+        },
+        {
+          "episode": "reversi-003",
+          "tick": 40
+        },
+        {
+          "episode": "reversi-006",
+          "tick": 6
+        },
+        {
+          "episode": "reversi-007",
+          "tick": 6
+        },
+        {
+          "episode": "reversi-014",
+          "tick": 6
+        }
+      ],
+      "rationale": "when best_move_is_9 held, play_9 was taken 32/32 times at this list position",
+      "approved": true,
+      "tags": [
+        "level:intermediate",
+        "style:greedy"
+      ]
+    },
+    {
+      "condition": "best_move_is_23",
+      "action": "play_23",
+      "priority": 19,
+      "coverage": 32,
+      "counterexamples": 0,
+      "evidence": [
+        {
+          "episode": "reversi-002",
+          "tick": 42
+        },
+        {
+          "episode": "reversi-003",
+          "tick": 42
+        },
+        {
+          "episode": "reversi-004",
+          "tick": 54
+        },
+        {
+          "episode": "reversi-005",
+          "tick": 54
+        },
+        {
+          "episode": "reversi-006",
+          "tick": 48
+        }
+      ],
+      "rationale": "when best_move_is_23 held, play_23 was taken 32/32 times at this list position",
+      "approved": true,
+      "tags": [
+        "level:intermediate",
+        "style:greedy"
+      ]
+    },
+    {
+      "condition": "best_move_is_30",
+      "action": "play_30",
+      "priority": 20,
+      "coverage": 32,
+      "counterexamples": 0,
+      "evidence": [
+        {
+          "episode": "reversi-006",
+          "tick": 36
+        },
+        {
+          "episode": "reversi-007",
+          "tick": 36
+        },
+        {
+          "episode": "reversi-016",
+          "tick": 18
+        },
+        {
+          "episode": "reversi-017",
+          "tick": 18
+        },
+        {
+          "episode": "reversi-018",
+          "tick": 30
+        }
+      ],
+      "rationale": "when best_move_is_30 held, play_30 was taken 32/32 times at this list position",
+      "approved": true,
+      "tags": [
+        "level:intermediate",
+        "style:greedy"
+      ]
+    },
+    {
+      "condition": "best_move_is_52",
+      "action": "play_52",
+      "priority": 21,
+      "coverage": 32,
+      "counterexamples": 0,
+      "evidence": [
+        {
+          "episode": "reversi-000",
+          "tick": 8
+        },
+        {
+          "episode": "reversi-001",
+          "tick": 8
+        },
+        {
+          "episode": "reversi-004",
+          "tick": 26
+        },
+        {
+          "episode": "reversi-005",
+          "tick": 26
+        },
+        {
+          "episode": "reversi-006",
+          "tick": 30
+        }
+      ],
+      "rationale": "when best_move_is_52 held, play_52 was taken 32/32 times at this list position",
+      "approved": true,
+      "tags": [
+        "level:intermediate",
+        "style:greedy"
+      ]
+    },
+    {
+      "condition": "best_move_is_54",
+      "action": "play_54",
+      "priority": 22,
+      "coverage": 32,
+      "counterexamples": 0,
+      "evidence": [
+        {
+          "episode": "reversi-006",
+          "tick": 58
+        },
+        {
+          "episode": "reversi-007",
+          "tick": 58
+        },
+        {
+          "episode": "reversi-008",
+          "tick": 22
+        },
+        {
+          "episode": "reversi-009",
+          "tick": 22
+        },
+        {
+          "episode": "reversi-010",
+          "tick": 56
+        }
+      ],
+      "rationale": "when best_move_is_54 held, play_54 was taken 32/32 times at this list position",
+      "approved": true,
+      "tags": [
+        "level:intermediate",
+        "style:greedy"
+      ]
+    },
+    {
+      "condition": "best_move_is_6",
+      "action": "play_6",
+      "priority": 23,
+      "coverage": 30,
+      "counterexamples": 0,
+      "evidence": [
+        {
+          "episode": "reversi-002",
+          "tick": 36
+        },
+        {
+          "episode": "reversi-003",
+          "tick": 36
+        },
+        {
+          "episode": "reversi-008",
+          "tick": 54
+        },
+        {
+          "episode": "reversi-009",
+          "tick": 54
+        },
+        {
+          "episode": "reversi-014",
+          "tick": 28
+        }
+      ],
+      "rationale": "when best_move_is_6 held, play_6 was taken 30/30 times at this list position",
+      "approved": true,
+      "tags": [
+        "level:intermediate",
+        "style:greedy"
+      ]
+    },
+    {
+      "condition": "best_move_is_7",
+      "action": "play_7",
+      "priority": 24,
+      "coverage": 30,
+      "counterexamples": 0,
+      "evidence": [
+        {
+          "episode": "reversi-004",
+          "tick": 62
+        },
+        {
+          "episode": "reversi-005",
+          "tick": 62
+        },
+        {
+          "episode": "reversi-006",
+          "tick": 52
+        },
+        {
+          "episode": "reversi-007",
+          "tick": 52
+        },
+        {
+          "episode": "reversi-010",
+          "tick": 48
+        }
+      ],
+      "rationale": "when best_move_is_7 held, play_7 was taken 30/30 times at this list position",
+      "approved": true,
+      "tags": [
+        "level:intermediate",
+        "style:greedy"
+      ]
+    },
+    {
+      "condition": "best_move_is_15",
+      "action": "play_15",
+      "priority": 25,
+      "coverage": 30,
+      "counterexamples": 0,
+      "evidence": [
+        {
+          "episode": "reversi-010",
+          "tick": 34
+        },
+        {
+          "episode": "reversi-011",
+          "tick": 34
+        },
+        {
+          "episode": "reversi-012",
+          "tick": 56
+        },
+        {
+          "episode": "reversi-013",
+          "tick": 56
+        },
+        {
+          "episode": "reversi-014",
+          "tick": 46
+        }
+      ],
+      "rationale": "when best_move_is_15 held, play_15 was taken 30/30 times at this list position",
+      "approved": true,
+      "tags": [
+        "level:intermediate",
+        "style:greedy"
+      ]
+    },
+    {
+      "condition": "best_move_is_42",
+      "action": "play_42",
+      "priority": 26,
+      "coverage": 30,
+      "counterexamples": 0,
+      "evidence": [
+        {
+          "episode": "reversi-006",
+          "tick": 8
+        },
+        {
+          "episode": "reversi-007",
+          "tick": 8
+        },
+        {
+          "episode": "reversi-010",
+          "tick": 32
+        },
+        {
+          "episode": "reversi-011",
+          "tick": 32
+        },
+        {
+          "episode": "reversi-012",
+          "tick": 38
+        }
+      ],
+      "rationale": "when best_move_is_42 held, play_42 was taken 30/30 times at this list position",
+      "approved": true,
+      "tags": [
+        "level:intermediate",
+        "style:greedy"
+      ]
+    },
+    {
+      "condition": "best_move_is_48",
+      "action": "play_48",
+      "priority": 27,
+      "coverage": 30,
+      "counterexamples": 0,
+      "evidence": [
+        {
+          "episode": "reversi-004",
+          "tick": 32
+        },
+        {
+          "episode": "reversi-005",
+          "tick": 32
+        },
+        {
+          "episode": "reversi-008",
+          "tick": 62
+        },
+        {
+          "episode": "reversi-009",
+          "tick": 62
+        },
+        {
+          "episode": "reversi-010",
+          "tick": 60
+        }
+      ],
+      "rationale": "when best_move_is_48 held, play_48 was taken 30/30 times at this list position",
+      "approved": true,
+      "tags": [
+        "level:intermediate",
+        "style:greedy"
+      ]
+    },
+    {
+      "condition": "best_move_is_62",
+      "action": "play_62",
+      "priority": 28,
+      "coverage": 30,
+      "counterexamples": 0,
+      "evidence": [
+        {
+          "episode": "reversi-002",
+          "tick": 50
+        },
+        {
+          "episode": "reversi-003",
+          "tick": 50
+        },
+        {
+          "episode": "reversi-008",
+          "tick": 50
+        },
+        {
+          "episode": "reversi-009",
+          "tick": 50
+        },
+        {
+          "episode": "reversi-012",
+          "tick": 52
+        }
+      ],
+      "rationale": "when best_move_is_62 held, play_62 was taken 30/30 times at this list position",
+      "approved": true,
+      "tags": [
+        "level:intermediate",
+        "style:greedy"
+      ]
+    },
+    {
+      "condition": "best_move_is_63",
+      "action": "play_63",
+      "priority": 29,
+      "coverage": 30,
+      "counterexamples": 0,
+      "evidence": [
+        {
+          "episode": "reversi-002",
+          "tick": 56
+        },
+        {
+          "episode": "reversi-003",
+          "tick": 56
+        },
+        {
+          "episode": "reversi-004",
+          "tick": 22
+        },
+        {
+          "episode": "reversi-005",
+          "tick": 22
+        },
+        {
+          "episode": "reversi-006",
+          "tick": 60
+        }
+      ],
+      "rationale": "when best_move_is_63 held, play_63 was taken 30/30 times at this list position",
+      "approved": true,
+      "tags": [
+        "level:intermediate",
+        "style:greedy"
+      ]
+    },
+    {
+      "condition": "best_move_is_14",
+      "action": "play_14",
+      "priority": 30,
+      "coverage": 28,
+      "counterexamples": 0,
+      "evidence": [
+        {
+          "episode": "reversi-002",
+          "tick": 8
+        },
+        {
+          "episode": "reversi-003",
+          "tick": 8
+        },
+        {
+          "episode": "reversi-004",
+          "tick": 10
+        },
+        {
+          "episode": "reversi-005",
+          "tick": 10
+        },
+        {
+          "episode": "reversi-008",
+          "tick": 46
+        }
+      ],
+      "rationale": "when best_move_is_14 held, play_14 was taken 28/28 times at this list position",
+      "approved": true,
+      "tags": [
+        "level:intermediate",
+        "style:greedy"
+      ]
+    },
+    {
+      "condition": "best_move_is_31",
+      "action": "play_31",
+      "priority": 31,
+      "coverage": 28,
+      "counterexamples": 0,
+      "evidence": [
+        {
+          "episode": "reversi-004",
+          "tick": 36
+        },
+        {
+          "episode": "reversi-005",
+          "tick": 36
+        },
+        {
+          "episode": "reversi-008",
+          "tick": 28
+        },
+        {
+          "episode": "reversi-009",
+          "tick": 28
+        },
+        {
+          "episode": "reversi-012",
+          "tick": 24
+        }
+      ],
+      "rationale": "when best_move_is_31 held, play_31 was taken 28/28 times at this list position",
+      "approved": true,
+      "tags": [
+        "level:intermediate",
+        "style:greedy"
+      ]
+    },
+    {
+      "condition": "best_move_is_33",
+      "action": "play_33",
+      "priority": 32,
+      "coverage": 28,
+      "counterexamples": 0,
+      "evidence": [
+        {
+          "episode": "reversi-006",
+          "tick": 12
+        },
+        {
+          "episode": "reversi-007",
+          "tick": 12
+        },
+        {
+          "episode": "reversi-012",
+          "tick": 6
+        },
+        {
+          "episode": "reversi-013",
+          "tick": 6
+        },
+        {
+          "episode": "reversi-018",
+          "tick": 20
+        }
+      ],
+      "rationale": "when best_move_is_33 held, play_33 was taken 28/28 times at this list position",
+      "approved": true,
+      "tags": [
+        "level:intermediate",
+        "style:greedy"
+      ]
+    },
+    {
+      "condition": "best_move_is_53",
+      "action": "play_53",
+      "priority": 33,
+      "coverage": 28,
+      "counterexamples": 0,
+      "evidence": [
+        {
+          "episode": "reversi-002",
+          "tick": 54
+        },
+        {
+          "episode": "reversi-003",
+          "tick": 54
+        },
+        {
+          "episode": "reversi-004",
+          "tick": 12
+        },
+        {
+          "episode": "reversi-005",
+          "tick": 12
+        },
+        {
+          "episode": "reversi-020",
+          "tick": 22
+        }
+      ],
+      "rationale": "when best_move_is_53 held, play_53 was taken 28/28 times at this list position",
+      "approved": true,
+      "tags": [
+        "level:intermediate",
+        "style:greedy"
+      ]
+    },
+    {
+      "condition": "best_move_is_59",
+      "action": "play_59",
+      "priority": 34,
+      "coverage": 28,
+      "counterexamples": 0,
+      "evidence": [
+        {
+          "episode": "reversi-004",
+          "tick": 50
+        },
+        {
+          "episode": "reversi-005",
+          "tick": 50
+        },
+        {
+          "episode": "reversi-008",
+          "tick": 16
+        },
+        {
+          "episode": "reversi-009",
+          "tick": 16
+        },
+        {
+          "episode": "reversi-012",
+          "tick": 48
+        }
+      ],
+      "rationale": "when best_move_is_59 held, play_59 was taken 28/28 times at this list position",
+      "approved": true,
+      "tags": [
+        "level:intermediate",
+        "style:greedy"
+      ]
+    },
+    {
+      "condition": "best_move_is_12",
+      "action": "play_12",
+      "priority": 35,
+      "coverage": 26,
+      "counterexamples": 0,
+      "evidence": [
+        {
+          "episode": "reversi-008",
+          "tick": 36
+        },
+        {
+          "episode": "reversi-009",
+          "tick": 36
+        },
+        {
+          "episode": "reversi-012",
+          "tick": 40
+        },
+        {
+          "episode": "reversi-013",
+          "tick": 40
+        },
+        {
+          "episode": "reversi-014",
+          "tick": 44
+        }
+      ],
+      "rationale": "when best_move_is_12 held, play_12 was taken 26/26 times at this list position",
+      "approved": true,
+      "tags": [
+        "level:intermediate",
+        "style:greedy"
+      ]
+    },
+    {
+      "condition": "best_move_is_45",
+      "action": "play_45",
+      "priority": 36,
+      "coverage": 26,
+      "counterexamples": 0,
+      "evidence": [
+        {
+          "episode": "reversi-002",
+          "tick": 20
+        },
+        {
+          "episode": "reversi-003",
+          "tick": 20
+        },
+        {
+          "episode": "reversi-008",
+          "tick": 8
+        },
+        {
+          "episode": "reversi-009",
+          "tick": 8
+        },
+        {
+          "episode": "reversi-016",
+          "tick": 46
+        }
+      ],
+      "rationale": "when best_move_is_45 held, play_45 was taken 26/26 times at this list position",
+      "approved": true,
+      "tags": [
+        "level:intermediate",
+        "style:greedy"
+      ]
+    },
+    {
+      "condition": "best_move_is_56",
+      "action": "play_56",
+      "priority": 37,
+      "coverage": 26,
+      "counterexamples": 0,
+      "evidence": [
+        {
+          "episode": "reversi-002",
+          "tick": 38
+        },
+        {
+          "episode": "reversi-003",
+          "tick": 38
+        },
+        {
+          "episode": "reversi-016",
+          "tick": 58
+        },
+        {
+          "episode": "reversi-017",
+          "tick": 58
+        },
+        {
+          "episode": "reversi-024",
+          "tick": 46
+        }
+      ],
+      "rationale": "when best_move_is_56 held, play_56 was taken 26/26 times at this list position",
+      "approved": true,
+      "tags": [
+        "level:intermediate",
+        "style:greedy"
+      ]
+    },
+    {
+      "condition": "best_move_is_60",
+      "action": "play_60",
+      "priority": 38,
+      "coverage": 26,
+      "counterexamples": 0,
+      "evidence": [
+        {
+          "episode": "reversi-002",
+          "tick": 24
+        },
+        {
+          "episode": "reversi-003",
+          "tick": 24
+        },
+        {
+          "episode": "reversi-006",
+          "tick": 54
+        },
+        {
+          "episode": "reversi-007",
+          "tick": 54
+        },
+        {
+          "episode": "reversi-014",
+          "tick": 22
+        }
+      ],
+      "rationale": "when best_move_is_60 held, play_60 was taken 26/26 times at this list position",
+      "approved": true,
+      "tags": [
+        "level:intermediate",
+        "style:greedy"
+      ]
+    },
+    {
+      "condition": "best_move_is_2",
+      "action": "play_2",
+      "priority": 39,
+      "coverage": 24,
+      "counterexamples": 0,
+      "evidence": [
+        {
+          "episode": "reversi-002",
+          "tick": 52
+        },
+        {
+          "episode": "reversi-003",
+          "tick": 52
+        },
+        {
+          "episode": "reversi-006",
+          "tick": 40
+        },
+        {
+          "episode": "reversi-007",
+          "tick": 40
+        },
+        {
+          "episode": "reversi-014",
+          "tick": 32
+        }
+      ],
+      "rationale": "when best_move_is_2 held, play_2 was taken 24/24 times at this list position",
+      "approved": true,
+      "tags": [
+        "level:intermediate",
+        "style:greedy"
+      ]
+    },
+    {
+      "condition": "best_move_is_22",
+      "action": "play_22",
+      "priority": 40,
+      "coverage": 24,
+      "counterexamples": 0,
+      "evidence": [
+        {
+          "episode": "reversi-002",
+          "tick": 18
+        },
+        {
+          "episode": "reversi-003",
+          "tick": 18
+        },
+        {
+          "episode": "reversi-004",
+          "tick": 8
+        },
+        {
+          "episode": "reversi-005",
+          "tick": 8
+        },
+        {
+          "episode": "reversi-006",
+          "tick": 16
+        }
+      ],
+      "rationale": "when best_move_is_22 held, play_22 was taken 24/24 times at this list position",
+      "approved": true,
+      "tags": [
+        "level:intermediate",
+        "style:greedy"
+      ]
+    },
+    {
+      "condition": "best_move_is_24",
+      "action": "play_24",
+      "priority": 41,
+      "coverage": 24,
+      "counterexamples": 0,
+      "evidence": [
+        {
+          "episode": "reversi-004",
+          "tick": 48
+        },
+        {
+          "episode": "reversi-005",
+          "tick": 48
+        },
+        {
+          "episode": "reversi-010",
+          "tick": 24
+        },
+        {
+          "episode": "reversi-011",
+          "tick": 24
+        },
+        {
+          "episode": "reversi-012",
+          "tick": 34
+        }
+      ],
+      "rationale": "when best_move_is_24 held, play_24 was taken 24/24 times at this list position",
+      "approved": true,
+      "tags": [
+        "level:intermediate",
+        "style:greedy"
+      ]
+    },
+    {
+      "condition": "best_move_is_26",
+      "action": "play_26",
+      "priority": 42,
+      "coverage": 24,
+      "counterexamples": 0,
+      "evidence": [
+        {
+          "episode": "reversi-004",
+          "tick": 44
+        },
+        {
+          "episode": "reversi-005",
+          "tick": 44
+        },
+        {
+          "episode": "reversi-008",
+          "tick": 42
+        },
+        {
+          "episode": "reversi-009",
+          "tick": 42
+        },
+        {
+          "episode": "reversi-010",
+          "tick": 10
+        }
+      ],
+      "rationale": "when best_move_is_26 held, play_26 was taken 24/24 times at this list position",
+      "approved": true,
+      "tags": [
+        "level:intermediate",
+        "style:greedy"
+      ]
+    },
+    {
+      "condition": "best_move_is_40",
+      "action": "play_40",
+      "priority": 43,
+      "coverage": 24,
+      "counterexamples": 0,
+      "evidence": [
+        {
+          "episode": "reversi-004",
+          "tick": 56
+        },
+        {
+          "episode": "reversi-005",
+          "tick": 56
+        },
+        {
+          "episode": "reversi-006",
+          "tick": 28
+        },
+        {
+          "episode": "reversi-007",
+          "tick": 28
+        },
+        {
+          "episode": "reversi-008",
+          "tick": 60
+        }
+      ],
+      "rationale": "when best_move_is_40 held, play_40 was taken 24/24 times at this list position",
+      "approved": true,
+      "tags": [
+        "level:intermediate",
+        "style:greedy"
+      ]
+    },
+    {
+      "condition": "best_move_is_49",
+      "action": "play_49",
+      "priority": 44,
+      "coverage": 24,
+      "counterexamples": 0,
+      "evidence": [
+        {
+          "episode": "reversi-006",
+          "tick": 24
+        },
+        {
+          "episode": "reversi-007",
+          "tick": 24
+        },
+        {
+          "episode": "reversi-016",
+          "tick": 16
+        },
+        {
+          "episode": "reversi-017",
+          "tick": 16
+        },
+        {
+          "episode": "reversi-020",
+          "tick": 34
+        }
+      ],
+      "rationale": "when best_move_is_49 held, play_49 was taken 24/24 times at this list position",
+      "approved": true,
+      "tags": [
+        "level:intermediate",
+        "style:greedy"
+      ]
+    },
+    {
+      "condition": "best_move_is_50",
+      "action": "play_50",
+      "priority": 45,
+      "coverage": 24,
+      "counterexamples": 0,
+      "evidence": [
+        {
+          "episode": "reversi-002",
+          "tick": 16
+        },
+        {
+          "episode": "reversi-003",
+          "tick": 16
+        },
+        {
+          "episode": "reversi-010",
+          "tick": 40
+        },
+        {
+          "episode": "reversi-011",
+          "tick": 40
+        },
+        {
+          "episode": "reversi-014",
+          "tick": 54
+        }
+      ],
+      "rationale": "when best_move_is_50 held, play_50 was taken 24/24 times at this list position",
+      "approved": true,
+      "tags": [
+        "level:intermediate",
+        "style:greedy"
+      ]
+    },
+    {
+      "condition": "best_move_is_61",
+      "action": "play_61",
+      "priority": 46,
+      "coverage": 24,
+      "counterexamples": 0,
+      "evidence": [
+        {
+          "episode": "reversi-006",
+          "tick": 50
+        },
+        {
+          "episode": "reversi-007",
+          "tick": 50
+        },
+        {
+          "episode": "reversi-010",
+          "tick": 36
+        },
+        {
+          "episode": "reversi-011",
+          "tick": 36
+        },
+        {
+          "episode": "reversi-012",
+          "tick": 8
+        }
+      ],
+      "rationale": "when best_move_is_61 held, play_61 was taken 24/24 times at this list position",
+      "approved": true,
+      "tags": [
+        "level:intermediate",
+        "style:greedy"
+      ]
+    },
+    {
+      "condition": "best_move_is_0",
+      "action": "play_0",
+      "priority": 47,
+      "coverage": 22,
+      "counterexamples": 0,
+      "evidence": [
+        {
+          "episode": "reversi-002",
+          "tick": 46
+        },
+        {
+          "episode": "reversi-003",
+          "tick": 46
+        },
+        {
+          "episode": "reversi-006",
+          "tick": 42
+        },
+        {
+          "episode": "reversi-007",
+          "tick": 42
+        },
+        {
+          "episode": "reversi-014",
+          "tick": 30
+        }
+      ],
+      "rationale": "when best_move_is_0 held, play_0 was taken 22/22 times at this list position",
+      "approved": true,
+      "tags": [
+        "level:intermediate",
+        "style:greedy"
+      ]
+    },
+    {
+      "condition": "best_move_is_13",
+      "action": "play_13",
+      "priority": 48,
+      "coverage": 22,
+      "counterexamples": 0,
+      "evidence": [
+        {
+          "episode": "reversi-002",
+          "tick": 58
+        },
+        {
+          "episode": "reversi-003",
+          "tick": 58
+        },
+        {
+          "episode": "reversi-008",
+          "tick": 18
+        },
+        {
+          "episode": "reversi-009",
+          "tick": 18
+        },
+        {
+          "episode": "reversi-010",
+          "tick": 28
+        }
+      ],
+      "rationale": "when best_move_is_13 held, play_13 was taken 22/22 times at this list position",
+      "approved": true,
+      "tags": [
+        "level:intermediate",
+        "style:greedy"
+      ]
+    },
+    {
+      "condition": "best_move_is_43",
+      "action": "play_43",
+      "priority": 49,
+      "coverage": 22,
+      "counterexamples": 0,
+      "evidence": [
+        {
+          "episode": "reversi-002",
+          "tick": 6
+        },
+        {
+          "episode": "reversi-003",
+          "tick": 6
+        },
+        {
+          "episode": "reversi-008",
+          "tick": 12
+        },
+        {
+          "episode": "reversi-009",
+          "tick": 12
+        },
+        {
+          "episode": "reversi-012",
+          "tick": 4
+        }
+      ],
+      "rationale": "when best_move_is_43 held, play_43 was taken 22/22 times at this list position",
+      "approved": true,
+      "tags": [
+        "level:intermediate",
+        "style:greedy"
+      ]
+    },
+    {
+      "condition": "best_move_is_47",
+      "action": "play_47",
+      "priority": 50,
+      "coverage": 22,
+      "counterexamples": 0,
+      "evidence": [
+        {
+          "episode": "reversi-002",
+          "tick": 48
+        },
+        {
+          "episode": "reversi-003",
+          "tick": 48
+        },
+        {
+          "episode": "reversi-010",
+          "tick": 58
+        },
+        {
+          "episode": "reversi-011",
+          "tick": 58
+        },
+        {
+          "episode": "reversi-012",
+          "tick": 36
+        }
+      ],
+      "rationale": "when best_move_is_47 held, play_47 was taken 22/22 times at this list position",
+      "approved": true,
+      "tags": [
+        "level:intermediate",
+        "style:greedy"
+      ]
+    },
+    {
+      "condition": "best_move_is_16",
+      "action": "play_16",
+      "priority": 51,
+      "coverage": 20,
+      "counterexamples": 0,
+      "evidence": [
+        {
+          "episode": "reversi-006",
+          "tick": 22
+        },
+        {
+          "episode": "reversi-007",
+          "tick": 22
+        },
+        {
+          "episode": "reversi-014",
+          "tick": 10
+        },
+        {
+          "episode": "reversi-015",
+          "tick": 10
+        },
+        {
+          "episode": "reversi-016",
+          "tick": 10
+        }
+      ],
+      "rationale": "when best_move_is_16 held, play_16 was taken 20/20 times at this list position",
+      "approved": true,
+      "tags": [
+        "level:intermediate",
+        "style:greedy"
+      ]
+    },
+    {
+      "condition": "best_move_is_29",
+      "action": "play_29",
+      "priority": 52,
+      "coverage": 20,
+      "counterexamples": 0,
+      "evidence": [
+        {
+          "episode": "reversi-002",
+          "tick": 12
+        },
+        {
+          "episode": "reversi-003",
+          "tick": 12
+        },
+        {
+          "episode": "reversi-008",
+          "tick": 10
+        },
+        {
+          "episode": "reversi-009",
+          "tick": 10
+        },
+        {
+          "episode": "reversi-010",
+          "tick": 38
+        }
+      ],
+      "rationale": "when best_move_is_29 held, play_29 was taken 20/20 times at this list position",
+      "approved": true,
+      "tags": [
+        "level:intermediate",
+        "style:greedy"
+      ]
+    },
+    {
+      "condition": "best_move_is_58",
+      "action": "play_58",
+      "priority": 53,
+      "coverage": 20,
+      "counterexamples": 0,
+      "evidence": [
+        {
+          "episode": "reversi-006",
+          "tick": 26
+        },
+        {
+          "episode": "reversi-007",
+          "tick": 26
+        },
+        {
+          "episode": "reversi-010",
+          "tick": 50
+        },
+        {
+          "episode": "reversi-011",
+          "tick": 50
+        },
+        {
+          "episode": "reversi-014",
+          "tick": 52
+        }
+      ],
+      "rationale": "when best_move_is_58 held, play_58 was taken 20/20 times at this list position",
+      "approved": true,
+      "tags": [
+        "level:intermediate",
+        "style:greedy"
+      ]
+    },
+    {
+      "condition": "best_move_is_46",
+      "action": "play_46",
+      "priority": 54,
+      "coverage": 18,
+      "counterexamples": 0,
+      "evidence": [
+        {
+          "episode": "reversi-002",
+          "tick": 30
+        },
+        {
+          "episode": "reversi-003",
+          "tick": 30
+        },
+        {
+          "episode": "reversi-006",
+          "tick": 56
+        },
+        {
+          "episode": "reversi-007",
+          "tick": 56
+        },
+        {
+          "episode": "reversi-008",
+          "tick": 48
+        }
+      ],
+      "rationale": "when best_move_is_46 held, play_46 was taken 18/18 times at this list position",
+      "approved": true,
+      "tags": [
+        "level:intermediate",
+        "style:greedy"
+      ]
+    },
+    {
+      "condition": "best_move_is_20",
+      "action": "play_20",
+      "priority": 55,
+      "coverage": 16,
+      "counterexamples": 0,
+      "evidence": [
+        {
+          "episode": "reversi-004",
+          "tick": 30
+        },
+        {
+          "episode": "reversi-005",
+          "tick": 30
+        },
+        {
+          "episode": "reversi-010",
+          "tick": 30
+        },
+        {
+          "episode": "reversi-011",
+          "tick": 30
+        },
+        {
+          "episode": "reversi-020",
+          "tick": 8
+        }
+      ],
+      "rationale": "when best_move_is_20 held, play_20 was taken 16/16 times at this list position",
+      "approved": true,
+      "tags": [
+        "level:intermediate",
+        "style:greedy"
+      ]
+    },
+    {
+      "condition": "best_move_is_38",
+      "action": "play_38",
+      "priority": 56,
+      "coverage": 16,
+      "counterexamples": 0,
+      "evidence": [
+        {
+          "episode": "reversi-002",
+          "tick": 10
+        },
+        {
+          "episode": "reversi-003",
+          "tick": 10
+        },
+        {
+          "episode": "reversi-020",
+          "tick": 14
+        },
+        {
+          "episode": "reversi-021",
+          "tick": 14
+        },
+        {
+          "episode": "reversi-022",
+          "tick": 32
+        }
+      ],
+      "rationale": "when best_move_is_38 held, play_38 was taken 16/16 times at this list position",
+      "approved": true,
+      "tags": [
+        "level:intermediate",
+        "style:greedy"
+      ]
+    },
+    {
+      "condition": "best_move_is_44",
+      "action": "play_44",
+      "priority": 57,
+      "coverage": 16,
+      "counterexamples": 0,
+      "evidence": [
+        {
+          "episode": "reversi-006",
+          "tick": 46
+        },
+        {
+          "episode": "reversi-007",
+          "tick": 46
+        },
+        {
+          "episode": "reversi-010",
+          "tick": 46
+        },
+        {
+          "episode": "reversi-011",
+          "tick": 46
+        },
+        {
+          "episode": "reversi-012",
+          "tick": 30
+        }
+      ],
+      "rationale": "when best_move_is_44 held, play_44 was taken 16/16 times at this list position",
+      "approved": true,
+      "tags": [
+        "level:intermediate",
+        "style:greedy"
+      ]
+    },
+    {
+      "condition": "best_move_is_11",
+      "action": "play_11",
+      "priority": 58,
+      "coverage": 8,
+      "counterexamples": 0,
+      "evidence": [
+        {
+          "episode": "reversi-004",
+          "tick": 28
+        },
+        {
+          "episode": "reversi-005",
+          "tick": 28
+        },
+        {
+          "episode": "reversi-012",
+          "tick": 12
+        },
+        {
+          "episode": "reversi-013",
+          "tick": 12
+        },
+        {
+          "episode": "reversi-014",
+          "tick": 16
+        }
+      ],
+      "rationale": "when best_move_is_11 held, play_11 was taken 8/8 times at this list position",
+      "approved": true,
+      "tags": [
+        "level:intermediate",
+        "style:greedy"
+      ]
+    },
+    {
+      "condition": "best_move_is_18",
+      "action": "play_18",
+      "priority": 59,
+      "coverage": 8,
+      "counterexamples": 0,
+      "evidence": [
+        {
+          "episode": "reversi-000",
+          "tick": 12
+        },
+        {
+          "episode": "reversi-001",
+          "tick": 12
+        },
+        {
+          "episode": "reversi-016",
+          "tick": 22
+        },
+        {
+          "episode": "reversi-017",
+          "tick": 22
+        },
+        {
+          "episode": "reversi-030",
+          "tick": 10
+        }
+      ],
+      "rationale": "when best_move_is_18 held, play_18 was taken 8/8 times at this list position",
+      "approved": true,
+      "tags": [
+        "level:intermediate",
+        "style:greedy"
+      ]
+    },
+    {
+      "condition": "best_move_is_34",
+      "action": "play_34",
+      "priority": 60,
+      "coverage": 4,
+      "counterexamples": 0,
+      "evidence": [
+        {
+          "episode": "reversi-032",
+          "tick": 10
+        },
+        {
+          "episode": "reversi-033",
+          "tick": 10
+        },
+        {
+          "episode": "reversi-036",
+          "tick": 34
+        },
+        {
+          "episode": "reversi-037",
+          "tick": 34
+        }
+      ],
+      "rationale": "when best_move_is_34 held, play_34 was taken 4/4 times at this list position",
+      "approved": true,
+      "tags": [
+        "level:intermediate",
+        "style:greedy"
+      ]
+    }
+  ]
+}
