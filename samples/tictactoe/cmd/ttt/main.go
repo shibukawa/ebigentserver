@@ -4,9 +4,9 @@
 // conditional on controller kind inside game logic is not (and there is
 // none; see the ttt package).
 //
-//	ttt              # human plays X against the bot
-//	ttt -x=bot -o=human
-//	ttt -x=bot -o=bot
+//	ttt              # human plays X against the bot (rendered as Y)
+//	ttt -x=bot -y=human
+//	ttt -x=bot -y=bot
 //
 // Presentation (board rendering, input parsing) lives here in the entry
 // point, matching decision:entry-points-over-build-tags. A human at a
@@ -29,7 +29,7 @@ import (
 
 func main() {
 	xKind := flag.String("x", "human", "controller for X: human or bot")
-	oKind := flag.String("o", "bot", "controller for O: human or bot")
+	yKind := flag.String("y", "bot", "controller for Y (the O slot): human or bot")
 	flag.Parse()
 
 	s, err := session.New(session.Config[ttt.State, ttt.Move, ttt.Observation]{
@@ -52,13 +52,13 @@ func main() {
 	if err := s.Admit(ttt.SlotX, watcher); err != nil {
 		fatal(err)
 	}
-	if err := s.Admit(ttt.SlotO, makeAgent(*oKind, stdin)); err != nil {
+	if err := s.Admit(ttt.SlotO, makeAgent(*yKind, stdin)); err != nil {
 		fatal(err)
 	}
 	if err := s.Run(context.Background()); err != nil {
 		fatal(err)
 	}
-	if *xKind == "bot" && *oKind == "bot" {
+	if *xKind == "bot" && *yKind == "bot" {
 		fmt.Println(render(watcher.last.Board))
 		fmt.Println("X:", watcher.result.Signal.Terminal)
 	}
@@ -157,11 +157,13 @@ func (c *consoleAgent) Ended(r session.Result) {
 	}
 }
 
+// markName renders SlotO as "Y": the board indexes empty cells 0-8, and
+// an O mark is too easy to misread as the digit 0 beside them.
 func markName(slot session.SlotID) string {
 	if slot == ttt.SlotX {
 		return "X"
 	}
-	return "O"
+	return "Y"
 }
 
 func render(b ttt.Board) string {
@@ -170,7 +172,7 @@ func render(b ttt.Board) string {
 		case ttt.MarkX:
 			return "X"
 		case ttt.MarkO:
-			return "O"
+			return "Y"
 		default:
 			return strconv.Itoa(i)
 		}
