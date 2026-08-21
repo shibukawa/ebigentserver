@@ -63,15 +63,26 @@ var (
 	floorY  = fixmath.FromInt32(FieldH)
 )
 
-// The player slots (concept:player-slot). Slot 0 is reserved by the
-// session, so slots start at 1.
+// Seats is how many concept:player-slot entries these rules declare. It
+// is a rule, not a setting: changing it changes the game.
+const Seats = {{.Seats}}
+
+// The player slots. Slot 0 is reserved by the session, so slots start
+// at 1.
 const (
-	SlotOne session.SlotID = 1
-	SlotTwo session.SlotID = 2
+{{- range $i, $name := .SlotNames}}
+	{{$name}} session.SlotID = {{addOne $i}}
+{{- end}}
 )
 
 // Slots is the game-defined slot set.
-func Slots() []session.SlotID { return []session.SlotID{SlotOne, SlotTwo} }
+func Slots() []session.SlotID {
+	out := make([]session.SlotID, 0, Seats)
+	for i := range Seats {
+		out = append(out, session.SlotID(i+1))
+	}
+	return out
+}
 
 // Bird is one slot's flyer.
 type Bird struct {
@@ -88,13 +99,13 @@ type Pipe struct {
 	GapY fixmath.F64
 	// Cleared records, per slot index, that this pipe was already
 	// counted, so a score cannot tick twice on one pipe.
-	Cleared [2]bool
+	Cleared [Seats]bool
 }
 
 // State is the concept:world-state: everything the session commits.
 type State struct {
 	Tick  session.Tick
-	Bird  [2]Bird
+	Bird  [Seats]Bird
 	Pipes []Pipe
 	// Rand travels with the state so the pipe field is a function of the
 	// seed alone. Advancing it anywhere but a simulation step would make
@@ -117,9 +128,10 @@ type Action struct {
 // around it because none ever receives a State.
 type Observation struct {
 	You session.SlotID
-	// Self is the observing slot's bird, Rival the other one.
-	Self  Bird
-	Rival Bird
+	// Self is the observing slot's bird; Others holds every other seat,
+	// in slot order.
+	Self   Bird
+	Others []Bird
 	// Pipes is the field ahead. Everything is visible here — see
 	// concept:visibility-scope when some of it should not be.
 	Pipes []Pipe
@@ -131,12 +143,7 @@ type Observation struct {
 }
 
 // index maps a slot to its array position.
-func index(slot session.SlotID) int {
-	if slot == SlotTwo {
-		return 1
-	}
-	return 0
-}
+func index(slot session.SlotID) int { return int(slot) - 1 }
 
 // Game implements session.TickGame: session.Game plus Advance, which is
 // what a realtime session needs.
@@ -148,13 +155,10 @@ var _ session.TickGame[State, Action, Observation] = Game{}
 // RNG seed (rule:shared-rng-seed). Two runs with the same seed produce
 // the same pipes, which is what makes an episode replayable.
 func (Game) Start(seed uint64) State {
+	s := State{Rand: fixmath.NewRand(seed)}
 	mid := fixmath.FromInt32(FieldH / 2)
-	s := State{
-		Rand: fixmath.NewRand(seed),
-		Bird: [2]Bird{
-			{Y: mid, Alive: true},
-			{Y: mid, Alive: true},
-		},
+	for i := range s.Bird {
+		s.Bird[i] = Bird{Y: mid, Alive: true}
 	}
 	s.spawn()
 	return s
@@ -266,11 +270,17 @@ func overlapsX(x fixmath.F64) bool {
 
 // Project builds a slot's observation.
 func (g Game) Project(s *State, slot session.SlotID) Observation {
-	i := index(slot)
+	me := index(slot)
+	others := make([]Bird, 0, Seats-1)
+	for i, b := range s.Bird {
+		if i != me {
+			others = append(others, b)
+		}
+	}
 	return Observation{
 		You:    slot,
-		Self:   s.Bird[i],
-		Rival:  s.Bird[1-i],
+		Self:   s.Bird[me],
+		Others: others,
 		Pipes:  append([]Pipe(nil), s.Pipes...),
 		Tick:   s.Tick,
 		Over:   s.Over,
@@ -281,19 +291,32 @@ func (g Game) Project(s *State, slot session.SlotID) Observation {
 // Evaluate computes a slot's data:evaluation-signal. The session calls
 // this; an agent never scores itself (rule:evaluation-computed-by-session).
 func (Game) Evaluate(s *State, slot session.SlotID) session.EvaluationSignal {
-	me, rival := s.Bird[index(slot)], s.Bird[1-index(slot)]
+	me := s.Bird[index(slot)]
+	best := int32(-1)
+	for i, b := range s.Bird {
+		if i != index(slot) && b.Passed > best {
+			best = b.Passed
+		}
+	}
 	sig := session.EvaluationSignal{
 		Score:      int64(me.Passed),
 		Progress:   fixmath.FromInt32(me.Passed).Div(fixmath.FromInt32(TargetPipes)),
-		Evaluation: fixmath.FromInt32(me.Passed - rival.Passed),
+		Evaluation: fixmath.FromInt32(me.Passed - best),
 	}
 	if !s.Over {
 		return sig
 	}
 	switch {
-	case me.Passed > rival.Passed:
+	case best < 0:
+		// A solo game has nobody to lose to: reaching the target wins.
+		if me.Passed >= TargetPipes {
+			sig.Terminal = session.Win
+		} else {
+			sig.Terminal = session.Lose
+		}
+	case me.Passed > best:
 		sig.Terminal = session.Win
-	case me.Passed < rival.Passed:
+	case me.Passed < best:
 		sig.Terminal = session.Lose
 	default:
 		sig.Terminal = session.Draw

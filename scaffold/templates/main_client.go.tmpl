@@ -59,28 +59,49 @@ func main() {
 	if err := s.OpenAdmission(); err != nil {
 		fatal(err)
 	}
-	// The window's seat is Detached: its observations arrive as the
+{{if and (eq .View "shared") (gt .Seats 1)}}	// A shared camera means every seat is at this machine, each on its own
+	// keys. Every seat is Detached: its observations arrive as the
 	// broadcast world the renderer already holds, so delivering them to
-	// the seat too would duplicate the path a remote player would use.
-	// The bot is admitted directly, because a local controller does want
-	// the final observation and Ended.
-	if err := s.Admit(game.SlotOne, session.Detached[game.Observation, game.Action]{}); err != nil {
-		fatal(err)
+	// the seat as well would duplicate the path a remote player uses.
+	inboxes := make([]*session.Inbox[game.Action], 0, len(game.Slots()))
+	for _, slot := range game.Slots() {
+		if err := s.Admit(slot, session.Detached[game.Observation, game.Action]{}); err != nil {
+			fatal(err)
+		}
+		inbox, err := s.Inbox(slot)
+		if err != nil {
+			fatal(err)
+		}
+		inboxes = append(inboxes, inbox)
 	}
-	bot := &game.Bot{}
-	if err := s.Admit(game.SlotTwo, bot); err != nil {
-		fatal(err)
+{{else}}	// A camera per seat means one seat is here and the rest are elsewhere.
+	// This one is Detached — the renderer already holds its observations
+	// as the broadcast world. The others are bots until a transport is
+	// wired; a remote peer will occupy them in exactly the same way.
+	inboxes := make([]*session.Inbox[game.Action], 0, 1)
+	for i, slot := range game.Slots() {
+		if i == 0 {
+			if err := s.Admit(slot, session.Detached[game.Observation, game.Action]{}); err != nil {
+				fatal(err)
+			}
+			inbox, err := s.Inbox(slot)
+			if err != nil {
+				fatal(err)
+			}
+			inboxes = append(inboxes, inbox)
+			continue
+		}
+		bot := &game.Bot{}
+		if err := s.Admit(slot, bot); err != nil {
+			fatal(err)
+		}
+		inbox, err := s.Inbox(slot)
+		if err != nil {
+			fatal(err)
+		}
+		drivers = append(drivers, &game.Driver{Slot: slot, Agent: bot, Inbox: inbox})
 	}
-	playerInbox, err := s.Inbox(game.SlotOne)
-	if err != nil {
-		fatal(err)
-	}
-	botInbox, err := s.Inbox(game.SlotTwo)
-	if err != nil {
-		fatal(err)
-	}
-	drivers = append(drivers, &game.Driver{Slot: game.SlotTwo, Agent: bot, Inbox: botInbox})
-
+{{end}}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	go func() {
@@ -91,7 +112,7 @@ func main() {
 
 	ebiten.SetWindowSize(game.FieldW*scale, game.FieldH*scale)
 	ebiten.SetWindowTitle("{{.Name}}")
-	if err := ebiten.RunGame(&app{view: v, inbox: playerInbox}); err != nil {
+	if err := ebiten.RunGame(&app{view: v, inboxes: inboxes}); err != nil {
 		fatal(err)
 	}
 }
@@ -123,15 +144,37 @@ func (v *view) load() (game.State, bool) {
 // app is the Ebitengine side. It reads input and draws; it holds no
 // rules, and every rule it needs it reads off the world.
 type app struct {
-	view  *view
-	inbox *session.Inbox[game.Action]
+	view    *view
+	inboxes []*session.Inbox[game.Action]
 }
 
-// Update turns a key press into a game action. This is the whole of
-// api:input-adapter's job at this scale.
+// flapKeys binds one key per local seat. This is the whole of
+// api:input-adapter at this scale: a raw device event becomes a
+// concept:action here, at the entry point, and never inside game/
+// (rule:no-engine-input-in-game-logic).
+var flapKeys = []ebiten.Key{
+	ebiten.KeySpace,
+	ebiten.KeyS,
+	ebiten.KeyK,
+	ebiten.KeyV,
+	ebiten.KeyN,
+	ebiten.KeyComma,
+	ebiten.KeyQ,
+	ebiten.KeyZ,
+}
+
+// Update turns each seat's key press into that seat's action.
 func (a *app) Update() error {
-	if inpututil.IsKeyJustPressed(ebiten.KeySpace) || inpututil.IsKeyJustPressed(ebiten.KeyArrowUp) {
-		a.inbox.Submit(game.Action{Flap: true})
+	for i, inbox := range a.inboxes {
+		if i >= len(flapKeys) {
+			break
+		}
+		if inpututil.IsKeyJustPressed(flapKeys[i]) {
+			inbox.Submit(game.Action{Flap: true})
+		}
+		if i == 0 && inpututil.IsKeyJustPressed(ebiten.KeyArrowUp) {
+			inbox.Submit(game.Action{Flap: true})
+		}
 	}
 	return nil
 }
@@ -139,9 +182,16 @@ func (a *app) Update() error {
 var (
 	sky    = color.RGBA{0x7a, 0xc7, 0xe8, 0xff}
 	pipeC  = color.RGBA{0x3f, 0xa2, 0x4a, 0xff}
-	youC   = color.RGBA{0xf7, 0xd0, 0x51, 0xff}
-	rivalC = color.RGBA{0xe0, 0x6c, 0x75, 0xff}
 )
+
+// seatColors gives each seat a colour, reused when there are more seats
+// than colours.
+var seatColors = []color.RGBA{
+	{0xf7, 0xd0, 0x51, 0xff},
+	{0xe0, 0x6c, 0x75, 0xff},
+	{0x8b, 0xd4, 0x50, 0xff},
+	{0xc6, 0x8c, 0xf0, 0xff},
+}
 
 // Draw renders the world. Nothing here decides anything: if the picture
 // is wrong, the rules are wrong.
@@ -163,19 +213,17 @@ func (a *app) Draw(screen *ebiten.Image) {
 		if !b.Alive {
 			continue
 		}
-		c := youC
-		if i == 1 {
-			c = rivalC
-		}
+		c := seatColors[i%len(seatColors)]
 		vector.DrawFilledCircle(screen,
 			float32(game.BirdX)*scale, float32(b.Y.FloorToInt())*scale,
 			float32(game.BirdR)*scale, c, true)
 	}
-	msg := fmt.Sprintf("space to flap    you %d   rival %d",
-		world.Bird[0].Passed, world.Bird[1].Passed)
+	msg := "space to flap   "
 	if world.Over {
-		msg = fmt.Sprintf("game over    you %d   rival %d",
-			world.Bird[0].Passed, world.Bird[1].Passed)
+		msg = "game over   "
+	}
+	for i, b := range world.Bird {
+		msg += fmt.Sprintf(" %d:%d", i+1, b.Passed)
 	}
 	ebitenutil.DebugPrintAt(screen, msg, 4, 4)
 }

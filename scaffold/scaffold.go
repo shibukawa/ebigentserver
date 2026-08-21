@@ -33,66 +33,78 @@ var templates embed.FS
 // FrameworkModule is the import path a generated project depends on.
 const FrameworkModule = "github.com/shibukawa/ebigentserver"
 
-// Shapes are concept:participant-shape: how many agents share a session
-// and how they reach it. This is the first question, because it decides
-// what has to be generated rather than what goes in a file.
-var Shapes = []string{"solo", "duo", "multi"}
-
 // SyncModes mirrors the run configuration allowlist.
 var SyncModes = []string{"delay", "rollback", "server_authoritative", "hybrid"}
 
-// shapeTargets is the entry point set each shape needs. Nothing is
-// optional here: a shape that needs a server and a client needs both, and
-// offering the choice would only produce projects that cannot play.
-var shapeTargets = map[string][]Target{
-	"solo": {
+// Links is the process boundary: whether the seats share a process or
+// reach each other over a link. This is the structural axis — it decides
+// whether a transport, an admission path, a server target, and a
+// concept:synchronization-mode exist at all.
+var Links = []string{"local", "networked"}
+
+// Views is concept:view-arrangement: the camera. Independent of Links —
+// an online fighting game shares a camera across separate processes, and
+// a split screen console game splits one inside a single process.
+var Views = []string{"shared", "per_agent"}
+
+// linkTargets is the entry point set each process boundary needs. Local
+// play needs no server whatever the seat count or the camera: every seat
+// is admitted in process and nothing crosses a link.
+var linkTargets = map[string][]Target{
+	"local": {
 		{Name: "game", Kind: "client"},
 		{Name: "simulation", Kind: "simulation"},
 	},
-	"duo": {
-		{Name: "client", Kind: "client"},
-		{Name: "server", Kind: "server"},
-		{Name: "simulation", Kind: "simulation"},
-	},
-	"multi": {
+	"networked": {
 		{Name: "client", Kind: "client"},
 		{Name: "server", Kind: "server"},
 		{Name: "simulation", Kind: "simulation"},
 	},
 }
 
-// shapeSync is which synchronization modes each shape can run, so step 2
-// of flow:project-init offers only reachable combinations.
-var shapeSync = map[string][]string{
-	"solo":  {"server_authoritative"},
-	"duo":   {"delay", "rollback", "server_authoritative"},
-	"multi": {"server_authoritative", "delay", "hybrid"},
+// linkTopology is the data:run-config topology each boundary starts at.
+var linkTopology = map[string]string{
+	"local":     "standalone",
+	"networked": "dedicated",
 }
 
-// shapeTopology is the data:run-config topology a shape starts at. It is
-// a run value, so a generated project changes it without regenerating —
-// which is the point of concept:deployment-combination keeping the host
-// separate from the seat count.
-var shapeTopology = map[string]string{
-	"solo":  "standalone",
-	"duo":   "dedicated",
-	"multi": "dedicated",
+// SyncDefaultFor is the synchronization mode a camera usually wants, and
+// only ever applies when a link exists. A shared camera puts a
+// mispredicted frame in front of every player at once, which is the case
+// term:rollback was invented for; a per-agent camera hides most
+// corrections outside the frame, so authority plus prediction is enough.
+func SyncDefaultFor(view string) string {
+	if view == "shared" {
+		return "rollback"
+	}
+	return "server_authoritative"
 }
 
-// Seats is how many player slots a shape declares.
-var shapeSeats = map[string]int{"solo": 1, "duo": 2, "multi": 4}
+// TargetsFor reports the entry points a process boundary generates.
+func TargetsFor(link string) []Target { return linkTargets[link] }
 
-// SeatsFor reports the slot count a shape generates.
-func SeatsFor(shape string) int { return shapeSeats[shape] }
+// TopologyFor reports the run topology a boundary starts at.
+func TopologyFor(link string) string { return linkTopology[link] }
 
-// TargetsFor reports the entry points a shape generates.
-func TargetsFor(shape string) []Target { return shapeTargets[shape] }
+// SyncModesFor reports the synchronization modes a process boundary can
+// run. Local play has none to choose: synchronization keeps sessions
+// consistent across a link, and there is no link. The camera does not
+// enter into it — sharing a camera across two machines does not remove
+// the link, it only means both render the same mispredicted frame.
+func SyncModesFor(link string) []string {
+	if link == "local" {
+		return nil
+	}
+	return SyncModes
+}
 
-// SyncModesFor reports the synchronization modes a shape supports.
-func SyncModesFor(shape string) []string { return shapeSync[shape] }
-
-// TopologyFor reports the run topology a shape starts at.
-func TopologyFor(shape string) string { return shapeTopology[shape] }
+// MinSeats is the smallest seat count a boundary makes sense with.
+func MinSeats(link string) int {
+	if link == "networked" {
+		return 2
+	}
+	return 1
+}
 
 // Target is one generated entry point.
 type Target struct {
@@ -133,8 +145,16 @@ type Spec struct {
 	Module string
 	// Name identifies the game in session IDs and the chip library.
 	Name string
-	// Shape is the concept:participant-shape chosen in step 1.
-	Shape string
+	// Link is the process boundary: local or networked. The structural
+	// axis, since it decides whether a transport exists at all.
+	Link string
+	// View is concept:view-arrangement: the camera, shared or per_agent.
+	// Independent of Link.
+	View string
+	// Seats is how many concept:player-slot entries the rules declare.
+	// A number rather than a category: two seats and twenty generate the
+	// same wiring.
+	Seats int
 	// SyncMode is the concept:synchronization-mode chosen in step 2.
 	SyncMode string
 	// FrameworkPath, when set, adds a replace directive pointing at a
@@ -157,14 +177,26 @@ func (s *Spec) Validate() error {
 	if s.Name == "" {
 		errs = append(errs, errors.New("Name is required"))
 	}
-	if !slices.Contains(Shapes, s.Shape) {
-		errs = append(errs, fmt.Errorf("shape %q is not one of %v", s.Shape, Shapes))
+	if !slices.Contains(Links, s.Link) {
+		errs = append(errs, fmt.Errorf("process boundary %q is not one of %v", s.Link, Links))
 	}
-	if !slices.Contains(SyncModes, s.SyncMode) {
-		errs = append(errs, fmt.Errorf("sync mode %q is not one of %v", s.SyncMode, SyncModes))
+	if !slices.Contains(Views, s.View) {
+		errs = append(errs, fmt.Errorf("view arrangement %q is not one of %v", s.View, Views))
 	}
-	if allowed, ok := shapeSync[s.Shape]; ok && !slices.Contains(allowed, s.SyncMode) {
-		errs = append(errs, fmt.Errorf("shape %q does not support sync mode %q; it supports %v", s.Shape, s.SyncMode, allowed))
+	if min := MinSeats(s.Link); s.Seats < min {
+		errs = append(errs, fmt.Errorf("%q play needs at least %d seats, not %d", s.Link, min, s.Seats))
+	}
+	if s.Seats == 1 && s.View == "per_agent" {
+		errs = append(errs, errors.New("one seat has no camera to arrange; use the shared view"))
+	}
+	if s.Seats > 8 {
+		errs = append(errs, fmt.Errorf("%d seats is past what the generated placeholder renders; declare the slots by hand instead", s.Seats))
+	}
+	switch modes := SyncModesFor(s.Link); {
+	case len(modes) == 0 && s.SyncMode != "":
+		errs = append(errs, errors.New("local play has no synchronization mode to set: there is no link to keep consistent"))
+	case len(modes) > 0 && !slices.Contains(modes, s.SyncMode):
+		errs = append(errs, fmt.Errorf("sync mode %q is not one of %v", s.SyncMode, modes))
 	}
 	if len(errs) > 0 {
 		return fmt.Errorf("scaffold: invalid spec: %w", errors.Join(errs...))
@@ -172,11 +204,21 @@ func (s *Spec) Validate() error {
 	return nil
 }
 
-// Targets is the entry point set this shape generates.
-func (s *Spec) Targets() []Target { return shapeTargets[s.Shape] }
+// Targets is the entry point set this process boundary generates.
+func (s *Spec) Targets() []Target { return linkTargets[s.Link] }
 
-// Topology is the data:run-config topology this shape starts at.
-func (s *Spec) Topology() string { return shapeTopology[s.Shape] }
+// Topology is the data:run-config topology this boundary starts at.
+func (s *Spec) Topology() string { return linkTopology[s.Link] }
+
+// SlotNames renders the generated slot identifiers, so the rules template
+// can declare one constant per seat.
+func (s *Spec) SlotNames() []string {
+	names := make([]string, 0, s.Seats)
+	for i := range s.Seats {
+		names = append(names, fmt.Sprintf("Slot%d", i+1))
+	}
+	return names
+}
 
 // DevTarget is the target ebigent dev runs by default: the one a
 // developer would want in front of them, which is the playable client.
@@ -320,7 +362,9 @@ func render(spec *Spec) (map[string][]byte, error) {
 }
 
 func execute(name string, data any) ([]byte, error) {
-	t, err := template.New(name).ParseFS(templates, "templates/"+name)
+	t, err := template.New(name).Funcs(template.FuncMap{
+		"addOne": func(i int) int { return i + 1 },
+	}).ParseFS(templates, "templates/"+name)
 	if err != nil {
 		return nil, fmt.Errorf("scaffold: template %s: %w", name, err)
 	}

@@ -44,8 +44,10 @@ type InitOptions struct {
 	Dir           string `arg:"optional" help:"project directory, created if missing (default: the current directory)"`
 	Module        string `default:"" help:"go module path"`
 	Name          string `default:"" help:"game name; defaults to the directory name"`
-	Shape         string `default:"" help:"how many play one session: solo, duo, or multi"`
-	Sync          string `default:"" help:"synchronization mode; only modes the shape supports are accepted"`
+	Link          string `default:"" help:"process boundary: local for one process, networked for a process per seat"`
+	View          string `default:"" help:"camera: shared for one view everybody reads, per_agent for a view each"`
+	Seats         int    `default:"0" help:"player slots to declare; 0 asks"`
+	Sync          string `default:"" help:"synchronization mode; a shared surface has none"`
 	Yes           bool   `default:"false" help:"take the default for every unanswered question instead of prompting"`
 	FrameworkPath string `default:"" help:"path to a local framework checkout, added as a replace directive"`
 	SkipTidy      bool   `default:"false" help:"do not run go mod tidy or the verification build"`

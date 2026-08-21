@@ -9,9 +9,9 @@ import (
 
 // runHeadless plays a whole match with both slots on bots, as fast as the
 // machine allows. It is the shape every generated entry point uses.
-func runHeadless(t *testing.T, seed uint64) (*session.Session[State, Action, Observation], *Bot, *Bot) {
+func runHeadless(t *testing.T, seed uint64) (*session.Session[State, Action, Observation], []*Bot) {
 	t.Helper()
-	one, two := &Bot{}, &Bot{}
+	bots := make([]*Bot, 0, Seats)
 	var drivers []*Driver
 
 	s, err := session.New(Config("{{.Name}}-test", seed, func(_ session.Tick, world *State) {
@@ -25,45 +25,42 @@ func runHeadless(t *testing.T, seed uint64) (*session.Session[State, Action, Obs
 	if err := s.OpenAdmission(); err != nil {
 		t.Fatal(err)
 	}
-	for i, slot := range Slots() {
-		agent := one
-		if i == 1 {
-			agent = two
-		}
-		if err := s.Admit(slot, agent); err != nil {
+	for _, slot := range Slots() {
+		bot := &Bot{}
+		bots = append(bots, bot)
+		if err := s.Admit(slot, bot); err != nil {
 			t.Fatal(err)
 		}
 		inbox, err := s.Inbox(slot)
 		if err != nil {
 			t.Fatal(err)
 		}
-		drivers = append(drivers, &Driver{Slot: slot, Agent: agent, Inbox: inbox})
+		drivers = append(drivers, &Driver{Slot: slot, Agent: bot, Inbox: inbox})
 	}
 	if err := s.RunRealtime(context.Background(), session.Unlimited); err != nil {
 		t.Fatal(err)
 	}
-	return s, one, two
+	return s, bots
 }
 
 // A realtime session over these rules runs to a terminal state. This is
 // the test to keep as the rules change: it is the one that says the loop
 // still closes.
 func TestRealtimeSessionRunsToATerminalState(t *testing.T) {
-	_, one, two := runHeadless(t, 1)
-	if one.Result.Signal.Terminal == session.NotTerminal {
-		t.Error("slot 1 ended without a terminal signal")
-	}
-	if two.Result.Signal.Terminal == session.NotTerminal {
-		t.Error("slot 2 ended without a terminal signal")
+	_, bots := runHeadless(t, 1)
+	for i, b := range bots {
+		if b.Result.Signal.Terminal == session.NotTerminal {
+			t.Errorf("slot %d ended without a terminal signal", i+1)
+		}
 	}
 }
 
 // The bot has to actually fly: a scaffold whose placeholder controller
 // dies on the first pipe teaches nothing about the loop.
 func TestBotClearsPipes(t *testing.T) {
-	_, one, _ := runHeadless(t, 1)
-	if one.Result.Signal.Score < 1 {
-		t.Errorf("the bot cleared %d pipes; it should clear at least one", one.Result.Signal.Score)
+	_, bots := runHeadless(t, 1)
+	if bots[0].Result.Signal.Score < 1 {
+		t.Errorf("the bot cleared %d pipes; it should clear at least one", bots[0].Result.Signal.Score)
 	}
 }
 
@@ -72,13 +69,16 @@ func TestBotClearsPipes(t *testing.T) {
 // (rule:no-float-in-simulation, rule:shared-rng-seed); it is also what
 // replay and rollback are built on, so it is worth a test of its own.
 func TestSameSeedProducesTheSameEpisode(t *testing.T) {
-	a, aOne, _ := runHeadless(t, 42)
-	b, bOne, _ := runHeadless(t, 42)
+	a, aBots := runHeadless(t, 42)
+	b, bBots := runHeadless(t, 42)
 	if a.Tick() != b.Tick() {
 		t.Errorf("tick counts differ: %d vs %d", a.Tick(), b.Tick())
 	}
-	if aOne.Result.Signal.Score != bOne.Result.Signal.Score {
-		t.Errorf("scores differ: %d vs %d", aOne.Result.Signal.Score, bOne.Result.Signal.Score)
+	for i := range aBots {
+		if aBots[i].Result.Signal.Score != bBots[i].Result.Signal.Score {
+			t.Errorf("slot %d scores differ: %d vs %d", i+1,
+				aBots[i].Result.Signal.Score, bBots[i].Result.Signal.Score)
+		}
 	}
 }
 
@@ -96,7 +96,7 @@ func TestDifferentSeedsLayDifferentPipes(t *testing.T) {
 func TestFlapSetsUpwardVelocityExactly(t *testing.T) {
 	g := Game{}
 	s := g.Start(1)
-	g.Apply(&s, SlotOne, Action{Flap: true})
+	g.Apply(&s, Slots()[0], Action{Flap: true})
 	if s.Bird[0].VY != flapVY {
 		t.Errorf("VY = %v, want %v", s.Bird[0].VY, flapVY)
 	}
@@ -105,11 +105,11 @@ func TestFlapSetsUpwardVelocityExactly(t *testing.T) {
 // Legality is decided before Apply, so Apply never has to re-check.
 func TestValidatorRejectsADeadBird(t *testing.T) {
 	s := Game{}.Start(1)
-	if err := (Validator{}).Legal(&s, SlotOne, Action{Flap: true}); err != nil {
+	if err := (Validator{}).Legal(&s, Slots()[0], Action{Flap: true}); err != nil {
 		t.Errorf("a living bird may flap: %v", err)
 	}
 	s.Bird[0].Alive = false
-	if err := (Validator{}).Legal(&s, SlotOne, Action{Flap: true}); err == nil {
+	if err := (Validator{}).Legal(&s, Slots()[0], Action{Flap: true}); err == nil {
 		t.Error("a dead bird may not flap")
 	}
 }
@@ -122,13 +122,18 @@ func TestProjectionGivesEachSlotItsOwnBird(t *testing.T) {
 	s := g.Start(1)
 	s.Bird[0].Passed = 3
 
-	obs := g.Project(&s, SlotOne)
-	if obs.You != SlotOne || obs.Self.Passed != 3 || obs.Rival.Passed != 0 {
+	slots := Slots()
+	obs := g.Project(&s, slots[0])
+	if obs.You != slots[0] || obs.Self.Passed != 3 {
 		t.Errorf("slot 1 observation = %+v", obs)
 	}
-	rival := g.Project(&s, SlotTwo)
-	if rival.Self.Passed != 0 || rival.Rival.Passed != 3 {
-		t.Errorf("slot 2 observation = %+v", rival)
+	if len(obs.Others) != Seats-1 {
+		t.Errorf("Others = %d entries, want %d", len(obs.Others), Seats-1)
+	}
+	for _, other := range obs.Others {
+		if other.Passed != 0 {
+			t.Errorf("another seat shows %d passed; only slot 1 was given a score", other.Passed)
+		}
 	}
 }
 

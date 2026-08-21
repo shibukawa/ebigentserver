@@ -1,4 +1,4 @@
-# {{.Name}} — written by ebigent init. Participant shape: {{.Shape}}.
+# {{.Name}} — written by ebigent init. {{.Seats}} seat(s), {{.View}} view.
 #
 # One file, and a section prefix decides which struct binds a key: the
 # ebigent tool reads [project], [build], [generate], [dev], and
@@ -45,7 +45,7 @@ topology = "{{.Topology}}"
 {{- if ne .Topology "standalone"}}
 listen = "127.0.0.1:4433"
 {{- end}}
-sync.mode = "{{.SyncMode}}"
+{{if .SyncMode}}sync.mode = "{{.SyncMode}}"{{end}}
 
 # Recording is off until a directory is named. Turn it on before you need
 # the data: a corpus cannot be collected retroactively.

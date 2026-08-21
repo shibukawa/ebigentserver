@@ -32,7 +32,9 @@ func runInit(c *context, opts *InitOptions) error {
 		Dir:           abs,
 		Module:        opts.Module,
 		Name:          opts.Name,
-		Shape:         opts.Shape,
+		Link:          opts.Link,
+		View:          opts.View,
+		Seats:         opts.Seats,
 		SyncMode:      opts.Sync,
 		FrameworkPath: opts.FrameworkPath,
 	}
@@ -89,28 +91,79 @@ func ask(w *wizard, spec *scaffold.Spec) error {
 	if spec.Module == "" {
 		spec.Module = w.text("Go module path", "example.com/"+spec.Name)
 	}
-	if spec.Shape == "" {
-		spec.Shape = w.choose(
-			"How many play one session? This decides what gets generated",
-			scaffold.Shapes, 0,
+	// The process boundary first: it is the one answer that changes what
+	// gets generated, since a link brings a server target, admission, and
+	// a synchronization mode with it.
+	if spec.Link == "" {
+		const (
+			solo  = "one player"
+			same  = "several players, same machine"
+			apart = "several players, over a link"
+		)
+		switch w.choose(
+			"Who plays, and where from? This decides whether a link exists at all",
+			[]string{solo, same, apart}, 0,
 			map[string]string{
-				"solo":  "one player, no network; the place to start",
-				"duo":   "two players over one direct link, no server",
-				"multi": "many players through a host, which may or may not play",
-			})
+				solo:  "one seat, one process, no network",
+				same:  "every seat in one process — couch play, one keyboard or several pads",
+				apart: "a process per seat, so the seats need a link between them",
+			}) {
+		case solo:
+			spec.Link, spec.Seats, spec.View = "local", 1, "shared"
+		case same:
+			spec.Link = "local"
+		default:
+			spec.Link = "networked"
+		}
 	}
-	modes := scaffold.SyncModesFor(spec.Shape)
-	if len(modes) == 0 {
-		return fmt.Errorf("unknown shape %q", spec.Shape)
+	if spec.Seats == 0 {
+		spec.Seats = w.number("How many seats?", 2, scaffold.MinSeats(spec.Link), 8)
 	}
-	if spec.SyncMode == "" {
+	// The camera is a separate question from the link. An online fighting
+	// game shares a camera across machines; a split screen console game
+	// splits one inside a single process (concept:view-arrangement).
+	if spec.View == "" && spec.Seats > 1 {
+		const (
+			shared = "one view everybody reads"
+			apart  = "a view per seat"
+		)
+		if w.choose("What does each seat see?", []string{shared, apart}, 0,
+			map[string]string{
+				shared: "fighting games, board games, most party games",
+				apart:  "shooters, anything with a per player camera",
+			}) == shared {
+			spec.View = "shared"
+		} else {
+			spec.View = "per_agent"
+		}
+	}
+	if spec.View == "" {
+		spec.View = "shared"
+	}
+	// Say the visibility constraint once, rather than let it surface as a
+	// bug in Project.
+	if spec.View == "shared" && spec.Seats > 1 {
+		w.note("One view means one set of facts: whatever is on screen, every seat may know.")
+		w.note("Hiding state between players needs a view per seat.")
+	}
+	if spec.Link == "local" && spec.Seats > 1 && spec.View == "per_agent" {
+		w.note("Split views in one process are a convention, not a boundary: both players can look across.")
+	}
+	modes := scaffold.SyncModesFor(spec.Link)
+	if spec.SyncMode == "" && len(modes) > 0 {
+		def := 0
+		for i, m := range modes {
+			if m == scaffold.SyncDefaultFor(spec.View) {
+				def = i
+			}
+		}
 		if len(modes) == 1 {
 			spec.SyncMode = modes[0]
-			w.note("Synchronization mode: %s (the only mode %s supports)", modes[0], spec.Shape)
+			w.note("Synchronization mode: %s", modes[0])
 		} else {
 			spec.SyncMode = w.choose(
-				"Synchronization mode — how sessions stay consistent",
-				modes, 0,
+				"Synchronization mode — how sessions stay consistent across the link",
+				modes, def,
 				map[string]string{
 					"server_authoritative": "the host decides; clients predict",
 					"delay":                "inputs are buffered so every peer steps together",
@@ -157,6 +210,30 @@ func defaultName(dir string) string {
 		return "game"
 	}
 	return name
+}
+
+// number asks for a count, refusing anything outside the range rather
+// than silently clamping it.
+func (w *wizard) number(prompt string, def, min, max int) int {
+	if w.auto {
+		w.note("%s %d", prompt, def)
+		return def
+	}
+	for {
+		fmt.Fprintf(w.out, "%s [%d]: ", prompt, def)
+		if !w.in.Scan() {
+			return def
+		}
+		answer := strings.TrimSpace(w.in.Text())
+		if answer == "" {
+			return def
+		}
+		n, err := strconv.Atoi(answer)
+		if err == nil && n >= min && n <= max {
+			return n
+		}
+		fmt.Fprintf(w.out, "  a number between %d and %d\n", min, max)
+	}
 }
 
 // wizard asks the questions. In auto mode it answers every one with the

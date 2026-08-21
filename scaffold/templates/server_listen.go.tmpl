@@ -27,7 +27,7 @@ import (
 const scale = 2
 
 // localSlot reports the slot this build plays.
-func localSlot() session.SlotID { return game.SlotOne }
+func localSlot() session.SlotID { return game.Slots()[0] }
 
 var shown view
 

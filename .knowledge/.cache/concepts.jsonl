@@ -62,6 +62,7 @@
 {"category": "concept", "id": "concept:tactic-selector", "path": ".knowledge/concept/tactic-selector.md", "role": "supporting", "title": "Tactic Selector", "type": "concept"}
 {"category": "concept", "id": "concept:transport-capability", "path": ".knowledge/concept/transport-capability.md", "role": "supporting", "title": "Transport Capability", "type": "concept"}
 {"category": "concept", "id": "concept:trust-model", "path": ".knowledge/concept/trust-model.md", "role": "supporting", "title": "Trust Model", "type": "concept"}
+{"category": "concept", "id": "concept:view-arrangement", "path": ".knowledge/concept/view-arrangement.md", "role": "supporting", "title": "View Arrangement", "type": "concept"}
 {"category": "concept", "id": "concept:visibility-scope", "path": ".knowledge/concept/visibility-scope.md", "role": "supporting", "title": "Visibility Scope", "type": "concept"}
 {"category": "concept", "id": "concept:world-state", "path": ".knowledge/concept/world-state.md", "role": "supporting", "title": "World State", "type": "concept"}
 {"category": "structure", "id": "data:agent-loadout", "path": ".knowledge/data/agent-loadout.md", "role": "supporting", "title": "Agent Loadout", "type": "data"}

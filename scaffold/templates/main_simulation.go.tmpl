@@ -31,7 +31,7 @@ func main() {
 	// to sweep, never to add entropy (rule:shared-rng-seed).
 	const seed = 1
 
-	one, two := &game.Bot{}, &game.Bot{}
+	bots := make([]*game.Bot, 0, len(game.Slots()))
 	var drivers []*game.Driver
 
 	s, err := session.New(game.Config("{{.Name}}-sim", seed, func(_ session.Tick, world *game.State) {
@@ -50,28 +50,27 @@ func main() {
 	// sits in the seat, and a local controller wants both. Detached is
 	// for a seat whose real controller is across a link, where local
 	// delivery would duplicate the stream it already receives.
-	for i, slot := range game.Slots() {
-		agent := one
-		if i == 1 {
-			agent = two
-		}
-		if err := s.Admit(slot, agent); err != nil {
+	for _, slot := range game.Slots() {
+		bot := &game.Bot{}
+		bots = append(bots, bot)
+		if err := s.Admit(slot, bot); err != nil {
 			fatal(err)
 		}
 		inbox, err := s.Inbox(slot)
 		if err != nil {
 			fatal(err)
 		}
-		drivers = append(drivers, &game.Driver{Slot: slot, Agent: agent, Inbox: inbox})
+		drivers = append(drivers, &game.Driver{Slot: slot, Agent: bot, Inbox: inbox})
 	}
 	if err := s.RunRealtime(context.Background(), session.Unlimited); err != nil {
 		fatal(err)
 	}
 
-	fmt.Printf("{{.Name}} simulation: seed %d, %d ticks, slot 1 %s (%d pipes), slot 2 %s (%d pipes)\n",
-		seed, s.Tick(),
-		one.Result.Signal.Terminal, one.Result.Signal.Score,
-		two.Result.Signal.Terminal, two.Result.Signal.Score)
+	fmt.Printf("{{.Name}} simulation: seed %d, %d ticks", seed, s.Tick())
+	for i, b := range bots {
+		fmt.Printf(", slot %d %s (%d pipes)", i+1, b.Result.Signal.Terminal, b.Result.Signal.Score)
+	}
+	fmt.Println()
 }
 
 func fatal(err error) {
