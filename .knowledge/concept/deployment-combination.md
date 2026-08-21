@@ -52,21 +52,45 @@ combinations:
     host: playing
     link: system:webrtc
     signaling: a concept:control-plane ticket naming the peer
+    server_role: control path only — it matches, authenticates, and signals, then leaves the data alone
     trust: the brokered_pair case of concept:trust-model
   - name: central
     seats: 2 or many
     host: dedicated
     link: system:webtransport, falling back to system:websocket, see decision:webtransport-primary-for-wasm
     signaling: a concept:control-plane ticket naming the server
+    server_role: data path — every exchange between two players is two hops instead of one
     trust: the central_session case of concept:trust-model, the only one whose results deserve ranked stakes
+  - name: relayed_peer
+    seats: 2 or many
+    host: playing
+    link: system:webrtc through a turn relay
+    server_role: data path, but only as a fallback — the peers tried to reach each other and could not
+    use: the escape hatch a peer to peer game needs for restrictive networks, already noted as optional in concept:static-host-mode
+    cost: the relay hop plus relay bandwidth, paid only by the sessions that need it
 excluded:
   - name: mesh
     why: peer links are star shaped here, so many peers means one host and n links, never n squared, see concept:static-host-mode
-  - name: dedicated over webrtc
-    why: arithmetically fine and pointless — a host that already has a certificate and a routable name gains nothing from nat traversal
+  - name: dedicated over webrtc as a primary path
+    why: a host with a certificate and a routable name gains nothing from nat traversal; as a fallback for peers that cannot reach each other it is the relayed_peer row above, which is a different thing
   - name: playing host over webtransport on the open internet
     why: needs a certificate and an inbound port the player does not have; the same shape works on a lan, which is why it appears there instead
 seat_count_effects: slot set, admission capacity, and whether concept:agent-departure-policy has to keep a session alive; not which transport is used
+data_path_or_control_path: >
+  the sharpest question once a link exists is whether the server carries
+  the traffic or only arranges it. On the data path it sees everything and
+  can be trusted with the simulation, at the cost of a second hop on every
+  exchange between two players. On the control path only, the peers reach
+  each other directly and the hop disappears, but the authority moves onto
+  a player machine, so results become forgeable — concept:trust-model says
+  as much. concept:realtime-intensity decides whether that hop is
+  affordable, and it is the twitch tier where it usually is not.
+p2p_data_path_commits_to_determinism: >
+  peers that exchange only actions have to reproduce the same world from
+  them, which is concept:input-synchronization and therefore
+  rule:deterministic-simulation-required-for-rollback. Avoiding the relay
+  hop is not free: it is paid for in the simulation being reproducible bit
+  for bit, which constrains every rule the game will ever write.
 transport_pair_is_not_redundant: >
   system:webtransport covers every row with a dedicated host and system:webrtc
   covers every row with a playing host, and neither reaches the other's rows.

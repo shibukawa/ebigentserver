@@ -23,8 +23,9 @@ func frameworkRoot(t *testing.T) string {
 
 func spec(t *testing.T, link, view string, seats int) *scaffold.Spec {
 	t.Helper()
+	const pace = "twitch"
 	sync := ""
-	if modes := scaffold.SyncModesFor(link); len(modes) > 0 {
+	if modes := scaffold.SyncModesFor(link, pace); len(modes) > 0 {
 		sync = scaffold.SyncDefaultFor(view)
 	}
 	return &scaffold.Spec{
@@ -32,6 +33,7 @@ func spec(t *testing.T, link, view string, seats int) *scaffold.Spec {
 		Module:        "example.com/mygame",
 		Name:          "mygame",
 		Link:          link,
+		Pace:          pace,
 		View:          view,
 		Seats:         seats,
 		SyncMode:      sync,
@@ -136,6 +138,10 @@ func TestSpecValidateRejectsUnreachableCombinations(t *testing.T) {
 		}, "no synchronization mode"},
 		{"unknown process boundary", func(s *scaffold.Spec) { s.Link = "mesh" }, "process boundary"},
 		{"unknown camera", func(s *scaffold.Spec) { s.View = "isometric" }, "view arrangement"},
+		{"unknown pace", func(s *scaffold.Spec) { s.Pace = "leisurely" }, "pace"},
+		{"rollback on a paced game", func(s *scaffold.Spec) {
+			s.Link, s.Pace, s.SyncMode = "networked", "paced", "rollback"
+		}, "sync mode"},
 		{"networked play with one seat", func(s *scaffold.Spec) {
 			s.Link, s.Seats, s.SyncMode = "networked", 1, "rollback"
 		}, "at least 2 seats"},
@@ -162,11 +168,21 @@ func TestSpecValidateRejectsUnreachableCombinations(t *testing.T) {
 // camera across two machines does not remove the link — which is exactly
 // the online fighting game case.
 func TestProcessBoundaryDecidesStructureNotTheCamera(t *testing.T) {
-	if got := scaffold.SyncModesFor("local"); len(got) != 0 {
+	if got := scaffold.SyncModesFor("local", "twitch"); len(got) != 0 {
 		t.Errorf("local play should have no synchronization mode, got %v", got)
 	}
-	if got := scaffold.SyncModesFor("networked"); len(got) == 0 {
+	if got := scaffold.SyncModesFor("networked", "twitch"); len(got) == 0 {
 		t.Error("networked play needs synchronization modes")
+	}
+	// Pace narrows what is offered: rollback is for twitch play, and a
+	// paced game has no business re-simulating.
+	if got := scaffold.SyncModesFor("networked", "paced"); contains(got, "rollback") {
+		t.Errorf("paced play should not offer rollback, got %v", got)
+	}
+	// Only twitch play needs a datagram channel; that is what lets a
+	// quieter game run over websocket alone.
+	if !scaffold.NeedsUnreliable("twitch") || scaffold.NeedsUnreliable("paced") {
+		t.Error("the datagram requirement should follow the pace")
 	}
 	for _, tgt := range scaffold.TargetsFor("local") {
 		if tgt.Kind == "server" {

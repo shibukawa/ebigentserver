@@ -33,6 +33,7 @@ func runInit(c *context, opts *InitOptions) error {
 		Module:        opts.Module,
 		Name:          opts.Name,
 		Link:          opts.Link,
+		Pace:          opts.Pace,
 		View:          opts.View,
 		Seats:         opts.Seats,
 		SyncMode:      opts.Sync,
@@ -149,7 +150,24 @@ func ask(w *wizard, spec *scaffold.Spec) error {
 	if spec.Link == "local" && spec.Seats > 1 && spec.View == "per_agent" {
 		w.note("Split views in one process are a convention, not a boundary: both players can look across.")
 	}
-	modes := scaffold.SyncModesFor(spec.Link)
+	// How much the feel depends on input-to-pixel delay. It sets the
+	// tuning profile, narrows the synchronization modes, and decides
+	// whether a datagram transport is needed at all
+	// (concept:realtime-intensity).
+	if spec.Pace == "" {
+		spec.Pace = w.choose(
+			"How much does the feel depend on the delay between input and effect?",
+			scaffold.Paces, 0,
+			map[string]string{
+				"paced":  "a frame of delay is invisible — strategy, simulation, timed card play",
+				"twitch": "the input to pixel path is the product — action, fighting, shooters",
+			})
+	}
+	if spec.Link == "networked" && spec.Pace == "twitch" {
+		w.note("Twitch play pays the server hop twice on every exchange between two players.")
+		w.note("Peer-to-peer removes it, at the price of a simulation that must reproduce bit for bit.")
+	}
+	modes := scaffold.SyncModesFor(spec.Link, spec.Pace)
 	if spec.SyncMode == "" && len(modes) > 0 {
 		def := 0
 		for i, m := range modes {

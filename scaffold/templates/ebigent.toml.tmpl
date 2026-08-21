@@ -46,6 +46,13 @@ topology = "{{.Topology}}"
 listen = "127.0.0.1:4433"
 {{- end}}
 {{if .SyncMode}}sync.mode = "{{.SyncMode}}"{{end}}
+{{- if .RequireUnreliable}}
+
+# This game asks for a datagram channel, which rules out a websocket-only
+# deployment. A turn-based game would not, and would run over any https
+# endpoint with no certificate story of its own.
+transport.require_unreliable = true
+{{- end}}
 
 # Recording is off until a directory is named. Turn it on before you need
 # the data: a corpus cannot be collected retroactively.

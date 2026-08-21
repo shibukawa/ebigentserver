@@ -42,6 +42,35 @@ var SyncModes = []string{"delay", "rollback", "server_authoritative", "hybrid"}
 // concept:synchronization-mode exist at all.
 var Links = []string{"local", "networked"}
 
+// Paces are concept:realtime-intensity. turn_based is deliberately absent:
+// it needs a step-paced placeholder rather than the realtime flyer these
+// templates generate, and generating a flyer for a turn-based project
+// would teach the wrong loop.
+var Paces = []string{"paced", "twitch"}
+
+// paceTuning is the data:session-tuning-profile each tier starts at. The
+// framework ships no defaults (decision:no-framework-tuning-defaults);
+// these are a starting declaration for the generated game, not framework
+// values.
+var paceTuning = map[string]Tuning{
+	"paced":  {TickRate: 30, SendRate: 15, SnapshotEvery: 60, HistoryDepth: 8},
+	"twitch": {TickRate: 60, SendRate: 60, SnapshotEvery: 120, HistoryDepth: 12},
+}
+
+// paceSync is which synchronization modes each tier can sensibly run.
+var paceSync = map[string][]string{
+	"paced":  {"server_authoritative", "hybrid"},
+	"twitch": {"rollback", "delay", "hybrid", "server_authoritative"},
+}
+
+// Tuning is the timing declaration written into the generated rules.
+type Tuning struct {
+	TickRate      int
+	SendRate      int
+	SnapshotEvery int
+	HistoryDepth  int
+}
+
 // Views is concept:view-arrangement: the camera. Independent of Links —
 // an online fighting game shares a camera across separate processes, and
 // a split screen console game splits one inside a single process.
@@ -91,12 +120,22 @@ func TopologyFor(link string) string { return linkTopology[link] }
 // consistent across a link, and there is no link. The camera does not
 // enter into it — sharing a camera across two machines does not remove
 // the link, it only means both render the same mispredicted frame.
-func SyncModesFor(link string) []string {
+func SyncModesFor(link, pace string) []string {
 	if link == "local" {
 		return nil
 	}
-	return SyncModes
+	modes := paceSync[pace]
+	if len(modes) == 0 {
+		return SyncModes
+	}
+	return modes
 }
+
+// NeedsUnreliable reports whether a tier wants a datagram channel. A
+// turn-based game does not, which is what lets it run over
+// system:websocket with no datagram transport anywhere in the
+// deployment.
+func NeedsUnreliable(pace string) bool { return pace == "twitch" }
 
 // MinSeats is the smallest seat count a boundary makes sense with.
 func MinSeats(link string) int {
@@ -151,6 +190,9 @@ type Spec struct {
 	// View is concept:view-arrangement: the camera, shared or per_agent.
 	// Independent of Link.
 	View string
+	// Pace is concept:realtime-intensity, which sets the tuning profile
+	// and narrows the synchronization modes.
+	Pace string
 	// Seats is how many concept:player-slot entries the rules declare.
 	// A number rather than a category: two seats and twenty generate the
 	// same wiring.
@@ -192,7 +234,10 @@ func (s *Spec) Validate() error {
 	if s.Seats > 8 {
 		errs = append(errs, fmt.Errorf("%d seats is past what the generated placeholder renders; declare the slots by hand instead", s.Seats))
 	}
-	switch modes := SyncModesFor(s.Link); {
+	if !slices.Contains(Paces, s.Pace) {
+		errs = append(errs, fmt.Errorf("pace %q is not one of %v", s.Pace, Paces))
+	}
+	switch modes := SyncModesFor(s.Link, s.Pace); {
 	case len(modes) == 0 && s.SyncMode != "":
 		errs = append(errs, errors.New("local play has no synchronization mode to set: there is no link to keep consistent"))
 	case len(modes) > 0 && !slices.Contains(modes, s.SyncMode):
@@ -209,6 +254,13 @@ func (s *Spec) Targets() []Target { return linkTargets[s.Link] }
 
 // Topology is the data:run-config topology this boundary starts at.
 func (s *Spec) Topology() string { return linkTopology[s.Link] }
+
+// Tuning is the timing declaration for this spec's pace.
+func (s *Spec) Tuning() Tuning { return paceTuning[s.Pace] }
+
+// RequireUnreliable reports whether the generated run config asks for a
+// datagram channel.
+func (s *Spec) RequireUnreliable() bool { return NeedsUnreliable(s.Pace) }
 
 // SlotNames renders the generated slot identifiers, so the rules template
 // can declare one constant per seat.

@@ -47,6 +47,7 @@
 {"category": "concept", "id": "concept:observation", "path": ".knowledge/concept/observation.md", "role": "supporting", "title": "Observation", "type": "concept"}
 {"category": "concept", "id": "concept:participant-shape", "path": ".knowledge/concept/participant-shape.md", "role": "supporting", "title": "Participant Shape", "type": "concept"}
 {"category": "concept", "id": "concept:player-slot", "path": ".knowledge/concept/player-slot.md", "role": "supporting", "title": "Player Slot", "type": "concept"}
+{"category": "concept", "id": "concept:realtime-intensity", "path": ".knowledge/concept/realtime-intensity.md", "role": "supporting", "title": "Realtime Intensity", "type": "concept"}
 {"category": "concept", "id": "concept:sample-acceptance-matrix", "path": ".knowledge/concept/sample-acceptance-matrix.md", "role": "supporting", "title": "Sample Acceptance Matrix", "type": "concept"}
 {"category": "concept", "id": "concept:sample-progression", "path": ".knowledge/concept/sample-progression.md", "role": "supporting", "title": "Sample Progression", "type": "concept"}
 {"category": "concept", "id": "concept:session-lifecycle", "path": ".knowledge/concept/session-lifecycle.md", "role": "supporting", "title": "Session Lifecycle", "type": "concept"}

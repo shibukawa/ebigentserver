@@ -351,10 +351,10 @@ func (Validator) Legal(s *State, slot session.SlotID, a Action) error {
 // frame; a networked build lowers it and interpolates.
 func Tuning() session.TuningProfile {
 	return session.TuningProfile{
-		TickRate:      60,
-		SendRate:      60,
-		SnapshotEvery: 120,
-		HistoryDepth:  8,
+		TickRate:      {{.Tuning.TickRate}},
+		SendRate:      {{.Tuning.SendRate}},
+		SnapshotEvery: {{.Tuning.SnapshotEvery}},
+		HistoryDepth:  {{.Tuning.HistoryDepth}},
 	}
 }
 
