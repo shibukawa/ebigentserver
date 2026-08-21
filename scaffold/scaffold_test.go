@@ -63,6 +63,7 @@ func TestGeneratedProjectBuildsAndPassesItsTests(t *testing.T) {
 		{"duo_own_machines", "duo", 0, false},
 		{"multi_one_machine", "multi", 4, true},
 		{"multi_own_machines", "multi", 4, false},
+		{"multi_at_two_seats", "multi", 2, false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			s := spec(t, tc.style, tc.seats, tc.localMulti)
@@ -196,15 +197,26 @@ func TestStyleDecidesStructureNotTheSeating(t *testing.T) {
 	if got := scaffold.SeatsForStyle("multi", 6); got != 6 {
 		t.Errorf("multi seats = %d, want the given 6", got)
 	}
-	// Two seats start at a playing host; past two, at one that can be
-	// trusted with the result. Both are starting values, not constraints:
-	// a player can hold a session of any size, which is what
-	// concept:static-host-mode is.
-	if got := scaffold.TopologyForSeats(2); got != "listen" {
-		t.Errorf("two-seat topology = %q, want listen", got)
+	// duo starts at a playing host, because one hop is why it is a style.
+	// multi starts at a dedicated one whatever its seat count — including
+	// two, where picking multi says latency is not what decides the game.
+	// Both are starting values: a player can hold a session of any size,
+	// which is what concept:static-host-mode is.
+	if got := scaffold.TopologyForStyle("duo"); got != "listen" {
+		t.Errorf("duo topology = %q, want listen", got)
 	}
-	if got := scaffold.TopologyForSeats(4); got != "dedicated" {
-		t.Errorf("four-seat topology = %q, want dedicated", got)
+	if got := scaffold.TopologyForStyle("multi"); got != "dedicated" {
+		t.Errorf("multi topology = %q, want dedicated", got)
+	}
+
+	// Two players who are not latency-bound are multi with two seats, not
+	// duo. Both offer the one-hop netcodes, since the seat count is what
+	// makes them reachable, but only duo defaults to one.
+	if got := scaffold.SyncModesFor(2); !contains(got, "rollback") {
+		t.Errorf("two seats should offer rollback whichever style asked, got %v", got)
+	}
+	if got := scaffold.SyncDefaultFor("multi"); got == "rollback" {
+		t.Error("multi should not default to rollback even at two seats")
 	}
 	for _, tgt := range scaffold.TargetsFor(1) {
 		if tgt.Kind == "server" {

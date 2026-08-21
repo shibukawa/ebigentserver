@@ -8,6 +8,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/shibukawa/ebigentserver/scaffold"
 )
@@ -95,16 +96,16 @@ func ask(w *wizard, spec *scaffold.Spec, opts *InitOptions) error {
 	if spec.Style == "" {
 		const (
 			solo  = "one player"
-			duo   = "two players"
-			multi = "multiplayer"
+			duo   = "two players (realtime required)"
+			multi = "multiplayer (two or more)"
 		)
 		switch w.choose(
 			"How is it played?",
 			[]string{solo, duo, multi}, 0,
 			map[string]string{
 				solo:  "one seat; no link, nothing to synchronize",
-				duo:   "exactly two, and they reach each other in one hop — the case rollback is for",
-				multi: "more than two, so every exchange goes through a host either way",
+				duo:   "exactly two, reaching each other in one hop — pick this when the tight loop is the point",
+				multi: "two or more through a host; pick this at two when latency is not what decides the game",
 			}) {
 		case solo:
 			spec.Style = "solo"
@@ -116,7 +117,7 @@ func ask(w *wizard, spec *scaffold.Spec, opts *InitOptions) error {
 	}
 	// solo and duo fix their own seat count; only multi has one to give.
 	if spec.Style == "multi" && spec.Seats == 0 {
-		spec.Seats = w.number("At most how many players in one session?", 4, 3, 8)
+		spec.Seats = w.number("At most how many players in one session?", 4, 2, 8)
 	}
 	spec.Seats = scaffold.SeatsForStyle(spec.Style, spec.Seats)
 
@@ -292,15 +293,28 @@ func (w *wizard) text(prompt, def string) string {
 	return def
 }
 
+// list prints the numbered options, padding the labels to the longest one
+// so the help text lines up whatever the labels say.
+func (w *wizard) list(options []string, help map[string]string) {
+	width := 0
+	for _, o := range options {
+		if n := utf8.RuneCountInString(o); n > width {
+			width = n
+		}
+	}
+	for i, o := range options {
+		pad := strings.Repeat(" ", width-utf8.RuneCountInString(o))
+		fmt.Fprintf(w.out, "  %d) %s%s   %s\n", i+1, o, pad, help[o])
+	}
+}
+
 func (w *wizard) choose(prompt string, options []string, def int, help map[string]string) string {
 	if w.auto {
 		w.note("%s: %s", prompt, options[def])
 		return options[def]
 	}
 	fmt.Fprintf(w.out, "\n%s\n", prompt)
-	for i, o := range options {
-		fmt.Fprintf(w.out, "  %d) %-22s %s\n", i+1, o, help[o])
-	}
+	w.list(options, help)
 	for {
 		fmt.Fprintf(w.out, "choice [%d]: ", def+1)
 		if !w.in.Scan() {
@@ -331,9 +345,7 @@ func (w *wizard) chooseMany(prompt string, options []string, def []int, help map
 		return pick(def)
 	}
 	fmt.Fprintf(w.out, "\n%s\n", prompt)
-	for i, o := range options {
-		fmt.Fprintf(w.out, "  %d) %-22s %s\n", i+1, o, help[o])
-	}
+	w.list(options, help)
 	for {
 		fmt.Fprintf(w.out, "choices, comma separated [%s]: ", joinInts(def))
 		if !w.in.Scan() {

@@ -84,7 +84,7 @@ func ReachFor(seats int) string {
 	return "linked"
 }
 
-// TopologyForSeats is the data:run-config topology a project starts at.
+// TopologyForStyle is the data:run-config topology a project starts at.
 //
 // A starting value, not a constraint. Every seat count can run under
 // either host: four rows of concept:deployment-combination carry a
@@ -93,15 +93,16 @@ func ReachFor(seats int) string {
 // generated config says so and both builds are produced, so flipping this
 // is a config edit rather than a regeneration.
 //
-// Two seats start at a playing host because that is the one case where a
-// peer link is genuinely one hop. Past two, a peer host and a dedicated
-// one are both two hops, so the starting value goes to the one whose
-// results can be trusted — which is a default, not a requirement.
-func TopologyForSeats(seats int) string {
-	switch {
-	case seats <= 1:
+// duo starts at a playing host because one hop is the reason it exists as
+// a style. multi starts at a dedicated one whatever its seat count: a
+// project that picks multi at two seats is saying latency is not what
+// decides the game, so the trustworthy host is the better starting point.
+// Both remain starting values, not requirements.
+func TopologyForStyle(style string) string {
+	switch style {
+	case "solo":
 		return "standalone"
-	case seats == 2:
+	case "duo":
 		return "listen"
 	default:
 		return "dedicated"
@@ -273,7 +274,7 @@ func (s *Spec) Validate() error {
 func (s *Spec) Targets() []Target { return reachTargets[ReachFor(s.Seats)] }
 
 // Topology is the data:run-config topology this boundary starts at.
-func (s *Spec) Topology() string { return TopologyForSeats(s.Seats) }
+func (s *Spec) Topology() string { return TopologyForStyle(s.Style) }
 
 // Tuning is the timing declaration for this spec's pace.
 func (s *Spec) Tuning() Tuning { return tuningForSeats(s.Seats) }

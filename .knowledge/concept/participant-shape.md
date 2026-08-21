@@ -13,14 +13,22 @@ shapes:
     link: none, in process only
     targets: one rendering entry and a simulation entry
   - name: duo
-    agents: two
+    agents: two, and latency is what decides the game
     seats: fixed at two
     targets: a client entry, a server entry carrying both linkage forms, and a simulation entry
-    why_its_own_shape: two is the one seat count where a peer link is genuinely one hop, since the host is the other player; that is what puts term:rollback and term:delay-buffering in reach
+    why_its_own_shape: two is the one seat count where a peer link is genuinely one hop, since the host is the other player; that is what puts term:rollback and term:delay-buffering in reach, and wanting them is the reason to pick this rather than multi
+    starts_at: a playing host, because the one hop is the point
   - name: multi
-    agents: as many as the project declares
-    seats: asked, since nothing fixes it
+    agents: two or more, reached through a host
+    seats: asked, since nothing fixes it; two is a legitimate answer
     targets: the same set duo generates — the seat count changes the slot set and the admission capacity, not the wiring
+    starts_at: a dedicated host at any seat count, since choosing this at two says latency is not what decides the game
+two_seats_appear_in_both: >
+  the shapes are not a seat count partition. Two players who need the
+  tight loop are duo; two players who do not are multi with two seats, and
+  they differ in where they start — a playing host against a trustworthy
+  one — not in what is generated. Both offer the one-hop modes, because
+  the seat count is what makes those reachable; only duo defaults to one.
 why_not_topology: concept:execution-topology answers where the session sits, which every shape still chooses at runtime; this answers what has to be generated
 why_p2p_is_not_a_shape: peer to peer is star shaped here (concept:static-host-mode), so a peer-hosted session of three is one host and three links, not a structure of its own
 why_host_is_not_a_shape: a duo can be player hosted or server hosted just as a multi can, so the host is an orthogonal axis; it is the same server entry built with or without a renderer, see rule:build-tag-only-for-linkage
