@@ -24,12 +24,15 @@ combinations:
     link: pipe
     signaling: none
     trust: the standalone case of concept:trust-model
-  - name: local_pair
-    seats: 2
+  - name: local_loopback
+    seats: 2 or many
     host: playing
-    link: pipe
+    link: transport/pipe, an in process Conn pair
     signaling: none
-    use: development and tests, both agents in one process
+    distinct_from_solo: solo admits agents straight into the concept:session; this one puts a transport between them, so encoding, snapshot and delta generation, and api:sequence-ack-layer all run without a network
+    also_a_fault_rig: the pipe injects loss, latency, jitter, and reordering per direction, which is how term:rollback, concept:lag-compensation, and concept:delta-baseline-policy recovery get tested against a bad link that does not have to exist
+    reproducibility: the drop and reorder pattern is seeded and repeats; arrival timing rides real timers and does not, which is deliberate
+    use: decision:combined-local-dev-process, and what the dev verb of api:game-cli runs
   - name: lan_pair_or_party
     seats: 2 or many
     host: playing

@@ -265,6 +265,13 @@
 {"context": "body", "path": ".knowledge/concept/deployment-combination.md", "source": "concept:deployment-combination", "target": "system:quic-udp", "target_category": "external", "target_type": "system"}
 {"context": "body", "path": ".knowledge/concept/deployment-combination.md", "source": "concept:deployment-combination", "target": "concept:signaling-method", "target_category": "concept", "target_type": "concept"}
 {"context": "body", "path": ".knowledge/concept/deployment-combination.md", "source": "concept:deployment-combination", "target": "concept:trust-model", "target_category": "concept", "target_type": "concept"}
+{"context": "body", "path": ".knowledge/concept/deployment-combination.md", "source": "concept:deployment-combination", "target": "concept:session", "target_category": "concept", "target_type": "concept"}
+{"context": "body", "path": ".knowledge/concept/deployment-combination.md", "source": "concept:deployment-combination", "target": "api:sequence-ack-layer", "target_category": "interface", "target_type": "api"}
+{"context": "body", "path": ".knowledge/concept/deployment-combination.md", "source": "concept:deployment-combination", "target": "term:rollback", "target_category": "vocabulary", "target_type": "term"}
+{"context": "body", "path": ".knowledge/concept/deployment-combination.md", "source": "concept:deployment-combination", "target": "concept:lag-compensation", "target_category": "concept", "target_type": "concept"}
+{"context": "body", "path": ".knowledge/concept/deployment-combination.md", "source": "concept:deployment-combination", "target": "concept:delta-baseline-policy", "target_category": "concept", "target_type": "concept"}
+{"context": "body", "path": ".knowledge/concept/deployment-combination.md", "source": "concept:deployment-combination", "target": "decision:combined-local-dev-process", "target_category": "constraint", "target_type": "decision"}
+{"context": "body", "path": ".knowledge/concept/deployment-combination.md", "source": "concept:deployment-combination", "target": "api:game-cli", "target_category": "interface", "target_type": "api"}
 {"context": "body", "path": ".knowledge/concept/deployment-combination.md", "source": "concept:deployment-combination", "target": "api:lan-discovery", "target_category": "interface", "target_type": "api"}
 {"context": "body", "path": ".knowledge/concept/deployment-combination.md", "source": "concept:deployment-combination", "target": "api:manual-signaling-token", "target_category": "interface", "target_type": "api"}
 {"context": "body", "path": ".knowledge/concept/deployment-combination.md", "source": "concept:deployment-combination", "target": "concept:static-host-mode", "target_category": "concept", "target_type": "concept"}
