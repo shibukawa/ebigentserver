@@ -1,0 +1,134 @@
+// Command {{.Target.Name}} hosts {{.Name}} for the multi shape.
+//
+// It comes in two linkage forms out of one directory:
+//
+//	go build ./cmd/{{.Target.Name}}                 headless, concept:dedicated-server-mode
+//	go build -tags listen ./cmd/{{.Target.Name}}    also plays, concept:listen-server-mode
+//
+// The tag decides one thing only: whether this artifact links a renderer
+// (rule:build-tag-only-for-linkage). Everything else — which topology the
+// process runs, its listen address, the synchronization mode — stays a
+// run value both forms read from the same data:run-config.
+//
+// A tag rather than two entry points because the two forms cannot share a
+// process: a headless server must not link the engine at all. A tag here
+// rather than in a library because it never leaves this directory, so a
+// missing tag fails at the entry point instead of somewhere distant
+// (decision:entry-points-over-build-tags).
+//
+// The variant files supply exactly two things, and adding a third means
+// the split was drawn in the wrong place:
+//
+//	localSlot() session.SlotID   the slot this build plays, 0 for none
+//	serve(...) error             how the session loop is driven
+//
+// TRANSPORT SEAM. Remote seats are not wired yet. The shape is already
+// right: every seat is session.Detached fed through an Inbox, which is
+// exactly how a networked peer arrives, so putting package netplay in
+// front changes this directory and nothing under game/.
+package main
+
+import (
+	"context"
+	"fmt"
+	"os"
+	"os/signal"
+
+	"{{.Module}}/game"
+	"github.com/shibukawa/ebigentserver/config/confload"
+	"github.com/shibukawa/ebigentserver/config/runconf"
+	"github.com/shibukawa/ebigentserver/session"
+)
+
+// gameState names the world for the variant files, so the headless one
+// needs no import of the game package at all.
+type gameState = game.State
+
+// host is what both linkage forms are handed: the session, the seats they
+// did not take, and the inbox of the seat they did.
+type host struct {
+	session *session.Session[game.State, game.Action, game.Observation]
+	bots    []*game.Bot
+	// local is the inbox of localSlot, nil when this build plays none.
+	local *session.Inbox[game.Action]
+}
+
+func main() {
+	run := runconf.Bind()
+	if _, err := confload.Load(confload.Options{
+		Owned:    runconf.Prefixes(),
+		Validate: []func() error{func() error { return run.Validate() }},
+	}); err != nil {
+		fatal(err)
+	}
+	fmt.Printf("{{.Target.Name}}: topology %s, sync %s, listen %q\n",
+		run.Topology, run.Sync.Mode, run.Listen)
+
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer stop()
+
+	h := &host{}
+	var drivers []*game.Driver
+
+	s, err := session.New(game.Config("{{.Name}}-server", 1, func(_ session.Tick, world *game.State) {
+		onWorld(world)
+		for _, d := range drivers {
+			d.OnWorld(world)
+		}
+	}))
+	if err != nil {
+		fatal(err)
+	}
+	h.session = s
+	if err := s.OpenAdmission(); err != nil {
+		fatal(err)
+	}
+
+	local := localSlot()
+	for _, slot := range game.Slots() {
+		inbox, seatErr := seat(h, s, slot, slot == local, &drivers)
+		if seatErr != nil {
+			fatal(seatErr)
+		}
+		if slot == local {
+			h.local = inbox
+		}
+	}
+
+	if err := serve(ctx, h); err != nil {
+		fatal(err)
+	}
+	fmt.Printf("{{.Target.Name}}: session ended after %d ticks\n", s.Tick())
+}
+
+// seat fills one slot. The slot this build plays is Detached — its
+// observations reach the renderer through the broadcast world, so
+// delivering them to the seat as well would duplicate the path a remote
+// player uses. Every other slot gets a local bot, admitted directly
+// because a local controller does want the final observation and Ended.
+func seat(h *host, s *session.Session[game.State, game.Action, game.Observation],
+	slot session.SlotID, isLocal bool, drivers *[]*game.Driver) (*session.Inbox[game.Action], error) {
+
+	if isLocal {
+		if err := s.Admit(slot, session.Detached[game.Observation, game.Action]{}); err != nil {
+			return nil, err
+		}
+		return s.Inbox(slot)
+	}
+	bot := &game.Bot{}
+	h.bots = append(h.bots, bot)
+	if err := s.Admit(slot, bot); err != nil {
+		return nil, err
+	}
+	inbox, err := s.Inbox(slot)
+	if err != nil {
+		return nil, err
+	}
+	*drivers = append(*drivers, &game.Driver{Slot: slot, Agent: bot, Inbox: inbox})
+	return inbox, nil
+}
+
+func fatal(err error) {
+	fmt.Fprintln(os.Stderr, "{{.Target.Name}}:", err)
+	os.Exit(1)
+}

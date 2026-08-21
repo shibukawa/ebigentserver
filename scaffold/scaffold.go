@@ -33,59 +33,97 @@ var templates embed.FS
 // FrameworkModule is the import path a generated project depends on.
 const FrameworkModule = "github.com/shibukawa/ebigentserver"
 
-// TargetKinds are the concept:build-target rows init can generate an
-// entry point for, in the order a wizard offers them.
-var TargetKinds = []string{"client", "listen", "dedicated", "simulation"}
+// Shapes are concept:participant-shape: how many agents share a session
+// and how they reach it. This is the first question, because it decides
+// what has to be generated rather than what goes in a file.
+var Shapes = []string{"solo", "duo", "multi"}
 
-// Topologies and SyncModes mirror the run configuration allowlists; the
-// wizard offers these and writes the choice into ebigent.toml.
-var (
-	Topologies = []string{"standalone", "listen", "dedicated", "p2p"}
-	SyncModes  = []string{"delay", "rollback", "server_authoritative", "hybrid"}
-)
+// SyncModes mirrors the run configuration allowlist.
+var SyncModes = []string{"delay", "rollback", "server_authoritative", "hybrid"}
 
-// topologyTargets is which targets a topology can actually use, and so
-// which ones the wizard offers once the topology is chosen.
-var topologyTargets = map[string][]string{
-	"standalone": {"client", "simulation"},
-	"listen":     {"listen", "client", "simulation"},
-	"dedicated":  {"dedicated", "client", "simulation"},
-	"p2p":        {"client", "simulation"},
+// shapeTargets is the entry point set each shape needs. Nothing is
+// optional here: a shape that needs a server and a client needs both, and
+// offering the choice would only produce projects that cannot play.
+var shapeTargets = map[string][]Target{
+	"solo": {
+		{Name: "game", Kind: "client"},
+		{Name: "simulation", Kind: "simulation"},
+	},
+	"duo": {
+		{Name: "client", Kind: "client"},
+		{Name: "server", Kind: "server"},
+		{Name: "simulation", Kind: "simulation"},
+	},
+	"multi": {
+		{Name: "client", Kind: "client"},
+		{Name: "server", Kind: "server"},
+		{Name: "simulation", Kind: "simulation"},
+	},
 }
 
-// topologySync is which synchronization modes each topology supports, so
-// step 2 of flow:project-init offers only reachable combinations.
-var topologySync = map[string][]string{
-	"standalone": {"server_authoritative"},
-	"listen":     {"server_authoritative", "delay", "rollback", "hybrid"},
-	"dedicated":  {"server_authoritative", "delay", "hybrid"},
-	"p2p":        {"delay", "rollback"},
+// shapeSync is which synchronization modes each shape can run, so step 2
+// of flow:project-init offers only reachable combinations.
+var shapeSync = map[string][]string{
+	"solo":  {"server_authoritative"},
+	"duo":   {"delay", "rollback", "server_authoritative"},
+	"multi": {"server_authoritative", "delay", "hybrid"},
 }
 
-// TargetsFor reports the build targets a topology can use.
-func TargetsFor(topology string) []string { return topologyTargets[topology] }
+// shapeTopology is the data:run-config topology a shape starts at. It is
+// a run value, so a generated project changes it without regenerating —
+// which is the point of concept:deployment-combination keeping the host
+// separate from the seat count.
+var shapeTopology = map[string]string{
+	"solo":  "standalone",
+	"duo":   "dedicated",
+	"multi": "dedicated",
+}
 
-// SyncModesFor reports the synchronization modes a topology supports.
-func SyncModesFor(topology string) []string { return topologySync[topology] }
+// Seats is how many player slots a shape declares.
+var shapeSeats = map[string]int{"solo": 1, "duo": 2, "multi": 4}
+
+// SeatsFor reports the slot count a shape generates.
+func SeatsFor(shape string) int { return shapeSeats[shape] }
+
+// TargetsFor reports the entry points a shape generates.
+func TargetsFor(shape string) []Target { return shapeTargets[shape] }
+
+// SyncModesFor reports the synchronization modes a shape supports.
+func SyncModesFor(shape string) []string { return shapeSync[shape] }
+
+// TopologyFor reports the run topology a shape starts at.
+func TopologyFor(shape string) string { return shapeTopology[shape] }
 
 // Target is one generated entry point.
 type Target struct {
 	// Name is the directory under cmd and the target name in
 	// ebigent.toml.
 	Name string
-	// Kind is the concept:build-target row.
+	// Kind is the concept:build-target row: client, server, or
+	// simulation. A server carries both linkage forms in one directory
+	// and picks between them with a build tag, so listen and dedicated
+	// are not separate kinds.
 	Kind string
 }
 
 // Entry is the main package path of this target.
 func (t Target) Entry() string { return "./cmd/" + t.Name }
 
-// Dev reports whether this target links api:dev-debug-endpoint. Only the
-// simulation and client rows are dev-only today; nothing generated here
-// links the endpoint yet, so it is always false and
-// rule:debug-endpoint-excluded-from-release has nothing to enforce until
-// the endpoint exists.
-func (t Target) Dev() bool { return false }
+// Tagged reports whether this target has a second linkage form selected
+// by a build tag (rule:build-tag-only-for-linkage). Only a server does:
+// built plain it is headless and never links the engine, built with the
+// listen tag it also seats the local player.
+func (t Target) Tagged() bool { return t.Kind == "server" }
+
+// ConfigKind maps a generated target onto the data:build-config kind,
+// which still names the two server forms separately because a built
+// artifact is one or the other.
+func (t Target) ConfigKind() string {
+	if t.Kind == "server" {
+		return "dedicated"
+	}
+	return t.Kind
+}
 
 // Spec is one project to write.
 type Spec struct {
@@ -95,12 +133,10 @@ type Spec struct {
 	Module string
 	// Name identifies the game in session IDs and the chip library.
 	Name string
-	// Topology is the concept:execution-topology chosen in step 1.
-	Topology string
+	// Shape is the concept:participant-shape chosen in step 1.
+	Shape string
 	// SyncMode is the concept:synchronization-mode chosen in step 2.
 	SyncMode string
-	// Targets are the entry points chosen in step 3.
-	Targets []Target
 	// FrameworkPath, when set, adds a replace directive pointing at a
 	// local checkout. It is what lets a project build against
 	// unreleased framework code, and what the scaffold's own test uses.
@@ -121,33 +157,14 @@ func (s *Spec) Validate() error {
 	if s.Name == "" {
 		errs = append(errs, errors.New("Name is required"))
 	}
-	if !slices.Contains(Topologies, s.Topology) {
-		errs = append(errs, fmt.Errorf("topology %q is not one of %v", s.Topology, Topologies))
+	if !slices.Contains(Shapes, s.Shape) {
+		errs = append(errs, fmt.Errorf("shape %q is not one of %v", s.Shape, Shapes))
 	}
 	if !slices.Contains(SyncModes, s.SyncMode) {
 		errs = append(errs, fmt.Errorf("sync mode %q is not one of %v", s.SyncMode, SyncModes))
 	}
-	if allowed, ok := topologySync[s.Topology]; ok && !slices.Contains(allowed, s.SyncMode) {
-		errs = append(errs, fmt.Errorf("topology %q does not support sync mode %q; it supports %v", s.Topology, s.SyncMode, allowed))
-	}
-	if len(s.Targets) == 0 {
-		errs = append(errs, errors.New("declare at least one build target"))
-	}
-	seen := map[string]bool{}
-	for _, t := range s.Targets {
-		if !slices.Contains(TargetKinds, t.Kind) {
-			errs = append(errs, fmt.Errorf("target kind %q is not one of %v", t.Kind, TargetKinds))
-		}
-		if allowed, ok := topologyTargets[s.Topology]; ok && !slices.Contains(allowed, t.Kind) {
-			errs = append(errs, fmt.Errorf("topology %q cannot use a %q target; it can use %v", s.Topology, t.Kind, allowed))
-		}
-		if t.Name == "" {
-			errs = append(errs, errors.New("every target needs a name"))
-		}
-		if seen[t.Name] {
-			errs = append(errs, fmt.Errorf("two targets are both named %q", t.Name))
-		}
-		seen[t.Name] = true
+	if allowed, ok := shapeSync[s.Shape]; ok && !slices.Contains(allowed, s.SyncMode) {
+		errs = append(errs, fmt.Errorf("shape %q does not support sync mode %q; it supports %v", s.Shape, s.SyncMode, allowed))
 	}
 	if len(errs) > 0 {
 		return fmt.Errorf("scaffold: invalid spec: %w", errors.Join(errs...))
@@ -155,16 +172,22 @@ func (s *Spec) Validate() error {
 	return nil
 }
 
-// DevTarget is the target ebigent dev runs by default: the first one a
-// developer would want in front of them, which is a playable client
-// where there is one.
+// Targets is the entry point set this shape generates.
+func (s *Spec) Targets() []Target { return shapeTargets[s.Shape] }
+
+// Topology is the data:run-config topology this shape starts at.
+func (s *Spec) Topology() string { return shapeTopology[s.Shape] }
+
+// DevTarget is the target ebigent dev runs by default: the one a
+// developer would want in front of them, which is the playable client.
 func (s *Spec) DevTarget() string {
-	for _, want := range []string{"listen", "client", "dedicated", "simulation"} {
-		for _, t := range s.Targets {
-			if t.Kind == want {
-				return t.Name
-			}
+	for _, t := range s.Targets() {
+		if t.Kind == "client" {
+			return t.Name
 		}
+	}
+	if ts := s.Targets(); len(ts) > 0 {
+		return ts[0].Name
 	}
 	return ""
 }
@@ -245,20 +268,29 @@ func render(spec *Spec) (map[string][]byte, error) {
 		out[name] = body
 	}
 
-	for _, t := range spec.Targets {
+	for _, t := range spec.Targets() {
 		data := struct {
 			*Spec
 			Target Target
 		}{spec, t}
-		body, err := execute("main_"+t.Kind+".go.tmpl", data)
-		if err != nil {
-			return nil, err
+		// A server directory holds three files: the shared body and one
+		// small file per linkage form, selected by the listen tag.
+		files := map[string]string{"main.go": "main_" + t.Kind + ".go.tmpl"}
+		if t.Tagged() {
+			files["listen.go"] = "server_listen.go.tmpl"
+			files["headless.go"] = "server_headless.go.tmpl"
 		}
-		name := path.Join("cmd", t.Name, "main.go")
-		if body, err = gofmtSource(name, body); err != nil {
-			return nil, err
+		for base, tmpl := range files {
+			body, err := execute(tmpl, data)
+			if err != nil {
+				return nil, err
+			}
+			name := path.Join("cmd", t.Name, base)
+			if body, err = gofmtSource(name, body); err != nil {
+				return nil, err
+			}
+			out[name] = body
 		}
-		out[name] = body
 	}
 
 	// decision:ai-pipeline-always-scaffolded: the corpus root, the chip

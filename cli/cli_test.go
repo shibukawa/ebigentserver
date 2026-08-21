@@ -59,7 +59,7 @@ func TestInitNonInteractiveProducesAWorkingProject(t *testing.T) {
 	dir := t.TempDir()
 	code, out, errOut := run(t, "", "init", dir,
 		"--yes", "--module", "example.com/probe", "--name", "probe",
-		"--topology", "standalone", "--target", "simulation",
+		"--shape", "solo",
 		"--framework_path", frameworkRoot(t))
 	if code != 0 {
 		t.Fatalf("exit %d\nstdout:\n%s\nstderr:\n%s", code, out, errOut)
@@ -82,7 +82,7 @@ func TestInitRefusesAnExistingProject(t *testing.T) {
 	}
 	code, _, errOut := run(t, "", "init", dir, "--yes",
 		"--module", "example.com/probe", "--name", "probe",
-		"--topology", "standalone", "--target", "simulation", "--skip_tidy")
+		"--shape", "solo", "--skip_tidy")
 	if code == 0 {
 		t.Fatal("a second init should fail")
 	}

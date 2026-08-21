@@ -32,12 +32,9 @@ func runInit(c *context, opts *InitOptions) error {
 		Dir:           abs,
 		Module:        opts.Module,
 		Name:          opts.Name,
-		Topology:      opts.Topology,
+		Shape:         opts.Shape,
 		SyncMode:      opts.Sync,
 		FrameworkPath: opts.FrameworkPath,
-	}
-	for _, kind := range opts.Target {
-		spec.Targets = append(spec.Targets, scaffold.Target{Name: kind, Kind: kind})
 	}
 
 	w := &wizard{in: bufio.NewScanner(os.Stdin), out: c.stdout, auto: opts.Yes}
@@ -71,8 +68,11 @@ func runInit(c *context, opts *InitOptions) error {
 	}
 
 	fmt.Fprintf(c.stdout, "\n%s is ready.\n\n", spec.Name)
-	for _, t := range spec.Targets {
+	for _, t := range spec.Targets() {
 		fmt.Fprintf(c.stdout, "    cd %s && go run %s\n", dir, t.Entry())
+		if t.Tagged() {
+			fmt.Fprintf(c.stdout, "    cd %s && go run -tags listen %s   # also plays, links a renderer\n", dir, t.Entry())
+		}
 	}
 	fmt.Fprintln(c.stdout, "\nStart with game/game.go — the placeholder rules the session already runs.")
 	return nil
@@ -89,25 +89,24 @@ func ask(w *wizard, spec *scaffold.Spec) error {
 	if spec.Module == "" {
 		spec.Module = w.text("Go module path", "example.com/"+spec.Name)
 	}
-	if spec.Topology == "" {
-		spec.Topology = w.choose(
-			"Execution topology — where the session and its agents run",
-			scaffold.Topologies, 0,
+	if spec.Shape == "" {
+		spec.Shape = w.choose(
+			"How many play one session? This decides what gets generated",
+			scaffold.Shapes, 0,
 			map[string]string{
-				"standalone": "one process, no network; the place to start",
-				"listen":     "a client that also hosts the session",
-				"dedicated":  "a headless server, clients connect to it",
-				"p2p":        "peers connect directly, no server in the middle",
+				"solo":  "one player, no network; the place to start",
+				"duo":   "two players over one direct link, no server",
+				"multi": "many players through a host, which may or may not play",
 			})
 	}
-	modes := scaffold.SyncModesFor(spec.Topology)
+	modes := scaffold.SyncModesFor(spec.Shape)
 	if len(modes) == 0 {
-		return fmt.Errorf("unknown topology %q", spec.Topology)
+		return fmt.Errorf("unknown shape %q", spec.Shape)
 	}
 	if spec.SyncMode == "" {
 		if len(modes) == 1 {
 			spec.SyncMode = modes[0]
-			w.note("Synchronization mode: %s (the only mode %s supports)", modes[0], spec.Topology)
+			w.note("Synchronization mode: %s (the only mode %s supports)", modes[0], spec.Shape)
 		} else {
 			spec.SyncMode = w.choose(
 				"Synchronization mode — how sessions stay consistent",
@@ -120,28 +119,19 @@ func ask(w *wizard, spec *scaffold.Spec) error {
 				})
 		}
 	}
-	if len(spec.Targets) == 0 {
-		kinds := scaffold.TargetsFor(spec.Topology)
-		chosen := w.chooseMany(
-			"Build targets — one entry point each",
-			kinds, []int{0},
-			map[string]string{
-				"client":     "plays the game; the only entry that may link Ebitengine",
-				"listen":     "plays and hosts in the same process",
-				"dedicated":  "hosts headless; never links a renderer",
-				"simulation": "headless and deterministic; what playtests and training run",
-			})
-		for _, k := range chosen {
-			spec.Targets = append(spec.Targets, scaffold.Target{Name: k, Kind: k})
+	// The entry point set follows from the shape rather than being asked
+	// about: a shape that needs a client and a server needs both, and
+	// offering the choice would only produce projects that cannot play.
+	// A simulation target is always among them for the same reason
+	// decision:ai-pipeline-always-scaffolded gives.
+	var names []string
+	for _, t := range spec.Targets() {
+		names = append(names, t.Name)
+		if t.Tagged() {
+			names[len(names)-1] += " (plus a -tags listen form)"
 		}
 	}
-	// A simulation target costs nothing and is what the AI pipeline runs
-	// through, so it is added rather than asked about — the same reasoning
-	// as decision:ai-pipeline-always-scaffolded.
-	if !slices.ContainsFunc(spec.Targets, func(t scaffold.Target) bool { return t.Kind == "simulation" }) {
-		spec.Targets = append(spec.Targets, scaffold.Target{Name: "simulation", Kind: "simulation"})
-		w.note("Adding a simulation target: the AI pipeline and automated playtests run through it.")
-	}
+	w.note("Entry points: %s", strings.Join(names, ", "))
 	return nil
 }
 

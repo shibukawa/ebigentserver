@@ -21,20 +21,14 @@ func frameworkRoot(t *testing.T) string {
 	return filepath.Dir(wd)
 }
 
-func spec(t *testing.T, topology string, kinds ...string) *scaffold.Spec {
+func spec(t *testing.T, shape string) *scaffold.Spec {
 	t.Helper()
-	targets := make([]scaffold.Target, 0, len(kinds))
-	for _, k := range kinds {
-		targets = append(targets, scaffold.Target{Name: k, Kind: k})
-	}
-	sync := scaffold.SyncModesFor(topology)[0]
 	return &scaffold.Spec{
 		Dir:           t.TempDir(),
 		Module:        "example.com/mygame",
 		Name:          "mygame",
-		Topology:      topology,
-		SyncMode:      sync,
-		Targets:       targets,
+		Shape:         shape,
+		SyncMode:      scaffold.SyncModesFor(shape)[0],
 		FrameworkPath: frameworkRoot(t),
 	}
 }
@@ -45,16 +39,9 @@ func TestGeneratedProjectBuildsAndPassesItsTests(t *testing.T) {
 	if testing.Short() {
 		t.Skip("shells out to the go toolchain")
 	}
-	for _, tc := range []struct {
-		topology string
-		kinds    []string
-	}{
-		{"standalone", []string{"client", "simulation"}},
-		{"listen", []string{"listen", "simulation"}},
-		{"dedicated", []string{"dedicated", "simulation"}},
-	} {
-		t.Run(tc.topology, func(t *testing.T) {
-			s := spec(t, tc.topology, tc.kinds...)
+	for _, shape := range scaffold.Shapes {
+		t.Run(shape, func(t *testing.T) {
+			s := spec(t, shape)
 			generateAndTidy(t, s)
 			goRun(t, s.Dir, "build", "./...")
 			goRun(t, s.Dir, "test", "./...")
@@ -68,7 +55,7 @@ func TestGeneratedSimulationRunsToCompletion(t *testing.T) {
 	if testing.Short() {
 		t.Skip("shells out to the go toolchain")
 	}
-	s := spec(t, "standalone", "simulation")
+	s := spec(t, "solo")
 	generateAndTidy(t, s)
 	out := goRun(t, s.Dir, "run", "./cmd/simulation")
 	if !strings.Contains(out, "mygame simulation:") {
@@ -84,7 +71,7 @@ func TestGeneratedSimulationRunsToCompletion(t *testing.T) {
 }
 
 func TestGeneratedProjectWritesTheWholePipeline(t *testing.T) {
-	s := spec(t, "standalone", "client", "simulation")
+	s := spec(t, "solo")
 	res, err := scaffold.Generate(s)
 	if err != nil {
 		t.Fatalf("generate: %v", err)
@@ -94,7 +81,7 @@ func TestGeneratedProjectWritesTheWholePipeline(t *testing.T) {
 	for _, want := range []string{
 		"ebigent.toml", "go.mod", ".gitignore", "README.md",
 		"game/game.go", "game/game_test.go", "boundary_test.go",
-		"cmd/client/main.go", "cmd/simulation/main.go",
+		"cmd/game/main.go", "cmd/simulation/main.go",
 		"behavior/chips.json", "corpus/.gitkeep",
 		"skills/behavior-analyze/SKILL.md",
 		"skills/behavior-analyze/scripts/validate_proposals.py",
@@ -107,7 +94,7 @@ func TestGeneratedProjectWritesTheWholePipeline(t *testing.T) {
 
 // A second init in a live project must not overwrite work.
 func TestGenerateRefusesToOverwrite(t *testing.T) {
-	s := spec(t, "standalone", "simulation")
+	s := spec(t, "solo")
 	if _, err := scaffold.Generate(s); err != nil {
 		t.Fatalf("first generate: %v", err)
 	}
@@ -126,19 +113,15 @@ func TestSpecValidateRejectsUnreachableCombinations(t *testing.T) {
 		mut  func(*scaffold.Spec)
 		want string
 	}{
-		{"sync mode the topology cannot run", func(s *scaffold.Spec) {
-			s.Topology = "standalone"
+		{"sync mode the shape cannot run", func(s *scaffold.Spec) {
+			s.Shape = "solo"
 			s.SyncMode = "rollback"
 		}, "does not support sync mode"},
-		{"target the topology cannot use", func(s *scaffold.Spec) {
-			s.Topology = "standalone"
-			s.Targets = []scaffold.Target{{Name: "server", Kind: "dedicated"}}
-		}, "cannot use a"},
-		{"no targets", func(s *scaffold.Spec) { s.Targets = nil }, "at least one"},
-		{"unknown topology", func(s *scaffold.Spec) { s.Topology = "mesh" }, "topology"},
+		{"unknown shape", func(s *scaffold.Spec) { s.Shape = "mesh" }, "shape"},
+		{"unknown sync mode", func(s *scaffold.Spec) { s.SyncMode = "lockstep" }, "sync mode"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			s := spec(t, "standalone", "simulation")
+			s := spec(t, "solo")
 			tc.mut(s)
 			err := s.Validate()
 			if err == nil {
@@ -151,17 +134,62 @@ func TestSpecValidateRejectsUnreachableCombinations(t *testing.T) {
 	}
 }
 
-// The wizard offers only combinations that exist, which is step 2 and 3
-// of flow:project-init narrowing after step 1.
-func TestWizardChoicesNarrowByTopology(t *testing.T) {
-	if got := scaffold.SyncModesFor("standalone"); len(got) != 1 || got[0] != "server_authoritative" {
-		t.Errorf("standalone sync modes = %v", got)
+// The shape decides the entry point set, and step 2 narrows to the
+// synchronization modes that shape can actually run.
+func TestShapeDecidesTargetsAndNarrowsSyncModes(t *testing.T) {
+	if got := scaffold.SyncModesFor("solo"); len(got) != 1 || got[0] != "server_authoritative" {
+		t.Errorf("solo sync modes = %v", got)
 	}
-	if contains(scaffold.TargetsFor("standalone"), "dedicated") {
-		t.Error("standalone should not offer a dedicated target")
+	// solo is the only shape with no host to choose. Two seats do not
+	// imply peer to peer: a duo can be server hosted exactly as a multi
+	// can, which is why both carry the same tagged server entry
+	// (concept:deployment-combination).
+	for _, tgt := range scaffold.TargetsFor("solo") {
+		if tgt.Kind == "server" {
+			t.Error("solo should not generate a server target")
+		}
 	}
-	if !contains(scaffold.TargetsFor("dedicated"), "dedicated") {
-		t.Error("the dedicated topology should offer a dedicated target")
+	for _, shape := range []string{"duo", "multi"} {
+		var server, client bool
+		for _, tgt := range scaffold.TargetsFor(shape) {
+			server = server || tgt.Kind == "server"
+			client = client || tgt.Kind == "client"
+			if tgt.Kind == "server" && !tgt.Tagged() {
+				t.Errorf("%s: a server target should carry a second linkage form", shape)
+			}
+		}
+		if !server || !client {
+			t.Errorf("%s should generate both a client and a server", shape)
+		}
+	}
+}
+
+// The two linkage forms of one server come out of one directory, and the
+// plain build must not reach the engine: that is the artifact that ships
+// (rule:build-tag-only-for-linkage).
+func TestServerBuildsBothLinkageForms(t *testing.T) {
+	if testing.Short() {
+		t.Skip("shells out to the go toolchain")
+	}
+	s := spec(t, "multi")
+	generateAndTidy(t, s)
+	for _, f := range []string{"cmd/server/main.go", "cmd/server/listen.go", "cmd/server/headless.go"} {
+		if _, err := os.Stat(filepath.Join(s.Dir, f)); err != nil {
+			t.Fatalf("missing %s", f)
+		}
+	}
+	goRun(t, s.Dir, "build", "-o", filepath.Join(s.Dir, "bin", "headless"), "./cmd/server")
+	goRun(t, s.Dir, "build", "-tags", "listen", "-o", filepath.Join(s.Dir, "bin", "listen"), "./cmd/server")
+
+	// The plain build is the one the import graph check inspects, and it
+	// must not reach the engine at all.
+	deps := goRun(t, s.Dir, "list", "-deps", "./cmd/server")
+	if strings.Contains(deps, "hajimehoshi/ebiten") {
+		t.Error("the headless server links the engine; the listen tag should be the only thing that does")
+	}
+	tagged := goRun(t, s.Dir, "list", "-deps", "-tags", "listen", "./cmd/server")
+	if !strings.Contains(tagged, "hajimehoshi/ebiten") {
+		t.Error("the listen build should link the engine")
 	}
 }
 

@@ -1,0 +1,133 @@
+//go:build listen
+
+// The playing form of {{.Target.Name}}: concept:listen-server-mode, a
+// server that also seats a local player and opens a window.
+//
+// This file is why the tag exists. It links Ebitengine, so building
+// without the tag produces an artifact that never touches the engine at
+// all — which is what a shipped dedicated server needs
+// (rule:engine-import-confined-to-client-entry).
+package main
+
+import (
+	"context"
+	"fmt"
+	"image/color"
+	"sync"
+
+	"github.com/hajimehoshi/ebiten/v2"
+	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
+	"github.com/hajimehoshi/ebiten/v2/inpututil"
+	"github.com/hajimehoshi/ebiten/v2/vector"
+
+	"{{.Module}}/game"
+	"github.com/shibukawa/ebigentserver/session"
+)
+
+const scale = 2
+
+// localSlot reports the slot this build plays.
+func localSlot() session.SlotID { return game.SlotOne }
+
+var shown view
+
+// onWorld keeps the latest committed world for the renderer.
+func onWorld(w *gameState) { shown.store(w) }
+
+// serve starts the session on its own goroutine and gives the main one
+// to Ebitengine, which insists on it.
+func serve(ctx context.Context, h *host) error {
+	go func() {
+		if err := h.session.RunRealtime(ctx, session.Paced); err != nil {
+			fatal(err)
+		}
+	}()
+	ebiten.SetWindowSize(game.FieldW*scale, game.FieldH*scale)
+	ebiten.SetWindowTitle("{{.Name}} (listen)")
+	return ebiten.RunGame(&app{inbox: h.local})
+}
+
+// view holds the latest world for the renderer. Broadcast runs on the
+// session goroutine and Draw on Ebitengine's, so the copy is taken under
+// a lock — and it is a copy, because the session keeps mutating what it
+// handed over.
+type view struct {
+	mu    sync.Mutex
+	world game.State
+	got   bool
+}
+
+func (v *view) store(w *gameState) {
+	v.mu.Lock()
+	defer v.mu.Unlock()
+	v.world = *w
+	v.world.Pipes = append([]game.Pipe(nil), w.Pipes...)
+	v.got = true
+}
+
+func (v *view) load() (game.State, bool) {
+	v.mu.Lock()
+	defer v.mu.Unlock()
+	return v.world, v.got
+}
+
+// app is the Ebitengine side: it reads input and draws, and holds no
+// rules of its own.
+type app struct {
+	inbox *session.Inbox[game.Action]
+}
+
+// Update turns a key press into a game action, which is the whole of
+// api:input-adapter's job at this scale
+// (rule:no-engine-input-in-game-logic).
+func (a *app) Update() error {
+	if a.inbox == nil {
+		return nil
+	}
+	if inpututil.IsKeyJustPressed(ebiten.KeySpace) || inpututil.IsKeyJustPressed(ebiten.KeyArrowUp) {
+		a.inbox.Submit(game.Action{Flap: true})
+	}
+	return nil
+}
+
+var (
+	sky    = color.RGBA{0x7a, 0xc7, 0xe8, 0xff}
+	pipeC  = color.RGBA{0x3f, 0xa2, 0x4a, 0xff}
+	youC   = color.RGBA{0xf7, 0xd0, 0x51, 0xff}
+	rivalC = color.RGBA{0xe0, 0x6c, 0x75, 0xff}
+)
+
+// Draw renders the world. Nothing here decides anything: if the picture
+// is wrong, the rules are wrong.
+func (a *app) Draw(screen *ebiten.Image) {
+	screen.Fill(sky)
+	world, ok := shown.load()
+	if !ok {
+		return
+	}
+	for _, p := range world.Pipes {
+		x := float32(p.X.FloorToInt()-game.PipeW/2) * scale
+		gap := float32(p.GapY.FloorToInt()) * scale
+		half := float32(game.GapH/2) * scale
+		w := float32(game.PipeW) * scale
+		vector.DrawFilledRect(screen, x, 0, w, gap-half, pipeC, false)
+		vector.DrawFilledRect(screen, x, gap+half, w, float32(game.FieldH)*scale, pipeC, false)
+	}
+	for i, b := range world.Bird {
+		if !b.Alive {
+			continue
+		}
+		c := youC
+		if i == 1 {
+			c = rivalC
+		}
+		vector.DrawFilledCircle(screen,
+			float32(game.BirdX)*scale, float32(b.Y.FloorToInt())*scale,
+			float32(game.BirdR)*scale, c, true)
+	}
+	ebitenutil.DebugPrintAt(screen, fmt.Sprintf("space to flap    you %d   rival %d",
+		world.Bird[0].Passed, world.Bird[1].Passed), 4, 4)
+}
+
+// Layout fixes the logical resolution; Ebitengine scales it to the window.
+func (a *app) Layout(int, int) (int, int) { return game.FieldW * scale, game.FieldH * scale }

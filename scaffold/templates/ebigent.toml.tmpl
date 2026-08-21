@@ -1,4 +1,4 @@
-# {{.Name}} — written by ebigent init.
+# {{.Name}} — written by ebigent init. Participant shape: {{.Shape}}.
 #
 # One file, and a section prefix decides which struct binds a key: the
 # ebigent tool reads [project], [build], [generate], [dev], and
@@ -18,8 +18,18 @@ go = "{{.GoVersion}}"
 {{range .Targets}}
 [[build.target]]
 name = "{{.Name}}"
-kind = "{{.Kind}}"
+kind = "{{.ConfigKind}}"
 entry = "{{.Entry}}"
+{{- if .Tagged}}
+
+# The same directory also builds a listen server, which links a renderer
+# and seats a local player. Only the linkage differs; both read [run].
+[[build.target]]
+name = "{{.Name}}-listen"
+kind = "listen"
+entry = "{{.Entry}}"
+tags = ["listen"]
+{{- end}}
 {{end}}
 [dev]
 target = "{{.DevTarget}}"

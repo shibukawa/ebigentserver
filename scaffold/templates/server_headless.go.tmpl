@@ -1,0 +1,29 @@
+//go:build !listen
+
+// The headless form of {{.Target.Name}}: concept:dedicated-server-mode.
+//
+// This file imports no renderer, and that absence is the whole point —
+// the engine is dropped by not being linked rather than by a flag
+// (rule:engine-import-confined-to-client-entry). The import graph check
+// inspects this build, the untagged one, which is the artifact that
+// actually ships.
+package main
+
+import (
+	"context"
+
+	"github.com/shibukawa/ebigentserver/session"
+)
+
+// localSlot reports that this build plays no slot: every seat belongs to
+// a bot or, once transport is wired, to a remote peer.
+func localSlot() session.SlotID { return 0 }
+
+// onWorld does nothing: nobody here is watching.
+func onWorld(*gameState) {}
+
+// serve drives the session on this goroutine until it ends or the
+// process is interrupted.
+func serve(ctx context.Context, h *host) error {
+	return h.session.RunRealtime(ctx, session.Paced)
+}

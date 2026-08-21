@@ -35,6 +35,7 @@
 {"category": "concept", "id": "concept:coverage-matrix", "path": ".knowledge/concept/coverage-matrix.md", "role": "supporting", "title": "Coverage Matrix", "type": "concept"}
 {"category": "concept", "id": "concept:dedicated-server-mode", "path": ".knowledge/concept/dedicated-server-mode.md", "role": "supporting", "title": "Dedicated Server Mode", "type": "concept"}
 {"category": "concept", "id": "concept:delta-baseline-policy", "path": ".knowledge/concept/delta-baseline-policy.md", "role": "supporting", "title": "Delta Baseline Policy", "type": "concept"}
+{"category": "concept", "id": "concept:deployment-combination", "path": ".knowledge/concept/deployment-combination.md", "role": "supporting", "title": "Deployment Combination", "type": "concept"}
 {"category": "concept", "id": "concept:episode-recording-mode", "path": ".knowledge/concept/episode-recording-mode.md", "role": "supporting", "title": "Episode Recording Mode", "type": "concept"}
 {"category": "concept", "id": "concept:episode", "path": ".knowledge/concept/episode.md", "role": "supporting", "title": "Episode", "type": "concept"}
 {"category": "concept", "id": "concept:execution-topology", "path": ".knowledge/concept/execution-topology.md", "role": "supporting", "title": "Execution Topology", "type": "concept"}
@@ -44,6 +45,7 @@
 {"category": "concept", "id": "concept:lag-compensation", "path": ".knowledge/concept/lag-compensation.md", "role": "supporting", "title": "Lag Compensation", "type": "concept"}
 {"category": "concept", "id": "concept:listen-server-mode", "path": ".knowledge/concept/listen-server-mode.md", "role": "supporting", "title": "Listen Server Mode", "type": "concept"}
 {"category": "concept", "id": "concept:observation", "path": ".knowledge/concept/observation.md", "role": "supporting", "title": "Observation", "type": "concept"}
+{"category": "concept", "id": "concept:participant-shape", "path": ".knowledge/concept/participant-shape.md", "role": "supporting", "title": "Participant Shape", "type": "concept"}
 {"category": "concept", "id": "concept:player-slot", "path": ".knowledge/concept/player-slot.md", "role": "supporting", "title": "Player Slot", "type": "concept"}
 {"category": "concept", "id": "concept:sample-acceptance-matrix", "path": ".knowledge/concept/sample-acceptance-matrix.md", "role": "supporting", "title": "Sample Acceptance Matrix", "type": "concept"}
 {"category": "concept", "id": "concept:sample-progression", "path": ".knowledge/concept/sample-progression.md", "role": "supporting", "title": "Sample Progression", "type": "concept"}

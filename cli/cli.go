@@ -41,15 +41,14 @@ var Version = "dev"
 
 // InitOptions scaffolds a new project (flow:project-init).
 type InitOptions struct {
-	Dir           string   `arg:"optional" help:"project directory, created if missing (default: the current directory)"`
-	Module        string   `default:"" help:"go module path"`
-	Name          string   `default:"" help:"game name; defaults to the directory name"`
-	Topology      string   `default:"" help:"execution topology: standalone, listen, dedicated, or p2p"`
-	Sync          string   `default:"" help:"synchronization mode; only modes the topology supports are accepted"`
-	Target        []string `help:"build targets to generate: client, listen, dedicated, simulation"`
-	Yes           bool     `default:"false" help:"take the default for every unanswered question instead of prompting"`
-	FrameworkPath string   `default:"" help:"path to a local framework checkout, added as a replace directive"`
-	SkipTidy      bool     `default:"false" help:"do not run go mod tidy or the verification build"`
+	Dir           string `arg:"optional" help:"project directory, created if missing (default: the current directory)"`
+	Module        string `default:"" help:"go module path"`
+	Name          string `default:"" help:"game name; defaults to the directory name"`
+	Shape         string `default:"" help:"how many play one session: solo, duo, or multi"`
+	Sync          string `default:"" help:"synchronization mode; only modes the shape supports are accepted"`
+	Yes           bool   `default:"false" help:"take the default for every unanswered question instead of prompting"`
+	FrameworkPath string `default:"" help:"path to a local framework checkout, added as a replace directive"`
+	SkipTidy      bool   `default:"false" help:"do not run go mod tidy or the verification build"`
 }
 
 // BuildOptions compiles one declared concept:build-target.

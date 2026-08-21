@@ -17,9 +17,14 @@ import (
 // by never importing it (decision:entry-points-over-build-tags), which
 // stops being true the moment a shared package reaches it.
 //
-// The allowed entries are cmd/*client*, cmd/*listen*, cmd/*static*, and
-// presentation packages. Renaming a rendering entry outside those
-// patterns will fail this test.
+// The entries allowed to link the engine are listed below rather than
+// left to the framework's default patterns, which describe the
+// framework's own layout. Add a rendering entry here when you add one.
+//
+// A server built with the listen tag links the engine too, and is not
+// listed: the check inspects the default build, which is the headless one
+// — the artifact that actually ships, and the one whose engine-free
+// property is worth enforcing.
 //
 // One caveat worth knowing: the check shells out to the go toolchain,
 // and the test cache does not track that, so a pass can be served from
@@ -29,5 +34,13 @@ func TestModuleImportBoundary(t *testing.T) {
 	if testing.Short() {
 		t.Skip("shells out to the go toolchain")
 	}
-	importcheck.Enforce(t, ".", importcheck.Default())
+	cfg := importcheck.Default()
+	rendering := []string{
+{{- range .Targets}}{{if eq .Kind "client"}}
+		"cmd/{{.Name}}",
+{{- end}}{{end}}
+	}
+	cfg.Rules[0].AllowedEntries = append(cfg.Rules[0].AllowedEntries, rendering...)
+	cfg.AllowedCgoEntries = append(cfg.AllowedCgoEntries, rendering...)
+	importcheck.Enforce(t, ".", cfg)
 }
