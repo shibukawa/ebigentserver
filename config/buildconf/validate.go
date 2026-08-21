@@ -20,9 +20,6 @@ func (c *Config) Validate() error {
 	if c.Project.Module == "" {
 		errs = append(errs, errors.New("project.module is required"))
 	}
-	if c.Project.Rules == "" {
-		errs = append(errs, errors.New("project.rules is required; it is the one package every target links"))
-	}
 
 	if len(c.Build.Target) == 0 {
 		errs = append(errs, errors.New("declare at least one [[build.target]]"))

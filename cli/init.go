@@ -20,9 +20,18 @@ import (
 // entirely when the options are supplied — which is what lets init run
 // unattended in a test or a script.
 func runInit(c *context, opts *InitOptions) error {
+	w := &wizard{in: bufio.NewScanner(os.Stdin), out: c.stdout, auto: opts.Yes}
+
+	// The name comes first because it can decide where the project goes:
+	// given no directory, init makes one named after the game rather than
+	// scattering a project across whatever directory it was run in.
+	name := opts.Name
+	if name == "" {
+		name = w.text("Game name", defaultName(opts.Dir))
+	}
 	dir := opts.Dir
 	if dir == "" {
-		dir = "."
+		dir = name
 	}
 	abs, err := filepath.Abs(dir)
 	if err != nil {
@@ -32,13 +41,15 @@ func runInit(c *context, opts *InitOptions) error {
 	spec := &scaffold.Spec{
 		Dir:    abs,
 		Module: opts.Module,
-		Name:   opts.Name,
+		Name:   name,
 		Style:  opts.Style,
 		Seats:  opts.Seats, SyncMode: opts.Sync,
 		FrameworkPath: opts.FrameworkPath,
 	}
+	if dir != "." {
+		w.note("Writing into %s%c", dir, filepath.Separator)
+	}
 
-	w := &wizard{in: bufio.NewScanner(os.Stdin), out: c.stdout, auto: opts.Yes}
 	if err := ask(w, spec, opts); err != nil {
 		return err
 	}
@@ -83,10 +94,6 @@ func runInit(c *context, opts *InitOptions) error {
 // the answers before it: step 2 offers only the synchronization modes
 // the chosen topology supports, and step 3 only the targets it can use.
 func ask(w *wizard, spec *scaffold.Spec, opts *InitOptions) error {
-	if spec.Name == "" {
-		spec.Name = defaultName(spec.Dir)
-		spec.Name = w.text("Game name", spec.Name)
-	}
 	if spec.Module == "" {
 		spec.Module = w.text("Go module path", "example.com/"+spec.Name)
 	}
@@ -191,8 +198,13 @@ func ask(w *wizard, spec *scaffold.Spec, opts *InitOptions) error {
 	return nil
 }
 
-// defaultName derives a game name from the target directory.
+// defaultName derives a game name from an explicitly given directory,
+// falling back to a neutral one when none was given — in which case the
+// answer decides the directory rather than the other way round.
 func defaultName(dir string) string {
+	if dir == "" {
+		return "game"
+	}
 	base := filepath.Base(dir)
 	if base == "." || base == string(filepath.Separator) || base == "" {
 		return "game"

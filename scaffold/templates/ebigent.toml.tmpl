@@ -1,8 +1,8 @@
 # {{.Name}} — written by ebigent init. {{.Style}}, {{.Seats}} seat(s){{if .LocalMultiplayer}}, several players per machine{{end}}.
 #
 # One file, and a section prefix decides which struct binds a key: the
-# ebigent tool reads [project], [build], [generate], [dev], and
-# [behavior]; a built artifact reads [run]. Each ignores the other's
+# ebigent tool reads [project], [build], [dev], and [behavior];
+# a built artifact reads [run]. Each ignores the other's
 # sections, so both can share this file.
 #
 # Every key below also has an environment variable and a command-line
@@ -11,7 +11,6 @@
 
 [project]
 module = "{{.Module}}"
-rules = "./game"
 {{- if .GoVersion}}
 go = "{{.GoVersion}}"
 {{- end}}

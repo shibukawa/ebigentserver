@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 
 	"github.com/shibukawa/ebigentserver/analysis"
@@ -236,8 +237,10 @@ func runDoctor(c *context) error {
 
 	goBin, err := exec.LookPath("go")
 	line(err == nil, "go toolchain: %s", either(goBin, "not on PATH"))
+	installed := ""
 	if err == nil {
 		if out, verr := exec.Command("go", "version").Output(); verr == nil {
+			installed = goVersion(string(out))
 			line(true, "go version: %s", strings.TrimSpace(string(out)))
 		}
 	}
@@ -248,6 +251,14 @@ func runDoctor(c *context) error {
 		return nil
 	}
 	line(true, "project: %s", c.res.ProjectRoot)
+	if c.build.Project.Module != "" {
+		line(true, "module: %s", c.build.Project.Module)
+	}
+	// A pinned toolchain is only worth pinning if something notices when
+	// the host does not meet it.
+	if pin := c.build.Project.GoToolchain; pin != "" && installed != "" {
+		line(!olderThan(installed, pin), "go toolchain pin: project wants %s, host has %s", pin, installed)
+	}
 	line(c.res.Load.ConfigPath != "", "config file: %s", either(c.res.Load.ConfigPath, "none read"))
 
 	if err := c.build.Validate(); err != nil {
@@ -281,6 +292,44 @@ func runDoctor(c *context) error {
 		return fmt.Errorf("doctor found problems")
 	}
 	return nil
+}
+
+// goVersion pulls "1.26.7" out of "go version go1.26.7 darwin/arm64".
+func goVersion(out string) string {
+	for _, f := range strings.Fields(out) {
+		if v, ok := strings.CutPrefix(f, "go1."); ok {
+			return "1." + v
+		}
+	}
+	return ""
+}
+
+// olderThan compares dotted numeric versions, shorter meaning unset
+// trailing components. A non-numeric component makes the comparison
+// unusable, and an unusable comparison must not fail a doctor run.
+func olderThan(have, want string) bool {
+	h, w := strings.Split(have, "."), strings.Split(want, ".")
+	for i := range max(len(h), len(w)) {
+		hv, wv := 0, 0
+		if i < len(h) {
+			n, err := strconv.Atoi(h[i])
+			if err != nil {
+				return false
+			}
+			hv = n
+		}
+		if i < len(w) {
+			n, err := strconv.Atoi(w[i])
+			if err != nil {
+				return false
+			}
+			wv = n
+		}
+		if hv != wv {
+			return hv < wv
+		}
+	}
+	return false
 }
 
 func either(value, fallback string) string {

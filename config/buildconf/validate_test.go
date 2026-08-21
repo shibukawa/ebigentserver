@@ -8,9 +8,8 @@ import (
 
 func valid() *Config {
 	return &Config{
-		Project:  &Project{Module: "example.com/game", Rules: "./game"},
+		Project:  &Project{Module: "example.com/game"},
 		Build:    &Build{Target: []Target{{Name: "server", Kind: "dedicated", Entry: "./cmd/server"}}},
-		Generate: &Generate{},
 		Dev:      &Dev{Debounce: 200 * time.Millisecond, Console: "127.0.0.1:8930"},
 		Behavior: &Behavior{Library: "behavior/chips.json", Corpus: "corpus"},
 	}
@@ -35,7 +34,6 @@ func TestValidateRejects(t *testing.T) {
 		want string
 	}{
 		{"no module", func(c *Config) { c.Project.Module = "" }, "project.module"},
-		{"no rules package", func(c *Config) { c.Project.Rules = "" }, "project.rules"},
 		{"no targets", func(c *Config) { c.Build.Target = nil }, "at least one"},
 		{"target without a name", func(c *Config) { c.Build.Target[0].Name = "" }, "name is required"},
 		{"target without an entry", func(c *Config) { c.Build.Target[0].Entry = "" }, "entry package"},

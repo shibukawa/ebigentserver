@@ -19,9 +19,6 @@ type Project struct {
 	// Module is the go module path, used to resolve entry points and
 	// generated import paths.
 	Module string `default:"" help:"go module path of this project"`
-	// Rules is the package holding the game rules, the one package
-	// concept:build-target links into every target unchanged.
-	Rules string `default:"./game" help:"package holding the game rules, linked into every target"`
 	// GoToolchain pins the toolchain so a generated project does not
 	// drift with the host. Empty follows the host.
 	GoToolchain string `key:"go" default:"" help:"pinned go toolchain version; empty follows the host"`
@@ -62,16 +59,6 @@ type Target struct {
 	Dev bool `default:"false" help:"this target links the dev debug endpoint and must not ship"`
 }
 
-// Generate is the [generate] table: where tinybind codegen runs. Output
-// is committed in this repository rather than gitignored, which is the
-// one deliberate divergence from the popcornweb layout that
-// decision:mirror-popcornweb-dx records.
-type Generate struct {
-	// Package lists the packages carrying a go:generate directive.
-	// Empty means every package under the module root.
-	Package []string `help:"packages carrying tinybind codegen; empty scans the module"`
-}
-
 // Dev is the [dev] table: how ebigent dev runs flow:dev-rebuild-loop.
 type Dev struct {
 	// Target names the [[build.target]] dev builds and runs. Empty
@@ -110,7 +97,6 @@ type Behavior struct {
 type Config struct {
 	Project  *Project
 	Build    *Build
-	Generate *Generate
 	Dev      *Dev
 	Behavior *Behavior
 }
@@ -121,7 +107,6 @@ func Bind() *Config {
 	return &Config{
 		Project:  configbind.Bind[Project]("project"),
 		Build:    configbind.Bind[Build]("build"),
-		Generate: configbind.Bind[Generate]("generate"),
 		Dev:      configbind.Bind[Dev]("dev"),
 		Behavior: configbind.Bind[Behavior]("behavior"),
 	}
@@ -130,5 +115,5 @@ func Bind() *Config {
 // Prefixes reports the configuration prefixes Bind claims, for the
 // prefix-scoped stray key check of decision:one-config-file-many-sections.
 func Prefixes() []string {
-	return []string{"project", "build", "generate", "dev", "behavior"}
+	return []string{"project", "build", "dev", "behavior"}
 }
