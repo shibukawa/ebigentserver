@@ -12,7 +12,7 @@ sections:
   - project: module path and pinned go toolchain, the latter checked against the host by the doctor verb
   - targets: one entry per concept:build-target with its cmd entry point, goos, goarch, and its build tags; two entries may share one entry point and differ only in tags, which is how the listen and headless forms of one server are declared under rule:build-tag-only-for-linkage
   - dev: default target to run, watch roots, ignore globs, debounce, ui:dev-console address
-  - behavior: chip library path, corpus root, analysis skill directory
+  - behavior: chip library path and corpus root; the analysis skill is not here, see decision:ai-pipeline-always-scaffolded
 binding: one configbind.Bind per section, so every key also carries an env name and a CLI option under rule:config-precedence-fixed
 ignored_by: the built game artifact, which registers none of these prefixes and so never reads them
 ```

@@ -45,6 +45,7 @@ type InitOptions struct {
 	Module string `default:"" help:"go module path"`
 	Name   string `default:"" help:"game name; defaults to the directory name"`
 	Style  string `default:"" help:"play style: solo, duo, or multi"`
+	Agent  string `default:"" help:"agentic environment: claude or other; decides where the analysis skill is written"`
 	Seats  int    `default:"0" help:"maximum players, for the multi style; 0 asks"`
 	// A string rather than a bool: a wizard has to tell "said no" apart
 	// from "did not say", and a bool cannot.

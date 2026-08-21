@@ -272,16 +272,9 @@ func runDoctor(c *context) error {
 		line(true, "run configuration: topology %s, sync %s", c.run.Topology, c.run.Sync.Mode)
 	}
 
-	for _, dir := range []struct {
-		what string
-		path string
-	}{
-		{"corpus root", c.path(c.build.Behavior.Corpus)},
-		{"analysis skill", c.path(c.build.Behavior.Skill)},
-	} {
-		_, statErr := os.Stat(dir.path)
-		line(statErr == nil, "%s: %s", dir.what, dir.path)
-	}
+	corpus := c.path(c.build.Behavior.Corpus)
+	_, statErr := os.Stat(corpus)
+	line(statErr == nil, "corpus root: %s", corpus)
 	if _, statErr := os.Stat(c.path(c.build.Behavior.Library)); statErr != nil {
 		line(false, "chip library: %s is missing", c.path(c.build.Behavior.Library))
 	} else {

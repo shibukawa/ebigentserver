@@ -561,6 +561,7 @@
 {"context": "body", "path": ".knowledge/data/build-config.md", "source": "data:build-config", "target": "concept:build-target", "target_category": "concept", "target_type": "concept"}
 {"context": "body", "path": ".knowledge/data/build-config.md", "source": "data:build-config", "target": "rule:build-tag-only-for-linkage", "target_category": "constraint", "target_type": "rule"}
 {"context": "body", "path": ".knowledge/data/build-config.md", "source": "data:build-config", "target": "ui:dev-console", "target_category": "interface", "target_type": "ui"}
+{"context": "body", "path": ".knowledge/data/build-config.md", "source": "data:build-config", "target": "decision:ai-pipeline-always-scaffolded", "target_category": "constraint", "target_type": "decision"}
 {"context": "body", "path": ".knowledge/data/build-config.md", "source": "data:build-config", "target": "rule:config-precedence-fixed", "target_category": "constraint", "target_type": "rule"}
 {"context": "body", "path": ".knowledge/data/decision-record.md", "source": "data:decision-record", "target": "term:tick", "target_category": "vocabulary", "target_type": "term"}
 {"context": "body", "path": ".knowledge/data/decision-record.md", "source": "data:decision-record", "target": "actor:llm-agent", "target_category": "behavior", "target_type": "actor"}
@@ -694,6 +695,7 @@
 {"context": "body", "path": ".knowledge/decision/agent-as-central-abstraction.md", "source": "decision:agent-as-central-abstraction", "target": "vision:agent-session-runtime", "target_category": "objective", "target_type": "vision"}
 {"context": "body", "path": ".knowledge/decision/agent-as-central-abstraction.md", "source": "decision:agent-as-central-abstraction", "target": "requirement:unified-agent-model", "target_category": "objective", "target_type": "requirement"}
 {"context": "body", "path": ".knowledge/decision/ai-pipeline-always-scaffolded.md", "source": "decision:ai-pipeline-always-scaffolded", "target": "data:run-config", "target_category": "structure", "target_type": "data"}
+{"context": "body", "path": ".knowledge/decision/ai-pipeline-always-scaffolded.md", "source": "decision:ai-pipeline-always-scaffolded", "target": "rule:analysis-tooling-outside-game-process", "target_category": "constraint", "target_type": "rule"}
 {"context": "body", "path": ".knowledge/decision/ai-pipeline-always-scaffolded.md", "source": "decision:ai-pipeline-always-scaffolded", "target": "requirement:behavior-learning-from-logs", "target_category": "objective", "target_type": "requirement"}
 {"context": "body", "path": ".knowledge/decision/behavior-tree-compiled-to-go.md", "source": "decision:behavior-tree-compiled-to-go", "target": "data:behavior-tree", "target_category": "structure", "target_type": "data"}
 {"context": "body", "path": ".knowledge/decision/behavior-tree-compiled-to-go.md", "source": "decision:behavior-tree-compiled-to-go", "target": "data:derived-predicate", "target_category": "structure", "target_type": "data"}

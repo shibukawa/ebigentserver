@@ -33,6 +33,7 @@ func spec(t *testing.T, style string, seats int, localMulti bool) *scaffold.Spec
 	}
 	return &scaffold.Spec{
 		Dir:              t.TempDir(),
+		Agent:            "claude",
 		Module:           "example.com/mygame",
 		Name:             "mygame",
 		Style:            style,
@@ -108,11 +109,30 @@ func TestGeneratedProjectWritesTheWholePipeline(t *testing.T) {
 		"game/game.go", "game/game_test.go", "boundary_test.go",
 		"cmd/game/main.go", "cmd/simulation/main.go",
 		"behavior/chips.json", "corpus/.gitkeep",
-		"skills/behavior-analyze/SKILL.md",
-		"skills/behavior-analyze/scripts/validate_proposals.py",
+		".claude/skills/behavior-analyze/SKILL.md",
+		".claude/skills/behavior-analyze/scripts/validate_proposals.py",
 	} {
 		if !contains(res.Files, want) {
 			t.Errorf("generated files are missing %q", want)
+		}
+	}
+}
+
+// The skill lands where the developer's environment looks for it, which
+// is why the path is not a setting: nothing has to be told about it.
+func TestSkillLandsWhereTheEnvironmentLooks(t *testing.T) {
+	for agent, want := range map[string]string{
+		"claude": ".claude/skills/behavior-analyze/SKILL.md",
+		"other":  ".agents/skills/behavior-analyze/SKILL.md",
+	} {
+		s := spec(t, "solo", 0, false)
+		s.Agent = agent
+		res, err := scaffold.Generate(s)
+		if err != nil {
+			t.Fatalf("%s: %v", agent, err)
+		}
+		if !contains(res.Files, want) {
+			t.Errorf("%s: skill not at %s; got %v", agent, want, res.Files)
 		}
 	}
 }
@@ -142,6 +162,7 @@ func TestSpecValidateRejectsUnreachableCombinations(t *testing.T) {
 			s.Style, s.Seats, s.LocalMultiplayer, s.SyncMode = "solo", 1, false, "rollback"
 		}, "no synchronization mode"},
 		{"unknown style", func(s *scaffold.Spec) { s.Style = "co_op" }, "play style"},
+		{"unknown agent environment", func(s *scaffold.Spec) { s.Agent = "emacs" }, "agent environment"},
 		{"a style whose seat count was overridden", func(s *scaffold.Spec) {
 			s.Style, s.Seats = "duo", 3
 		}, "declares 2 seats"},

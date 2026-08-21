@@ -53,6 +53,21 @@ type Tuning struct {
 // netcodes stop being reachable (concept:deployment-combination).
 var Styles = []string{"solo", "duo", "multi"}
 
+// Agents are the agentic environments init knows a skill location for.
+// Which one a developer uses is a fact about their tooling rather than a
+// project setting, so it decides a path at generation time and is never
+// read again — the environment finds the skill by its own convention.
+var Agents = []string{"claude", "other"}
+
+// agentSkillDir is where each environment looks for project skills.
+var agentSkillDir = map[string]string{
+	"claude": ".claude/skills",
+	"other":  ".agents/skills",
+}
+
+// SkillDirFor reports the skill directory an environment reads.
+func SkillDirFor(agent string) string { return agentSkillDir[agent] }
+
 // Reaches is where the traffic goes. It is derived from the seat count
 // rather than asked: solo has nowhere to go, and past two seats the
 // choice between a peer host and a dedicated one stops changing the
@@ -207,6 +222,10 @@ type Spec struct {
 	Name string
 	// Style is how the project is played: solo, duo, or multi.
 	Style string
+	// Agent is the agentic environment the developer works in, which
+	// decides where the analysis skill is written so that environment
+	// finds it without being told.
+	Agent string
 	// LocalMultiplayer allows several people to play on one machine, each
 	// on their own device. It is the code-visible half of
 	// concept:view-arrangement: a shared surface, several
@@ -242,6 +261,9 @@ func (s *Spec) Validate() error {
 		errs = append(errs, errors.New("Name is required"))
 	}
 
+	if !slices.Contains(Agents, s.Agent) {
+		errs = append(errs, fmt.Errorf("agent environment %q is not one of %v", s.Agent, Agents))
+	}
 	if !slices.Contains(Styles, s.Style) {
 		errs = append(errs, fmt.Errorf("play style %q is not one of %v", s.Style, Styles))
 	}
@@ -448,7 +470,7 @@ func render(spec *Spec) (map[string][]byte, error) {
 		if err != nil {
 			return err
 		}
-		out[path.Join("skills", p)] = body
+		out[path.Join(agentSkillDir[spec.Agent], p)] = body
 		return nil
 	}); err != nil {
 		return nil, err

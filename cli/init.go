@@ -39,12 +39,15 @@ func runInit(c *context, opts *InitOptions) error {
 	}
 
 	spec := &scaffold.Spec{
-		Dir:    abs,
-		Module: opts.Module,
-		Name:   name,
-		Style:  opts.Style,
-		Seats:  opts.Seats, SyncMode: opts.Sync,
-		FrameworkPath: opts.FrameworkPath,
+		Dir:              abs,
+		Module:           opts.Module,
+		Name:             name,
+		Agent:            opts.Agent,
+		Style:            opts.Style,
+		Seats:            opts.Seats,
+		LocalMultiplayer: opts.LocalMultiplayer == "yes",
+		SyncMode:         opts.Sync,
+		FrameworkPath:    opts.FrameworkPath,
 	}
 	if dir != "." {
 		w.note("Writing into %s%c", dir, filepath.Separator)
@@ -87,6 +90,8 @@ func runInit(c *context, opts *InitOptions) error {
 		}
 	}
 	fmt.Fprintln(c.stdout, "\nStart with game/game.go — the placeholder rules the session already runs.")
+	fmt.Fprintf(c.stdout, "The analysis skill is in %s; your agent finds it there on its own.\n",
+		scaffold.SkillDirFor(spec.Agent))
 	return nil
 }
 
@@ -145,6 +150,27 @@ func ask(w *wizard, spec *scaffold.Spec, opts *InitOptions) error {
 		// choice; either way they are looking at the same machine.
 		w.note("One machine means one set of facts: split the view or not, every seat at it may know.")
 		w.note("Hiding state between players needs them on separate machines.")
+	}
+
+	// The last question is about the developer's tooling rather than the
+	// game: the analysis skill of decision:ai-pipeline-always-scaffolded
+	// only works where the environment looks for it, and each looks
+	// somewhere different.
+	if spec.Agent == "" {
+		const (
+			claude = "Claude Code"
+			other  = "something else"
+		)
+		if w.choose("Which agentic environment do you work in?",
+			[]string{claude, other}, 0,
+			map[string]string{
+				claude: "the analysis skill goes to .claude/skills",
+				other:  "the analysis skill goes to .agents/skills",
+			}) == claude {
+			spec.Agent = "claude"
+		} else {
+			spec.Agent = "other"
+		}
 	}
 
 	// Where the traffic goes is not asked. It follows the style, and what

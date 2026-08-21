@@ -88,9 +88,6 @@ type Behavior struct {
 	// Corpus is the data:episode-log root that analysis and the
 	// evidence pane read.
 	Corpus string `default:"corpus" help:"episode corpus root"`
-	// Skill is the analysis skill directory handed to the developer's
-	// own agentic environment.
-	Skill string `default:"skills/behavior-analyze" help:"analysis skill directory"`
 }
 
 // Config is every toolchain section, bound in one call.
