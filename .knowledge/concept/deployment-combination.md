@@ -76,6 +76,21 @@ excluded:
   - name: playing host over webtransport on the open internet
     why: needs a certificate and an inbound port the player does not have; the same shape works on a lan, which is why it appears there instead
 seat_count_effects: slot set, admission capacity, and whether concept:agent-departure-policy has to keep a session alive; not which transport is used
+hop_count_collapses_the_peer_advantage_past_two: >
+  peer links are star shaped, so a peer reaching another peer goes through
+  the host: two hops. A dedicated server is also two hops. The direct,
+  one-hop case therefore exists only at exactly two players, where the
+  host is the other player.
+  Past two, choosing peers over a server stops being a latency decision
+  and becomes a cost and trust one: no server to run, against an
+  unverifiable host on a home uplink carrying one stream per other player.
+  It also narrows the netcode — term:rollback and term:delay-buffering
+  assume a short symmetric path, which two hops through a player machine
+  is not, so three or more players land on term:server-authority whichever
+  host they pick.
+  This is why the seat count matters to generated code at all: not because
+  two seats wire differently from six, but because two is where the
+  one-hop netcodes are reachable.
 data_path_or_control_path: >
   the sharpest question once a link exists is whether the server carries
   the traffic or only arranges it. On the data path it sees everything and

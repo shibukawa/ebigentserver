@@ -49,11 +49,12 @@ type Tuning struct {
 // a split screen console game splits one inside a single process.
 var Views = []string{"shared", "per_agent"}
 
-// Reaches is concept:realtime-intensity expressed as the question a
-// developer can actually answer: how far may the traffic travel before
-// the game stops feeling right. The answer decides the process boundary,
-// the entry point set, the tuning profile, and the default topology.
-var Reaches = []string{"local", "peer", "server"}
+// Reaches is where the traffic goes. It is derived from the seat count
+// rather than asked: solo has nowhere to go, and past two seats the
+// choice between a peer host and a dedicated one stops changing the
+// generated code — it becomes the data:run-config topology value, which a
+// project flips without regenerating anything.
+var Reaches = []string{"local", "linked"}
 
 // reachTargets is the entry point set each reach needs. Local play needs
 // no server whatever the seat count or the camera. Peer and server play
@@ -64,48 +65,50 @@ var reachTargets = map[string][]Target{
 		{Name: "game", Kind: "client"},
 		{Name: "simulation", Kind: "simulation"},
 	},
-	"peer": {
-		{Name: "client", Kind: "client"},
-		{Name: "server", Kind: "server"},
-		{Name: "simulation", Kind: "simulation"},
-	},
-	"server": {
+	"linked": {
 		{Name: "client", Kind: "client"},
 		{Name: "server", Kind: "server"},
 		{Name: "simulation", Kind: "simulation"},
 	},
 }
 
-// reachTopology is the data:run-config topology each reach starts at. A
-// peer-reaching game defaults to a playing host, since not paying the
-// server hop is the whole reason it chose that answer.
-//
-// A peer reach is not limited to two players. Peer links here are star
-// shaped (concept:static-host-mode): one host holds the session and every
-// other player connects to it, so the seat count is a number rather than
-// a different arrangement. What is excluded is a mesh, where every pair
-// would need its own link.
-var reachTopology = map[string]string{
-	"local":  "standalone",
-	"peer":   "listen",
-	"server": "dedicated",
+// ReachFor derives the reach from the seat count.
+func ReachFor(seats int) string {
+	if seats <= 1 {
+		return "local"
+	}
+	return "linked"
 }
 
-// reachTuning is the data:session-tuning-profile each reach starts at.
+// TopologyForSeats is the data:run-config topology a project starts at.
+// Two seats default to a playing host, because two seats is the one case
+// where a peer link is genuinely one hop and worth not running a server
+// for. Past two, a peer host and a dedicated one are both two hops
+// (concept:deployment-combination), so the default goes to the one whose
+// results can be trusted.
+func TopologyForSeats(seats int) string {
+	switch {
+	case seats <= 1:
+		return "standalone"
+	case seats == 2:
+		return "listen"
+	default:
+		return "dedicated"
+	}
+}
+
+// tuningForSeats is the data:session-tuning-profile a project starts at.
 // The framework ships no defaults (decision:no-framework-tuning-defaults);
-// these are a starting declaration for the generated game. A server hop
-// already costs latency, so that tier sends less often and leans on
+// these are a starting declaration. Past two seats a hop through a host
+// is unavoidable, so that tier sends less often and leans on
 // concept:client-prediction instead.
-var reachTuning = map[string]Tuning{
-	"local":  {TickRate: 60, SendRate: 60, SnapshotEvery: 120, HistoryDepth: 8},
-	"peer":   {TickRate: 60, SendRate: 60, SnapshotEvery: 120, HistoryDepth: 12},
-	"server": {TickRate: 60, SendRate: 30, SnapshotEvery: 120, HistoryDepth: 12},
-}
-
-// reachSync is which synchronization modes each reach can sensibly run.
-var reachSync = map[string][]string{
-	"peer":   {"rollback", "delay", "hybrid", "server_authoritative"},
-	"server": {"server_authoritative", "hybrid", "delay"},
+func tuningForSeats(seats int) Tuning {
+	switch {
+	case seats <= 2:
+		return Tuning{TickRate: 60, SendRate: 60, SnapshotEvery: 120, HistoryDepth: 12}
+	default:
+		return Tuning{TickRate: 60, SendRate: 30, SnapshotEvery: 120, HistoryDepth: 12}
+	}
 }
 
 // SyncDefaultFor is the synchronization mode a camera usually wants, and
@@ -120,18 +123,27 @@ func SyncDefaultFor(view string) string {
 	return "server_authoritative"
 }
 
-// TargetsFor reports the entry points a reach generates.
-func TargetsFor(reach string) []Target { return reachTargets[reach] }
+// TargetsFor reports the entry points a seat count generates.
+func TargetsFor(seats int) []Target { return reachTargets[ReachFor(seats)] }
 
-// TopologyFor reports the run topology a reach starts at.
-func TopologyFor(reach string) string { return reachTopology[reach] }
-
-// SyncModesFor reports the synchronization modes a reach can run. Local
-// play has none to choose: synchronization keeps sessions consistent
-// across a link, and there is no link. The camera does not enter into it
-// — sharing a camera across two machines does not remove the link, it
-// only means both render the same mispredicted frame.
-func SyncModesFor(reach string) []string { return reachSync[reach] }
+// SyncModesFor reports the synchronization modes a seat count can run.
+//
+// Solo has none: synchronization keeps sessions consistent across a link,
+// and there is no link. Two seats can reach a peer directly in one hop,
+// which is what term:rollback and term:delay-buffering assume. Past two,
+// every exchange is two hops whichever host is chosen, so those two stop
+// being reachable and authority is what is left
+// (concept:deployment-combination).
+func SyncModesFor(seats int) []string {
+	switch {
+	case seats <= 1:
+		return nil
+	case seats == 2:
+		return []string{"rollback", "delay", "hybrid", "server_authoritative"}
+	default:
+		return []string{"server_authoritative", "hybrid", "delay"}
+	}
+}
 
 // NeedsUnreliable reports whether a reach wants a datagram channel.
 //
@@ -141,15 +153,7 @@ func SyncModesFor(reach string) []string { return reachSync[reach] }
 // (rule:presence-superseded-not-retransmitted). A turn-based game with
 // live cursors is realtime in the transport even though its simulation
 // is not.
-func NeedsUnreliable(reach string) bool { return reach != "local" }
-
-// MinSeats is the smallest seat count a reach makes sense with.
-func MinSeats(reach string) int {
-	if reach == "local" {
-		return 1
-	}
-	return 2
-}
+func NeedsUnreliable(seats int) bool { return seats > 1 }
 
 // Target is one generated entry point.
 type Target struct {
@@ -190,10 +194,6 @@ type Spec struct {
 	Module string
 	// Name identifies the game in session IDs and the chip library.
 	Name string
-	// Reach is how far the traffic may travel: local, peer, or server.
-	// The structural axis, since it decides whether a transport exists at
-	// all and what it costs.
-	Reach string
 	// View is concept:view-arrangement: the camera, shared or per_agent.
 	// Independent of Link.
 	View string
@@ -223,14 +223,12 @@ func (s *Spec) Validate() error {
 	if s.Name == "" {
 		errs = append(errs, errors.New("Name is required"))
 	}
-	if !slices.Contains(Reaches, s.Reach) {
-		errs = append(errs, fmt.Errorf("reach %q is not one of %v", s.Reach, Reaches))
-	}
+
 	if !slices.Contains(Views, s.View) {
 		errs = append(errs, fmt.Errorf("view arrangement %q is not one of %v", s.View, Views))
 	}
-	if min := MinSeats(s.Reach); s.Seats < min {
-		errs = append(errs, fmt.Errorf("%q reach needs at least %d seats, not %d", s.Reach, min, s.Seats))
+	if s.Seats < 1 {
+		errs = append(errs, fmt.Errorf("a session needs at least one seat, not %d", s.Seats))
 	}
 	if s.Seats == 1 && s.View != "shared" {
 		errs = append(errs, errors.New("one seat has no camera to arrange; use the shared view"))
@@ -238,9 +236,9 @@ func (s *Spec) Validate() error {
 	if s.Seats > 8 {
 		errs = append(errs, fmt.Errorf("%d seats is past what the generated placeholder renders; declare the slots by hand instead", s.Seats))
 	}
-	switch modes := SyncModesFor(s.Reach); {
+	switch modes := SyncModesFor(s.Seats); {
 	case len(modes) == 0 && s.SyncMode != "":
-		errs = append(errs, errors.New("local reach has no synchronization mode to set: there is no link to keep consistent"))
+		errs = append(errs, errors.New("one seat has no synchronization mode to set: there is no link to keep consistent"))
 	case len(modes) > 0 && !slices.Contains(modes, s.SyncMode):
 		errs = append(errs, fmt.Errorf("sync mode %q is not one of %v", s.SyncMode, modes))
 	}
@@ -251,17 +249,17 @@ func (s *Spec) Validate() error {
 }
 
 // Targets is the entry point set this process boundary generates.
-func (s *Spec) Targets() []Target { return reachTargets[s.Reach] }
+func (s *Spec) Targets() []Target { return reachTargets[ReachFor(s.Seats)] }
 
 // Topology is the data:run-config topology this boundary starts at.
-func (s *Spec) Topology() string { return reachTopology[s.Reach] }
+func (s *Spec) Topology() string { return TopologyForSeats(s.Seats) }
 
 // Tuning is the timing declaration for this spec's pace.
-func (s *Spec) Tuning() Tuning { return reachTuning[s.Reach] }
+func (s *Spec) Tuning() Tuning { return tuningForSeats(s.Seats) }
 
 // RequireUnreliable reports whether the generated run config asks for a
 // datagram channel.
-func (s *Spec) RequireUnreliable() bool { return NeedsUnreliable(s.Reach) }
+func (s *Spec) RequireUnreliable() bool { return NeedsUnreliable(s.Seats) }
 
 // SlotNames renders the generated slot identifiers, so the rules template
 // can declare one constant per seat.

@@ -46,7 +46,6 @@ type InitOptions struct {
 	Name          string `default:"" help:"game name; defaults to the directory name"`
 	Seats         int    `default:"0" help:"how many players share one session; 0 asks"`
 	View          string `default:"" help:"camera: shared for one view everybody reads, per_agent for a view each"`
-	Reach         string `default:"" help:"how far traffic may travel: local, peer, or server"`
 	Sync          string `default:"" help:"synchronization mode; a shared surface has none"`
 	Yes           bool   `default:"false" help:"take the default for every unanswered question instead of prompting"`
 	FrameworkPath string `default:"" help:"path to a local framework checkout, added as a replace directive"`

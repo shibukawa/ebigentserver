@@ -32,7 +32,6 @@ func runInit(c *context, opts *InitOptions) error {
 		Dir:           abs,
 		Module:        opts.Module,
 		Name:          opts.Name,
-		Reach:         opts.Reach,
 		View:          opts.View,
 		Seats:         opts.Seats,
 		SyncMode:      opts.Sync,
@@ -91,16 +90,15 @@ func ask(w *wizard, spec *scaffold.Spec) error {
 	if spec.Module == "" {
 		spec.Module = w.text("Go module path", "example.com/"+spec.Name)
 	}
-	// Three questions. How many play, what each of them sees, and how far
-	// the traffic may travel — in that order, because the first answer can
-	// make the other two moot.
+	// Two questions, and the first can make the second moot. Everything
+	// else follows: the entry points, the topology, the tuning, and which
+	// synchronization modes are reachable.
 	if spec.Seats == 0 {
 		spec.Seats = w.number("How many players share one session?", 2, 1, 8)
 	}
 	if spec.Seats == 1 {
-		// One seat has no camera to arrange and nobody to reach.
-		spec.View, spec.Reach = "shared", "local"
-		w.note("One player: no view to share and no link to make.")
+		spec.View = "shared"
+		w.note("One player: no view to arrange and no link to make.")
 	}
 
 	// The camera. Independent of where the seats sit — an online fighting
@@ -113,50 +111,31 @@ func ask(w *wizard, spec *scaffold.Spec) error {
 		)
 		if w.choose("What does each player see?", []string{shared, apart}, 0,
 			map[string]string{
-				shared: "fighting games, board games, most party games",
-				apart:  "shooters, anything with a per player camera",
+				shared: "fighting games, board games, party games — several pads on one machine also fit here",
+				apart:  "shooters, anything with a per player camera; one app instance per player",
 			}) == shared {
 			spec.View = "shared"
 		} else {
 			spec.View = "per_agent"
 		}
-		// Say the visibility constraint once, rather than let it surface
-		// later as a bug in Project.
 		if spec.View == "shared" {
 			w.note("One view means one set of facts: whatever is on screen, every player may know.")
 			w.note("Hiding state between players needs a view per player.")
 		}
 	}
 
-	// How far the traffic may travel. This is concept:realtime-intensity
-	// asked as something answerable: each step out costs latency, and the
-	// answer sets the topology, the tuning profile, and the entry points.
-	if spec.Reach == "" {
-		const (
-			local  = "one machine"
-			peer   = "direct between players"
-			server = "through a server"
-		)
-		switch w.choose(
-			"How far may the traffic travel? Each step out costs latency",
-			[]string{peer, server, local}, 0,
-			map[string]string{
-				local:  "everyone at one keyboard or one set of pads; no network at all",
-				peer:   "one player hosts and the rest connect to them — WebRTC or a LAN, no server hop",
-				server: "a server carries the traffic; it can be trusted with the result, and every exchange takes two hops",
-			}) {
-		case local:
-			spec.Reach = "local"
-		case peer:
-			spec.Reach = "peer"
-		default:
-			spec.Reach = "server"
-		}
+	// Where the traffic goes is not asked. It follows the seat count, and
+	// what remains of it is a run value rather than a code difference
+	// (concept:deployment-combination).
+	switch {
+	case spec.Seats == 2:
+		w.note("Two players can reach each other in one hop, so a direct link is worth having:")
+		w.note("WebRTC or a LAN, no server. A dedicated server stays available as a run setting.")
+	case spec.Seats > 2:
+		w.note("Past two players every exchange is two hops, through a peer host or a server alike,")
+		w.note("so the default is the host whose results can be trusted. Either is a run setting.")
 	}
-	if spec.Reach == "local" && spec.Seats > 1 && spec.View == "per_agent" {
-		w.note("Split views in one process are a convention, not a boundary: players can look across.")
-	}
-	modes := scaffold.SyncModesFor(spec.Reach)
+	modes := scaffold.SyncModesFor(spec.Seats)
 	if spec.SyncMode == "" && len(modes) > 0 {
 		def := 0
 		for i, m := range modes {

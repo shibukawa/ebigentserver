@@ -278,6 +278,8 @@
 {"context": "body", "path": ".knowledge/concept/deployment-combination.md", "source": "concept:deployment-combination", "target": "concept:control-plane", "target_category": "concept", "target_type": "concept"}
 {"context": "body", "path": ".knowledge/concept/deployment-combination.md", "source": "concept:deployment-combination", "target": "decision:webtransport-primary-for-wasm", "target_category": "constraint", "target_type": "decision"}
 {"context": "body", "path": ".knowledge/concept/deployment-combination.md", "source": "concept:deployment-combination", "target": "concept:agent-departure-policy", "target_category": "concept", "target_type": "concept"}
+{"context": "body", "path": ".knowledge/concept/deployment-combination.md", "source": "concept:deployment-combination", "target": "term:delay-buffering", "target_category": "vocabulary", "target_type": "term"}
+{"context": "body", "path": ".knowledge/concept/deployment-combination.md", "source": "concept:deployment-combination", "target": "term:server-authority", "target_category": "vocabulary", "target_type": "term"}
 {"context": "body", "path": ".knowledge/concept/deployment-combination.md", "source": "concept:deployment-combination", "target": "concept:realtime-intensity", "target_category": "concept", "target_type": "concept"}
 {"context": "body", "path": ".knowledge/concept/deployment-combination.md", "source": "concept:deployment-combination", "target": "concept:input-synchronization", "target_category": "concept", "target_type": "concept"}
 {"context": "body", "path": ".knowledge/concept/deployment-combination.md", "source": "concept:deployment-combination", "target": "rule:deterministic-simulation-required-for-rollback", "target_category": "constraint", "target_type": "rule"}
