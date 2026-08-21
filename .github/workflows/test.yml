@@ -17,15 +17,17 @@ jobs:
         run: go vet ./...
       - name: Test
         run: go test ./...
-      # requirement:native-and-wasm-targets — every package keeps building on
-      # the wasm targets and on a 32-bit arch (catches bare-int assumptions).
-      # Client entry points are the one exception on headless targets: they
-      # import the engine by design (decision:entry-points-over-build-tags),
-      # and Ebitengine has no wasip1/386 support. js/wasm builds everything —
-      # the browser is a rendering target.
+      # requirement:native-and-wasm-targets — every package that can end up in
+      # a game keeps building on the wasm targets and on a 32-bit arch
+      # (catches bare-int assumptions). Two kinds of package are excluded.
+      # Client entry points import the engine by design
+      # (decision:entry-points-over-build-tags), and Ebitengine has no
+      # wasip1/386 support. The toolchain (cli, cmd/ebigent) is a host tool
+      # and never a concept:build-target: it runs on a developer machine, so
+      # its terminal UI has no reason to compile for a browser.
       - name: Build js/wasm
-        run: GOOS=js GOARCH=wasm go build ./...
+        run: GOOS=js GOARCH=wasm go build $(go list ./... | grep -v -e '/cli$' -e '/cmd/ebigent$' -e '^github.com/shibukawa/ebigentserver$')
       - name: Build wasip1/wasm
-        run: GOOS=wasip1 GOARCH=wasm go build $(go list ./... | grep -v -e '/cmd/pong-client' -e '^github.com/shibukawa/ebigentserver$')
+        run: GOOS=wasip1 GOARCH=wasm go build $(go list ./... | grep -v -e '/cmd/pong-client' -e '/cli$' -e '/cmd/ebigent$' -e '^github.com/shibukawa/ebigentserver$')
       - name: Build linux/386
-        run: GOOS=linux GOARCH=386 go build $(go list ./... | grep -v -e '/cmd/pong-client' -e '^github.com/shibukawa/ebigentserver$')
+        run: GOOS=linux GOARCH=386 go build $(go list ./... | grep -v -e '/cmd/pong-client' -e '/cli$' -e '/cmd/ebigent$' -e '^github.com/shibukawa/ebigentserver$')

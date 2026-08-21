@@ -26,6 +26,7 @@ writes:
 then:
   - run go mod tidy and tinybind codegen
   - build once and report the result
+prompts: a terminal gets the bubbles interface; anything else — a pipe, a test driving the command in process, a CI job — gets the plain text one, since a prompt that only renders cannot be scripted
 non_interactive: every answer is also a CLI option, so init runs unattended in a test
 refuses: a directory already holding any file it would write, rather than overwriting work
 serves: requirement:project-scaffolding

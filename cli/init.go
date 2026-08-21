@@ -3,6 +3,7 @@ package cli
 import (
 	"bufio"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"slices"
@@ -20,7 +21,7 @@ import (
 // entirely when the options are supplied — which is what lets init run
 // unattended in a test or a script.
 func runInit(c *context, opts *InitOptions) error {
-	w := &wizard{in: bufio.NewScanner(os.Stdin), out: c.stdout, auto: opts.Yes}
+	w := newWizard(c.stdout, opts.Yes)
 
 	// The name comes first because it can decide where the project goes:
 	// given no directory, init makes one named after the game rather than
@@ -296,6 +297,13 @@ func (w *wizard) number(prompt string, def, min, max int) int {
 		w.note("%s %d", prompt, def)
 		return def
 	}
+	if w.tui {
+		n, err := strconv.Atoi(w.askText(prompt, strconv.Itoa(def), numberValidator(min, max)))
+		if err != nil {
+			return def
+		}
+		return n
+	}
 	for {
 		fmt.Fprintf(w.out, "%s [%d]: ", prompt, def)
 		if !w.in.Scan() {
@@ -317,18 +325,47 @@ func (w *wizard) number(prompt string, def, min, max int) int {
 // default and says so, so an unattended run still reports what it chose.
 type wizard struct {
 	in   *bufio.Scanner
-	out  interface{ Write([]byte) (int, error) }
+	out  io.Writer
 	auto bool
+	// tui selects the bubbles prompts of tui.go. It is off wherever
+	// stdin is not a terminal — a test driving the command in process, a
+	// CI job, a pipeline — because a prompt that only renders cannot be
+	// scripted, and every answer here is also a flag.
+	tui bool
+}
+
+// newWizard picks the prompt style from what stdin actually is.
+func newWizard(out io.Writer, auto bool) *wizard {
+	return &wizard{
+		in:   bufio.NewScanner(os.Stdin),
+		out:  out,
+		auto: auto,
+		tui:  !auto && isTerminal(os.Stdin),
+	}
+}
+
+// isTerminal reports whether f is a character device, which is the
+// cheapest honest test for "a person is watching".
+func isTerminal(f *os.File) bool {
+	info, err := f.Stat()
+	return err == nil && info.Mode()&os.ModeCharDevice != 0
 }
 
 func (w *wizard) note(format string, args ...any) {
-	fmt.Fprintf(w.out, format+"\n", args...)
+	line := fmt.Sprintf(format, args...)
+	if w.tui {
+		line = noteStyle.Render(line)
+	}
+	fmt.Fprintln(w.out, line)
 }
 
 func (w *wizard) text(prompt, def string) string {
 	if w.auto {
 		w.note("%s: %s", prompt, def)
 		return def
+	}
+	if w.tui {
+		return w.askText(prompt, def, nil)
 	}
 	fmt.Fprintf(w.out, "%s [%s]: ", prompt, def)
 	if !w.in.Scan() {
@@ -358,6 +395,12 @@ func (w *wizard) list(options []string, help map[string]string) {
 func (w *wizard) choose(prompt string, options []string, def int, help map[string]string) string {
 	if w.auto {
 		w.note("%s: %s", prompt, options[def])
+		return options[def]
+	}
+	if w.tui {
+		if chosen := w.askChoice(prompt, options, def, help); chosen != "" {
+			return chosen
+		}
 		return options[def]
 	}
 	fmt.Fprintf(w.out, "\n%s\n", prompt)

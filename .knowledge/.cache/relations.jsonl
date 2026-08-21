@@ -1080,6 +1080,7 @@
 {"context": "body", "path": ".knowledge/requirement/dedicated-game-toolchain.md", "source": "requirement:dedicated-game-toolchain", "target": "system:tinybind", "target_category": "external", "target_type": "system"}
 {"context": "body", "path": ".knowledge/requirement/dedicated-game-toolchain.md", "source": "requirement:dedicated-game-toolchain", "target": "decision:separate-game-cli", "target_category": "constraint", "target_type": "decision"}
 {"context": "body", "path": ".knowledge/requirement/dedicated-game-toolchain.md", "source": "requirement:dedicated-game-toolchain", "target": "requirement:unified-toolchain-binary", "target_category": "objective", "target_type": "requirement"}
+{"context": "body", "path": ".knowledge/requirement/dedicated-game-toolchain.md", "source": "requirement:dedicated-game-toolchain", "target": "requirement:native-and-wasm-targets", "target_category": "objective", "target_type": "requirement"}
 {"context": "body", "path": ".knowledge/requirement/dev-time-inspection.md", "source": "requirement:dev-time-inspection", "target": "concept:agent-view", "target_category": "concept", "target_type": "concept"}
 {"context": "body", "path": ".knowledge/requirement/dev-time-inspection.md", "source": "requirement:dev-time-inspection", "target": "concept:action", "target_category": "concept", "target_type": "concept"}
 {"context": "body", "path": ".knowledge/requirement/dev-time-inspection.md", "source": "requirement:dev-time-inspection", "target": "ui:dev-console", "target_category": "interface", "target_type": "ui"}
