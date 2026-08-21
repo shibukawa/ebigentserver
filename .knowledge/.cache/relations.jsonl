@@ -1162,7 +1162,6 @@
 {"context": "body", "path": ".knowledge/rule/build-tag-only-for-linkage.md", "source": "rule:build-tag-only-for-linkage", "target": "decision:entry-points-over-build-tags", "target_category": "constraint", "target_type": "decision"}
 {"context": "body", "path": ".knowledge/rule/build-tag-only-for-linkage.md", "source": "rule:build-tag-only-for-linkage", "target": "concept:transport-capability", "target_category": "concept", "target_type": "concept"}
 {"context": "body", "path": ".knowledge/rule/build-tag-only-for-linkage.md", "source": "rule:build-tag-only-for-linkage", "target": "rule:transport-selected-by-capability", "target_category": "constraint", "target_type": "rule"}
-{"context": "body", "path": ".knowledge/rule/build-tag-only-for-linkage.md", "source": "rule:build-tag-only-for-linkage", "target": "system:webrtc", "target_category": "external", "target_type": "system"}
 {"context": "body", "path": ".knowledge/rule/codegen-rejects-nondeterministic-types.md", "source": "rule:codegen-rejects-nondeterministic-types", "target": "system:tinybind", "target_category": "external", "target_type": "system"}
 {"context": "body", "path": ".knowledge/rule/codegen-rejects-nondeterministic-types.md", "source": "rule:codegen-rejects-nondeterministic-types", "target": "concept:world-state", "target_category": "concept", "target_type": "concept"}
 {"context": "body", "path": ".knowledge/rule/codegen-rejects-nondeterministic-types.md", "source": "rule:codegen-rejects-nondeterministic-types", "target": "decision:go-struct-world-state", "target_category": "constraint", "target_type": "decision"}
@@ -1416,6 +1415,9 @@
 {"context": "body", "path": ".knowledge/system/websocket.md", "source": "system:websocket", "target": "policy:realtime-abuse-protection", "target_category": "constraint", "target_type": "policy"}
 {"context": "body", "path": ".knowledge/system/webtransport.md", "source": "system:webtransport", "target": "concept:dedicated-server-mode", "target_category": "concept", "target_type": "concept"}
 {"context": "body", "path": ".knowledge/system/webtransport.md", "source": "system:webtransport", "target": "system:edge-tls-terminator", "target_category": "external", "target_type": "system"}
+{"context": "body", "path": ".knowledge/system/webtransport.md", "source": "system:webtransport", "target": "concept:static-host-mode", "target_category": "concept", "target_type": "concept"}
+{"context": "body", "path": ".knowledge/system/webtransport.md", "source": "system:webtransport", "target": "system:webrtc", "target_category": "external", "target_type": "system"}
+{"context": "body", "path": ".knowledge/system/webtransport.md", "source": "system:webtransport", "target": "concept:deployment-combination", "target_category": "concept", "target_type": "concept"}
 {"context": "body", "path": ".knowledge/system/webtransport.md", "source": "system:webtransport", "target": "api:transport-interface", "target_category": "interface", "target_type": "api"}
 {"context": "body", "path": ".knowledge/term/delay-buffering.md", "source": "term:delay-buffering", "target": "term:rollback", "target_category": "vocabulary", "target_type": "term"}
 {"context": "body", "path": ".knowledge/term/delay-buffering.md", "source": "term:delay-buffering", "target": "concept:synchronization-mode", "target_category": "concept", "target_type": "concept"}

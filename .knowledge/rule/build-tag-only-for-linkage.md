@@ -27,8 +27,9 @@ tag_axes:
   why: decision:entry-points-over-build-tags rejects tags partly because combinations multiply and only some are ever compiled; a second shape-changing axis is exactly that failure
   the_one_axis: renderer linkage, being listen against headless
   transports_are_not_an_axis: which transport carries a session is chosen at runtime from concept:transport-capability under rule:transport-selected-by-capability, so a tag naming a transport would be a mode selector, which is what the rule forbids
-  transport_exclusion_is_different: a tag that only drops an optional dependency — pion for a wasm target that never speaks system:webrtc — removes weight without changing the entry's contract, so it composes rather than multiplying
-  open: no transport exclusion tag exists yet; add one only against a measured wasm size, never speculatively
+  transports_need_no_exclusion_tag: the native implementations are already constrained to !js && !wasip1, so a browser build never links pion or quic-go — the automatic_in_go case above, not a custom tag
+  measured: a js/wasm binary is the same size with and without either transport package imported, because neither compiles for that target
+  native_size: a native server binary carrying an unused transport is a few megabytes nobody is counting
   unchanged: the topology this process plays in is still a run value, and both tag variants read the same data:run-config
 test: if two variants could sensibly run in the same process, it is configuration
 ```

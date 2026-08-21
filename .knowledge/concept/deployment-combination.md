@@ -64,4 +64,10 @@ excluded:
   - name: playing host over webtransport on the open internet
     why: needs a certificate and an inbound port the player does not have; the same shape works on a lan, which is why it appears there instead
 seat_count_effects: slot set, admission capacity, and whether concept:agent-departure-policy has to keep a session alive; not which transport is used
+transport_pair_is_not_redundant: >
+  system:webtransport covers every row with a dedicated host and system:webrtc
+  covers every row with a playing host, and neither reaches the other's rows.
+  A project that will always ship a server needs only the first; a project
+  that wants the no-backend path needs the second, because no other browser
+  api lets one browser accept a connection from another.
 ```
