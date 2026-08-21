@@ -356,8 +356,9 @@
 {"context": "body", "path": ".knowledge/concept/realtime-intensity.md", "source": "concept:realtime-intensity", "target": "rule:transport-selected-by-capability", "target_category": "constraint", "target_type": "rule"}
 {"context": "body", "path": ".knowledge/concept/realtime-intensity.md", "source": "concept:realtime-intensity", "target": "concept:synchronization-mode", "target_category": "concept", "target_type": "concept"}
 {"context": "body", "path": ".knowledge/concept/realtime-intensity.md", "source": "concept:realtime-intensity", "target": "concept:deployment-combination", "target_category": "concept", "target_type": "concept"}
-{"context": "body", "path": ".knowledge/concept/realtime-intensity.md", "source": "concept:realtime-intensity", "target": "system:webtransport", "target_category": "external", "target_type": "system"}
-{"context": "body", "path": ".knowledge/concept/realtime-intensity.md", "source": "concept:realtime-intensity", "target": "system:webrtc", "target_category": "external", "target_type": "system"}
+{"context": "body", "path": ".knowledge/concept/realtime-intensity.md", "source": "concept:realtime-intensity", "target": "data:presence-message", "target_category": "structure", "target_type": "data"}
+{"context": "body", "path": ".knowledge/concept/realtime-intensity.md", "source": "concept:realtime-intensity", "target": "concept:world-state", "target_category": "concept", "target_type": "concept"}
+{"context": "body", "path": ".knowledge/concept/realtime-intensity.md", "source": "concept:realtime-intensity", "target": "rule:presence-superseded-not-retransmitted", "target_category": "constraint", "target_type": "rule"}
 {"context": "body", "path": ".knowledge/concept/sample-acceptance-matrix.md", "source": "concept:sample-acceptance-matrix", "target": "concept:coverage-matrix", "target_category": "concept", "target_type": "concept"}
 {"context": "body", "path": ".knowledge/concept/sample-acceptance-matrix.md", "source": "concept:sample-acceptance-matrix", "target": "sample:tic-tac-toe", "target_category": "objective", "target_type": "sample"}
 {"context": "body", "path": ".knowledge/concept/sample-acceptance-matrix.md", "source": "concept:sample-acceptance-matrix", "target": "sample:reversi", "target_category": "objective", "target_type": "sample"}

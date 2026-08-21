@@ -30,10 +30,18 @@ decides:
   - the tick and send rates of data:session-tuning-profile
   - which concept:synchronization-mode is viable
   - whether a server on the data path is affordable, see concept:deployment-combination
-the_cheapest_case_is_worth_naming: >
-  a turn based game needs no unreliable datagram, so it needs neither
-  system:webtransport nor system:webrtc. It runs over system:websocket,
+simulation_pace_is_not_transport_pace: >
+  a turn based simulation does not make the link quiet. Cursors, look
+  direction, ping markers, and emotes are data:presence-message: they never
+  touch concept:world-state, they travel at their own presence_rate, and
+  they are superseded rather than retransmitted
+  (rule:presence-superseded-not-retransmitted) — which is datagram
+  behaviour. A board game with live cursors wants an unreliable channel
+  even though nothing it simulates is realtime.
+websocket_only_is_still_a_real_case: >
+  a game that shows no live presence at all, only committed moves, needs a
+  reliable ordered stream and nothing else. It runs over system:websocket
   behind any ordinary https endpoint, with no certificate story beyond the
-  one a web server already has. Reaching for a datagram transport before
-  the game needs one buys deployment cost and nothing else.
+  one a web server already has. That case is worth keeping available, but
+  it is narrower than "turn based" — it is "nothing moves between turns".
 ```

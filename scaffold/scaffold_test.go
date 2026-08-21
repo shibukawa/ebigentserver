@@ -21,19 +21,20 @@ func frameworkRoot(t *testing.T) string {
 	return filepath.Dir(wd)
 }
 
-func spec(t *testing.T, link, view string, seats int) *scaffold.Spec {
+func spec(t *testing.T, reach, view string, seats int) *scaffold.Spec {
 	t.Helper()
-	const pace = "twitch"
 	sync := ""
-	if modes := scaffold.SyncModesFor(link, pace); len(modes) > 0 {
+	if modes := scaffold.SyncModesFor(reach); len(modes) > 0 {
 		sync = scaffold.SyncDefaultFor(view)
+		if !contains(modes, sync) {
+			sync = modes[0]
+		}
 	}
 	return &scaffold.Spec{
 		Dir:           t.TempDir(),
 		Module:        "example.com/mygame",
 		Name:          "mygame",
-		Link:          link,
-		Pace:          pace,
+		Reach:         reach,
 		View:          view,
 		Seats:         seats,
 		SyncMode:      sync,
@@ -50,18 +51,19 @@ func TestGeneratedProjectBuildsAndPassesItsTests(t *testing.T) {
 	// The four real quadrants of concept:view-arrangement, plus solo.
 	for _, tc := range []struct {
 		name  string
-		link  string
+		reach string
 		view  string
 		seats int
 	}{
 		{"solo", "local", "shared", 1},
 		{"couch_shared_camera", "local", "shared", 2},
 		{"couch_split_camera", "local", "per_agent", 2},
-		{"online_shared_camera", "networked", "shared", 2},
-		{"online_per_agent_camera", "networked", "per_agent", 4},
+		{"peer_shared_camera", "peer", "shared", 2},
+		{"peer_star_four_players", "peer", "per_agent", 4},
+		{"server_per_agent_camera", "server", "per_agent", 4},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			s := spec(t, tc.link, tc.view, tc.seats)
+			s := spec(t, tc.reach, tc.view, tc.seats)
 			generateAndTidy(t, s)
 			goRun(t, s.Dir, "build", "./...")
 			goRun(t, s.Dir, "test", "./...")
@@ -134,16 +136,15 @@ func TestSpecValidateRejectsUnreachableCombinations(t *testing.T) {
 		want string
 	}{
 		{"sync mode with no link to keep consistent", func(s *scaffold.Spec) {
-			s.Link, s.SyncMode = "local", "rollback"
+			s.Reach, s.SyncMode = "local", "rollback"
 		}, "no synchronization mode"},
-		{"unknown process boundary", func(s *scaffold.Spec) { s.Link = "mesh" }, "process boundary"},
+		{"unknown reach", func(s *scaffold.Spec) { s.Reach = "mesh" }, "reach"},
 		{"unknown camera", func(s *scaffold.Spec) { s.View = "isometric" }, "view arrangement"},
-		{"unknown pace", func(s *scaffold.Spec) { s.Pace = "leisurely" }, "pace"},
-		{"rollback on a paced game", func(s *scaffold.Spec) {
-			s.Link, s.Pace, s.SyncMode = "networked", "paced", "rollback"
+		{"rollback past a server hop", func(s *scaffold.Spec) {
+			s.Reach, s.SyncMode = "server", "rollback"
 		}, "sync mode"},
-		{"networked play with one seat", func(s *scaffold.Spec) {
-			s.Link, s.Seats, s.SyncMode = "networked", 1, "rollback"
+		{"a link with one seat", func(s *scaffold.Spec) {
+			s.Reach, s.Seats, s.SyncMode = "peer", 1, "rollback"
 		}, "at least 2 seats"},
 		{"one seat with a per-seat camera", func(s *scaffold.Spec) {
 			s.Seats, s.View = 1, "per_agent"
@@ -163,26 +164,29 @@ func TestSpecValidateRejectsUnreachableCombinations(t *testing.T) {
 	}
 }
 
-// The process boundary decides the entry point set and whether a
-// synchronization mode exists; the camera decides neither. Sharing a
-// camera across two machines does not remove the link — which is exactly
-// the online fighting game case.
-func TestProcessBoundaryDecidesStructureNotTheCamera(t *testing.T) {
-	if got := scaffold.SyncModesFor("local", "twitch"); len(got) != 0 {
-		t.Errorf("local play should have no synchronization mode, got %v", got)
+// The reach decides the entry point set and whether a synchronization
+// mode exists; the camera decides neither. Sharing a camera across two
+// machines does not remove the link — which is exactly the online
+// fighting game case.
+func TestReachDecidesStructureNotTheCamera(t *testing.T) {
+	if got := scaffold.SyncModesFor("local"); len(got) != 0 {
+		t.Errorf("local reach should have no synchronization mode, got %v", got)
 	}
-	if got := scaffold.SyncModesFor("networked", "twitch"); len(got) == 0 {
-		t.Error("networked play needs synchronization modes")
+	if got := scaffold.SyncModesFor("peer"); len(got) == 0 {
+		t.Error("a peer reach needs synchronization modes")
 	}
-	// Pace narrows what is offered: rollback is for twitch play, and a
-	// paced game has no business re-simulating.
-	if got := scaffold.SyncModesFor("networked", "paced"); contains(got, "rollback") {
-		t.Errorf("paced play should not offer rollback, got %v", got)
+	// Rollback belongs to the peer reach: re-simulating past a server hop
+	// is not what it is for.
+	if got := scaffold.SyncModesFor("server"); contains(got, "rollback") {
+		t.Errorf("a server reach should not offer rollback, got %v", got)
 	}
-	// Only twitch play needs a datagram channel; that is what lets a
-	// quieter game run over websocket alone.
-	if !scaffold.NeedsUnreliable("twitch") || scaffold.NeedsUnreliable("paced") {
-		t.Error("the datagram requirement should follow the pace")
+	// Any link wants a datagram channel, even for slow turns: cursors and
+	// ping markers are presence, superseded rather than retransmitted.
+	if !scaffold.NeedsUnreliable("peer") || !scaffold.NeedsUnreliable("server") {
+		t.Error("a link should ask for a datagram channel")
+	}
+	if scaffold.NeedsUnreliable("local") {
+		t.Error("local play has no link to carry datagrams")
 	}
 	for _, tgt := range scaffold.TargetsFor("local") {
 		if tgt.Kind == "server" {
@@ -190,7 +194,7 @@ func TestProcessBoundaryDecidesStructureNotTheCamera(t *testing.T) {
 		}
 	}
 	var server, client bool
-	for _, tgt := range scaffold.TargetsFor("networked") {
+	for _, tgt := range scaffold.TargetsFor("server") {
 		server = server || tgt.Kind == "server"
 		client = client || tgt.Kind == "client"
 		if tgt.Kind == "server" && !tgt.Tagged() {
@@ -198,7 +202,7 @@ func TestProcessBoundaryDecidesStructureNotTheCamera(t *testing.T) {
 		}
 	}
 	if !server || !client {
-		t.Error("networked play should generate both a client and a server")
+		t.Error("a server reach should generate both a client and a server")
 	}
 	// A shared camera puts a mispredicted frame in front of everyone at
 	// once, which is what rollback is for.
@@ -217,7 +221,7 @@ func TestServerBuildsBothLinkageForms(t *testing.T) {
 	if testing.Short() {
 		t.Skip("shells out to the go toolchain")
 	}
-	s := spec(t, "networked", "per_agent", 4)
+	s := spec(t, "server", "per_agent", 4)
 	generateAndTidy(t, s)
 	for _, f := range []string{"cmd/server/main.go", "cmd/server/listen.go", "cmd/server/headless.go"} {
 		if _, err := os.Stat(filepath.Join(s.Dir, f)); err != nil {

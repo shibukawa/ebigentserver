@@ -36,33 +36,6 @@ const FrameworkModule = "github.com/shibukawa/ebigentserver"
 // SyncModes mirrors the run configuration allowlist.
 var SyncModes = []string{"delay", "rollback", "server_authoritative", "hybrid"}
 
-// Links is the process boundary: whether the seats share a process or
-// reach each other over a link. This is the structural axis — it decides
-// whether a transport, an admission path, a server target, and a
-// concept:synchronization-mode exist at all.
-var Links = []string{"local", "networked"}
-
-// Paces are concept:realtime-intensity. turn_based is deliberately absent:
-// it needs a step-paced placeholder rather than the realtime flyer these
-// templates generate, and generating a flyer for a turn-based project
-// would teach the wrong loop.
-var Paces = []string{"paced", "twitch"}
-
-// paceTuning is the data:session-tuning-profile each tier starts at. The
-// framework ships no defaults (decision:no-framework-tuning-defaults);
-// these are a starting declaration for the generated game, not framework
-// values.
-var paceTuning = map[string]Tuning{
-	"paced":  {TickRate: 30, SendRate: 15, SnapshotEvery: 60, HistoryDepth: 8},
-	"twitch": {TickRate: 60, SendRate: 60, SnapshotEvery: 120, HistoryDepth: 12},
-}
-
-// paceSync is which synchronization modes each tier can sensibly run.
-var paceSync = map[string][]string{
-	"paced":  {"server_authoritative", "hybrid"},
-	"twitch": {"rollback", "delay", "hybrid", "server_authoritative"},
-}
-
 // Tuning is the timing declaration written into the generated rules.
 type Tuning struct {
 	TickRate      int
@@ -71,30 +44,68 @@ type Tuning struct {
 	HistoryDepth  int
 }
 
-// Views is concept:view-arrangement: the camera. Independent of Links —
+// Views is concept:view-arrangement: the camera. Independent of reach —
 // an online fighting game shares a camera across separate processes, and
 // a split screen console game splits one inside a single process.
 var Views = []string{"shared", "per_agent"}
 
-// linkTargets is the entry point set each process boundary needs. Local
-// play needs no server whatever the seat count or the camera: every seat
-// is admitted in process and nothing crosses a link.
-var linkTargets = map[string][]Target{
+// Reaches is concept:realtime-intensity expressed as the question a
+// developer can actually answer: how far may the traffic travel before
+// the game stops feeling right. The answer decides the process boundary,
+// the entry point set, the tuning profile, and the default topology.
+var Reaches = []string{"local", "peer", "server"}
+
+// reachTargets is the entry point set each reach needs. Local play needs
+// no server whatever the seat count or the camera. Peer and server play
+// generate the same set, because the host is orthogonal and lives behind
+// a build tag — what differs is which form the project expects to run.
+var reachTargets = map[string][]Target{
 	"local": {
 		{Name: "game", Kind: "client"},
 		{Name: "simulation", Kind: "simulation"},
 	},
-	"networked": {
+	"peer": {
+		{Name: "client", Kind: "client"},
+		{Name: "server", Kind: "server"},
+		{Name: "simulation", Kind: "simulation"},
+	},
+	"server": {
 		{Name: "client", Kind: "client"},
 		{Name: "server", Kind: "server"},
 		{Name: "simulation", Kind: "simulation"},
 	},
 }
 
-// linkTopology is the data:run-config topology each boundary starts at.
-var linkTopology = map[string]string{
-	"local":     "standalone",
-	"networked": "dedicated",
+// reachTopology is the data:run-config topology each reach starts at. A
+// peer-reaching game defaults to a playing host, since not paying the
+// server hop is the whole reason it chose that answer.
+//
+// A peer reach is not limited to two players. Peer links here are star
+// shaped (concept:static-host-mode): one host holds the session and every
+// other player connects to it, so the seat count is a number rather than
+// a different arrangement. What is excluded is a mesh, where every pair
+// would need its own link.
+var reachTopology = map[string]string{
+	"local":  "standalone",
+	"peer":   "listen",
+	"server": "dedicated",
+}
+
+// reachTuning is the data:session-tuning-profile each reach starts at.
+// The framework ships no defaults (decision:no-framework-tuning-defaults);
+// these are a starting declaration for the generated game. A server hop
+// already costs latency, so that tier sends less often and leans on
+// concept:client-prediction instead.
+var reachTuning = map[string]Tuning{
+	"local":  {TickRate: 60, SendRate: 60, SnapshotEvery: 120, HistoryDepth: 8},
+	"peer":   {TickRate: 60, SendRate: 60, SnapshotEvery: 120, HistoryDepth: 12},
+	"server": {TickRate: 60, SendRate: 30, SnapshotEvery: 120, HistoryDepth: 12},
+}
+
+// reachSync is which synchronization modes each reach can sensibly run.
+var reachSync = map[string][]string{
+	"peer":   {"rollback", "delay", "hybrid", "server_authoritative"},
+	"server": {"server_authoritative", "hybrid", "delay"},
 }
 
 // SyncDefaultFor is the synchronization mode a camera usually wants, and
@@ -109,40 +120,35 @@ func SyncDefaultFor(view string) string {
 	return "server_authoritative"
 }
 
-// TargetsFor reports the entry points a process boundary generates.
-func TargetsFor(link string) []Target { return linkTargets[link] }
+// TargetsFor reports the entry points a reach generates.
+func TargetsFor(reach string) []Target { return reachTargets[reach] }
 
-// TopologyFor reports the run topology a boundary starts at.
-func TopologyFor(link string) string { return linkTopology[link] }
+// TopologyFor reports the run topology a reach starts at.
+func TopologyFor(reach string) string { return reachTopology[reach] }
 
-// SyncModesFor reports the synchronization modes a process boundary can
-// run. Local play has none to choose: synchronization keeps sessions
-// consistent across a link, and there is no link. The camera does not
-// enter into it — sharing a camera across two machines does not remove
-// the link, it only means both render the same mispredicted frame.
-func SyncModesFor(link, pace string) []string {
-	if link == "local" {
-		return nil
+// SyncModesFor reports the synchronization modes a reach can run. Local
+// play has none to choose: synchronization keeps sessions consistent
+// across a link, and there is no link. The camera does not enter into it
+// — sharing a camera across two machines does not remove the link, it
+// only means both render the same mispredicted frame.
+func SyncModesFor(reach string) []string { return reachSync[reach] }
+
+// NeedsUnreliable reports whether a reach wants a datagram channel.
+//
+// Any link does, even for a game whose turns are slow: cursors, look
+// direction, and ping markers are data:presence-message, which travels at
+// its own rate and is superseded rather than retransmitted
+// (rule:presence-superseded-not-retransmitted). A turn-based game with
+// live cursors is realtime in the transport even though its simulation
+// is not.
+func NeedsUnreliable(reach string) bool { return reach != "local" }
+
+// MinSeats is the smallest seat count a reach makes sense with.
+func MinSeats(reach string) int {
+	if reach == "local" {
+		return 1
 	}
-	modes := paceSync[pace]
-	if len(modes) == 0 {
-		return SyncModes
-	}
-	return modes
-}
-
-// NeedsUnreliable reports whether a tier wants a datagram channel. A
-// turn-based game does not, which is what lets it run over
-// system:websocket with no datagram transport anywhere in the
-// deployment.
-func NeedsUnreliable(pace string) bool { return pace == "twitch" }
-
-// MinSeats is the smallest seat count a boundary makes sense with.
-func MinSeats(link string) int {
-	if link == "networked" {
-		return 2
-	}
-	return 1
+	return 2
 }
 
 // Target is one generated entry point.
@@ -184,15 +190,13 @@ type Spec struct {
 	Module string
 	// Name identifies the game in session IDs and the chip library.
 	Name string
-	// Link is the process boundary: local or networked. The structural
-	// axis, since it decides whether a transport exists at all.
-	Link string
+	// Reach is how far the traffic may travel: local, peer, or server.
+	// The structural axis, since it decides whether a transport exists at
+	// all and what it costs.
+	Reach string
 	// View is concept:view-arrangement: the camera, shared or per_agent.
 	// Independent of Link.
 	View string
-	// Pace is concept:realtime-intensity, which sets the tuning profile
-	// and narrows the synchronization modes.
-	Pace string
 	// Seats is how many concept:player-slot entries the rules declare.
 	// A number rather than a category: two seats and twenty generate the
 	// same wiring.
@@ -219,27 +223,24 @@ func (s *Spec) Validate() error {
 	if s.Name == "" {
 		errs = append(errs, errors.New("Name is required"))
 	}
-	if !slices.Contains(Links, s.Link) {
-		errs = append(errs, fmt.Errorf("process boundary %q is not one of %v", s.Link, Links))
+	if !slices.Contains(Reaches, s.Reach) {
+		errs = append(errs, fmt.Errorf("reach %q is not one of %v", s.Reach, Reaches))
 	}
 	if !slices.Contains(Views, s.View) {
 		errs = append(errs, fmt.Errorf("view arrangement %q is not one of %v", s.View, Views))
 	}
-	if min := MinSeats(s.Link); s.Seats < min {
-		errs = append(errs, fmt.Errorf("%q play needs at least %d seats, not %d", s.Link, min, s.Seats))
+	if min := MinSeats(s.Reach); s.Seats < min {
+		errs = append(errs, fmt.Errorf("%q reach needs at least %d seats, not %d", s.Reach, min, s.Seats))
 	}
-	if s.Seats == 1 && s.View == "per_agent" {
+	if s.Seats == 1 && s.View != "shared" {
 		errs = append(errs, errors.New("one seat has no camera to arrange; use the shared view"))
 	}
 	if s.Seats > 8 {
 		errs = append(errs, fmt.Errorf("%d seats is past what the generated placeholder renders; declare the slots by hand instead", s.Seats))
 	}
-	if !slices.Contains(Paces, s.Pace) {
-		errs = append(errs, fmt.Errorf("pace %q is not one of %v", s.Pace, Paces))
-	}
-	switch modes := SyncModesFor(s.Link, s.Pace); {
+	switch modes := SyncModesFor(s.Reach); {
 	case len(modes) == 0 && s.SyncMode != "":
-		errs = append(errs, errors.New("local play has no synchronization mode to set: there is no link to keep consistent"))
+		errs = append(errs, errors.New("local reach has no synchronization mode to set: there is no link to keep consistent"))
 	case len(modes) > 0 && !slices.Contains(modes, s.SyncMode):
 		errs = append(errs, fmt.Errorf("sync mode %q is not one of %v", s.SyncMode, modes))
 	}
@@ -250,17 +251,17 @@ func (s *Spec) Validate() error {
 }
 
 // Targets is the entry point set this process boundary generates.
-func (s *Spec) Targets() []Target { return linkTargets[s.Link] }
+func (s *Spec) Targets() []Target { return reachTargets[s.Reach] }
 
 // Topology is the data:run-config topology this boundary starts at.
-func (s *Spec) Topology() string { return linkTopology[s.Link] }
+func (s *Spec) Topology() string { return reachTopology[s.Reach] }
 
 // Tuning is the timing declaration for this spec's pace.
-func (s *Spec) Tuning() Tuning { return paceTuning[s.Pace] }
+func (s *Spec) Tuning() Tuning { return reachTuning[s.Reach] }
 
 // RequireUnreliable reports whether the generated run config asks for a
 // datagram channel.
-func (s *Spec) RequireUnreliable() bool { return NeedsUnreliable(s.Pace) }
+func (s *Spec) RequireUnreliable() bool { return NeedsUnreliable(s.Reach) }
 
 // SlotNames renders the generated slot identifiers, so the rules template
 // can declare one constant per seat.

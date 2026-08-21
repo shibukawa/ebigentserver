@@ -190,9 +190,9 @@
 - `analysis` — corpus集計とDuckDB SQL生成(ゲームプロセス外の分析ツール)。
 - `config/buildconf`, `config/runconf`, `config/confload` — `ebigent.toml` 1ファイルを prefix でセクション分けして bind。既定 < ファイル < 環境変数 < オプションの順で上書き。
 - `scaffold` — `ebigent init` が書き出すプロジェクト雛形。既定は Ebitengine の Flappy Bird 風(2羽が同じパイプ列を飛ぶ、操作はflapのみ)で、リアルタイムsession・固定小数点物理・シード付きRNG・engineをclientエントリに閉じ込める構成が最初から動く。生成物がビルドでき自身のテスト(境界テスト含む)が通ることをテストで担保している。
-  ウィザードは直交する3軸を順に聞く: **プロセス境界**(1プロセス / リンク越し — 構造を決める)、**席数**(数値)、**カメラ**(`concept:view-arrangement` = 同一ビュー / 席ごと)。
-  カメラとプロセス境界は独立で4象限すべて実在する(座って対戦格闘 / オンライン対戦格闘 / 分割画面 / オンラインFPS)。同期方式はリンクがあるときだけ発生し、既定はカメラで決まる(同一ビュー→rollback、席ごと→server_authoritative)。
-  ホストがplayingかdedicatedかはさらに直交し、`cmd/server/` 1ディレクトリを `listen` ビルドタグで切り替える(`rule:build-tag-only-for-linkage`)。到達可能なトランスポートの組み合わせは `concept:deployment-combination` に列挙。
+  ウィザードは3問: **人数** → **画面**(`concept:view-arrangement` = 同一ビュー / 席ごと) → **到達範囲**(`concept:realtime-intensity` = 1台 / プレイヤー間直結 / サーバ経由)。人数が1なら残り2問はスキップ。
+  カメラと到達範囲は独立で、4象限すべて実在する(座って対戦格闘 / オンライン対戦格闘 / 分割画面 / オンラインFPS)。同期方式はリンクがあるときだけ発生し、既定はカメラで決まる(同一ビュー→rollback、席ごと→server_authoritative)。
+  P2Pはstar型(1ホスト+N接続、meshは非対応)なので、人数は数値であって構成の違いではない。ホストがplayingかdedicatedかはさらに直交し、`cmd/server/` 1ディレクトリを `listen` ビルドタグで切り替える(`rule:build-tag-only-for-linkage`)。到達可能なトランスポートの組み合わせは `concept:deployment-combination` に列挙。
 - `cli`, `cmd/ebigent` — ツールチェーン本体。
 - `signaltoken` — 帯域外シグナリングトークン(WebRTC招待/応答)。
 - `discovery` — LANセッション発見ビーコン。

@@ -44,10 +44,9 @@ type InitOptions struct {
 	Dir           string `arg:"optional" help:"project directory, created if missing (default: the current directory)"`
 	Module        string `default:"" help:"go module path"`
 	Name          string `default:"" help:"game name; defaults to the directory name"`
-	Link          string `default:"" help:"process boundary: local for one process, networked for a process per seat"`
+	Seats         int    `default:"0" help:"how many players share one session; 0 asks"`
 	View          string `default:"" help:"camera: shared for one view everybody reads, per_agent for a view each"`
-	Pace          string `default:"" help:"realtime intensity: paced or twitch"`
-	Seats         int    `default:"0" help:"player slots to declare; 0 asks"`
+	Reach         string `default:"" help:"how far traffic may travel: local, peer, or server"`
 	Sync          string `default:"" help:"synchronization mode; a shared surface has none"`
 	Yes           bool   `default:"false" help:"take the default for every unanswered question instead of prompting"`
 	FrameworkPath string `default:"" help:"path to a local framework checkout, added as a replace directive"`
