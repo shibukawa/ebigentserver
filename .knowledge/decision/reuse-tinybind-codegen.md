@@ -9,5 +9,5 @@ Extend system:tinybind with CBOR generation instead of writing new codegen.
 decided: yes
 reused: struct analysis, json binding, config binding, cli binding
 added: cbor generation for both encoding profiles
-shared_with: system:popcorn-wave, which depends on the same codegen base
+shared_with: system:popcornweb, which depends on the same codegen base
 ```

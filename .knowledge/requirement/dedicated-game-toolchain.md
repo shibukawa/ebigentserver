@@ -10,4 +10,5 @@ cli: api:game-cli
 targets: concept:build-target
 reuse: system:tinybind for json binding, config binding, cbor generation, cli binding, struct analysis
 decision: decision:separate-game-cli
+single_binary: requirement:unified-toolchain-binary
 ```

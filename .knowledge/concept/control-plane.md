@@ -22,7 +22,7 @@ functions:
   - match history
   - social
   - liveops
-implementations: system:popcorn-wave or any other
+implementations: system:popcornweb or any other
 contract_with_framework: data:session-ticket inbound, data:progress-report outbound
 scope: decision:control-plane-features-out-of-scope
 ```

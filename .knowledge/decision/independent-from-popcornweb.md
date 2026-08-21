@@ -1,9 +1,9 @@
 ---
-id: decision:independent-from-popcorn-wave
+id: decision:independent-from-popcornweb
 type: decision
-title: Framework Independent From Popcorn Wave
+title: Framework Independent From Popcorn Web
 ---
-Game framework does not depend on system:popcorn-wave; both depend only on system:tinybind.
+Game framework does not depend on system:popcornweb; both depend only on system:tinybind.
 
 ```yaml
 decided: yes

@@ -3,7 +3,7 @@ id: decision:separate-game-cli
 type: decision
 title: Separate Game CLI From PW CLI
 ---
-Ship api:game-cli as its own toolchain rather than extending the system:popcorn-wave pw command.
+Ship api:game-cli as its own toolchain rather than extending the system:popcornweb pw command.
 
 ```yaml
 decided: yes

@@ -13,6 +13,6 @@ added_features:
   - diff and patch generation for decision:framework-side-delta-generation
   - determinism validation, see rule:codegen-rejects-nondeterministic-types
   - data:protocol-version derived from the generated schema
-position: shared base under both this framework and system:popcorn-wave
+position: shared base under both this framework and system:popcornweb
 decision: decision:reuse-tinybind-codegen
 ```

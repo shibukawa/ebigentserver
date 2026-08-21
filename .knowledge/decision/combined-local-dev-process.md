@@ -8,6 +8,6 @@ Local development may run client, session, and realtime transport in one process
 ```yaml
 decided: yes
 example: concept:listen-server-mode process containing system:ebitengine, actor:human-agent, concept:session, simulation, transport
-excluded: system:popcorn-wave is not embedded into the framework for this convenience
+excluded: system:popcornweb is not embedded into the framework for this convenience
 entry_point: api:game-cli dev
 ```
