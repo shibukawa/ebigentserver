@@ -43,6 +43,14 @@ type Config struct {
 	// requirement:native-and-wasm-targets, so the same pass covers it.
 	ForbidCgo         bool
 	AllowedCgoEntries []string
+	// BuildTags selects which build the import graph is read from.
+	//
+	// It matters wherever a build tag decides linkage
+	// (rule:build-tag-only-for-linkage): the untagged graph says nothing
+	// about the tagged one, and it is usually the tagged build — the
+	// headless artifact that ships — whose freedom from a renderer is
+	// worth proving. Check both, one Config each.
+	BuildTags []string
 }
 
 // EbitengineRule confines Ebitengine to client entry points. The default
@@ -106,7 +114,7 @@ type listedPackage struct {
 // It returns the violations found; a non-nil error means the inspection
 // itself could not run.
 func Check(ctx context.Context, dir string, cfg Config) ([]Violation, error) {
-	pkgs, err := listPackages(ctx, dir)
+	pkgs, err := listPackages(ctx, dir, cfg.BuildTags)
 	if err != nil {
 		return nil, err
 	}
@@ -161,8 +169,13 @@ func Check(ctx context.Context, dir string, cfg Config) ([]Violation, error) {
 	return violations, nil
 }
 
-func listPackages(ctx context.Context, dir string) ([]*listedPackage, error) {
-	cmd := exec.CommandContext(ctx, "go", "list", "-deps", "-json=ImportPath,Standard,Imports,Deps,CgoFiles,Module,ForTest", "./...")
+func listPackages(ctx context.Context, dir string, tags []string) ([]*listedPackage, error) {
+	args := []string{"list", "-deps", "-json=ImportPath,Standard,Imports,Deps,CgoFiles,Module,ForTest"}
+	if len(tags) > 0 {
+		args = append(args, "-tags", strings.Join(tags, ","))
+	}
+	args = append(args, "./...")
+	cmd := exec.CommandContext(ctx, "go", args...)
 	cmd.Dir = dir
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr

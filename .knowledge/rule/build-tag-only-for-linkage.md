@@ -18,10 +18,16 @@ not_justified:
   - log destination, agent roster, tick rate
 default: runtime configuration through data:run-config
 renderer_linkage_is_justified:
-  claim: whether an artifact links system:ebitengine is a build fact, not a run value, so the listen and headless forms of one server are a tag rather than two entry points
+  claim: whether an artifact links system:ebitengine is a build fact, not a run value, so the playing and headless forms of one entry point are a tag rather than two directories
   why_it_passes_the_test: they cannot share a process — a headless server must not link the engine at all under rule:engine-import-confined-to-client-entry — and the engine is exactly the "optional heavy dependency" case above
   why_it_is_not_the_rejected_alternative: decision:entry-points-over-build-tags rejects a tag threaded through library packages; this one never leaves the entry point directory, so a missing tag still fails there rather than somewhere distant
   bound: two files in one cmd directory, each supplying the same small set of functions; a third variant means the split was wrong
+  polarity: the tag takes the renderer away rather than adding it, so the plain build is the playable one a developer runs all day and the headless artifact is the deliberate variant; the untagged build being the useful default is worth more than the alternative
+  cost_of_that_polarity: >
+    an import graph check reads one build at a time, and the untagged one
+    no longer proves anything about the artifact that ships. So the check
+    runs twice — plain, where the entry may link the engine, and tagged,
+    where nothing may. importcheck takes build tags for exactly this.
 tag_axes:
   rule: one entry point carries at most one tag axis that changes its shape
   why: decision:entry-points-over-build-tags rejects tags partly because combinations multiply and only some are ever compiled; a second shape-changing axis is exactly that failure

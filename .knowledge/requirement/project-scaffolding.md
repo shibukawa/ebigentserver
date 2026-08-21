@@ -15,7 +15,7 @@ not_asked:
   - the host and the transport, which are data:run-config values, see concept:deployment-combination
   - the AI pipeline, always scaffolded per decision:ai-pipeline-always-scaffolded
 outputs:
-  - one cmd entry point per generated concept:build-target, see decision:entry-points-over-build-tags; the server directory holds both linkage forms behind the listen tag
+  - cmd/<gamename> as the playable entry and a simulation entry, see decision:entry-points-over-build-tags; the playable one builds headless under the dedicated tag rather than getting a directory of its own
   - one ebigent.toml carrying both the data:build-config and data:run-config sections
   - a game rules package parameterised by seat count, holding a data:session-tuning-profile declaration
   - an import graph test holding the project to rule:engine-import-confined-to-client-entry

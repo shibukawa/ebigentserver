@@ -31,6 +31,7 @@ matrix:
     links: session and local transport only
     mode: concept:simulation-mode
 shared_by_all: the game rules package, which links into every target unchanged
+entry_naming: the playable entry carries the game's own name, since it is the binary a developer runs and hands to somebody; a headless server is the same directory under a build tag rather than a directory of its own
 built_by: api:game-cli
 constraint: requirement:native-and-wasm-targets
 ```

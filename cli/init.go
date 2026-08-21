@@ -87,7 +87,8 @@ func runInit(c *context, opts *InitOptions) error {
 	for _, t := range spec.Targets() {
 		fmt.Fprintf(c.stdout, "    cd %s && go run %s\n", dir, t.Entry())
 		if t.Tagged() {
-			fmt.Fprintf(c.stdout, "    cd %s && go run -tags listen %s   # also plays, links a renderer\n", dir, t.Entry())
+			fmt.Fprintf(c.stdout, "    cd %s && go build -tags %s %s   # the same entry, headless\n",
+				dir, scaffold.DedicatedTag, t.Entry())
 		}
 	}
 	fmt.Fprintln(c.stdout, "\nStart with game/game.go — the placeholder rules the session already runs.")

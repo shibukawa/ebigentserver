@@ -108,7 +108,7 @@ func TestGeneratedProjectWritesTheWholePipeline(t *testing.T) {
 	for _, want := range []string{
 		"ebigent.toml", ".gitignore", "README.md",
 		"game/game.go", "game/game_test.go", "boundary_test.go",
-		"cmd/game/main.go", "cmd/simulation/main.go",
+		"cmd/mygame/main.go", "cmd/mygame/play.go", "cmd/simulation/main.go",
 		"behavior/chips.json", "corpus/.gitkeep",
 		".claude/skills/behavior-analyze/SKILL.md",
 		".claude/skills/behavior-analyze/scripts/validate_proposals.py",
@@ -240,21 +240,32 @@ func TestStyleDecidesStructureNotTheSeating(t *testing.T) {
 	if got := scaffold.SyncDefaultFor("multi"); got == "rollback" {
 		t.Error("multi should not default to rollback even at two seats")
 	}
+	// Solo has nothing to host, so its entry is a plain client with no
+	// second linkage form.
 	for _, tgt := range scaffold.TargetsFor(1) {
-		if tgt.Kind == "server" {
-			t.Error("solo play should not generate a server target")
+		if tgt.Tagged() {
+			t.Errorf("solo play should have no headless form, got %+v", tgt)
+		}
+		if tgt.Kind == "listen" {
+			t.Error("solo play hosts nothing")
 		}
 	}
-	var server, client bool
+	// A linked project has one playable entry that also hosts, and the
+	// same directory builds headless under the tag.
+	var playable scaffold.Target
 	for _, tgt := range scaffold.TargetsFor(4) {
-		server = server || tgt.Kind == "server"
-		client = client || tgt.Kind == "client"
-		if tgt.Kind == "server" && !tgt.Tagged() {
-			t.Error("a server target should carry a second linkage form")
+		if tgt.Kind == "listen" {
+			playable = tgt
 		}
 	}
-	if !server || !client {
-		t.Error("a linked project should generate both a client and a server")
+	if playable.Name == "" {
+		t.Fatal("a linked project needs an entry that plays and hosts")
+	}
+	if !playable.Tagged() {
+		t.Error("the playable entry should also build headless under the tag")
+	}
+	if playable.DedicatedName() == playable.Name {
+		t.Error("the two forms need distinct target names in ebigent.toml")
 	}
 	// Two players reach each other in one hop, which is what rollback
 	// assumes; past two it is two hops whichever host is chosen.
@@ -275,23 +286,24 @@ func TestServerBuildsBothLinkageForms(t *testing.T) {
 	}
 	s := spec(t, "multi", 4, false)
 	generateAndTidy(t, s)
-	for _, f := range []string{"cmd/server/main.go", "cmd/server/listen.go", "cmd/server/headless.go"} {
+	for _, f := range []string{"cmd/mygame/main.go", "cmd/mygame/play.go", "cmd/mygame/dedicated.go"} {
 		if _, err := os.Stat(filepath.Join(s.Dir, f)); err != nil {
 			t.Fatalf("missing %s", f)
 		}
 	}
-	goRun(t, s.Dir, "build", "-o", filepath.Join(s.Dir, "bin", "headless"), "./cmd/server")
-	goRun(t, s.Dir, "build", "-tags", "listen", "-o", filepath.Join(s.Dir, "bin", "listen"), "./cmd/server")
+	goRun(t, s.Dir, "build", "-o", filepath.Join(s.Dir, "bin", "play"), "./cmd/mygame")
+	goRun(t, s.Dir, "build", "-tags", "dedicated", "-o", filepath.Join(s.Dir, "bin", "server"), "./cmd/mygame")
 
-	// The plain build is the one the import graph check inspects, and it
-	// must not reach the engine at all.
-	deps := goRun(t, s.Dir, "list", "-deps", "./cmd/server")
-	if strings.Contains(deps, "hajimehoshi/ebiten") {
-		t.Error("the headless server links the engine; the listen tag should be the only thing that does")
+	// The tag takes the renderer away rather than adding one: the plain
+	// build is what a developer runs, and the tagged one is the artifact
+	// that ships headless.
+	play := goRun(t, s.Dir, "list", "-deps", "./cmd/mygame")
+	if !strings.Contains(play, "hajimehoshi/ebiten") {
+		t.Error("the plain build should render")
 	}
-	tagged := goRun(t, s.Dir, "list", "-deps", "-tags", "listen", "./cmd/server")
-	if !strings.Contains(tagged, "hajimehoshi/ebiten") {
-		t.Error("the listen build should link the engine")
+	headless := goRun(t, s.Dir, "list", "-deps", "-tags", "dedicated", "./cmd/mygame")
+	if strings.Contains(headless, "hajimehoshi/ebiten") {
+		t.Error("the dedicated build links the engine; the tag exists to drop it")
 	}
 }
 

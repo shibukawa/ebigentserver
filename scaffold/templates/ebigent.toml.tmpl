@@ -21,13 +21,14 @@ kind = "{{.ConfigKind}}"
 entry = "{{.Entry}}"
 {{- if .Tagged}}
 
-# The same directory also builds a listen server, which links a renderer
-# and seats a local player. Only the linkage differs; both read [run].
+# The same directory builds a headless server: the tag takes the renderer
+# away rather than adding one, so the plain build above is the one you run
+# while working. Only the linkage differs; both read [run].
 [[build.target]]
-name = "{{.Name}}-listen"
-kind = "listen"
+name = "{{.DedicatedName}}"
+kind = "dedicated"
 entry = "{{.Entry}}"
-tags = ["listen"]
+tags = ["dedicated"]
 {{- end}}
 {{end}}
 [dev]

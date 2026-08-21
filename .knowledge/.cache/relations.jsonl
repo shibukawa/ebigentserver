@@ -974,7 +974,6 @@
 {"context": "body", "path": ".knowledge/flow/project-init.md", "source": "flow:project-init", "target": "data:run-config", "target_category": "structure", "target_type": "data"}
 {"context": "body", "path": ".knowledge/flow/project-init.md", "source": "flow:project-init", "target": "decision:ai-pipeline-always-scaffolded", "target_category": "constraint", "target_type": "decision"}
 {"context": "body", "path": ".knowledge/flow/project-init.md", "source": "flow:project-init", "target": "data:build-config", "target_category": "structure", "target_type": "data"}
-{"context": "body", "path": ".knowledge/flow/project-init.md", "source": "flow:project-init", "target": "concept:build-target", "target_category": "concept", "target_type": "concept"}
 {"context": "body", "path": ".knowledge/flow/project-init.md", "source": "flow:project-init", "target": "data:session-tuning-profile", "target_category": "structure", "target_type": "data"}
 {"context": "body", "path": ".knowledge/flow/project-init.md", "source": "flow:project-init", "target": "rule:engine-import-confined-to-client-entry", "target_category": "constraint", "target_type": "rule"}
 {"context": "body", "path": ".knowledge/flow/project-init.md", "source": "flow:project-init", "target": "requirement:project-scaffolding", "target_category": "objective", "target_type": "requirement"}
@@ -1135,7 +1134,6 @@
 {"context": "body", "path": ".knowledge/requirement/project-scaffolding.md", "source": "requirement:project-scaffolding", "target": "data:run-config", "target_category": "structure", "target_type": "data"}
 {"context": "body", "path": ".knowledge/requirement/project-scaffolding.md", "source": "requirement:project-scaffolding", "target": "concept:deployment-combination", "target_category": "concept", "target_type": "concept"}
 {"context": "body", "path": ".knowledge/requirement/project-scaffolding.md", "source": "requirement:project-scaffolding", "target": "decision:ai-pipeline-always-scaffolded", "target_category": "constraint", "target_type": "decision"}
-{"context": "body", "path": ".knowledge/requirement/project-scaffolding.md", "source": "requirement:project-scaffolding", "target": "concept:build-target", "target_category": "concept", "target_type": "concept"}
 {"context": "body", "path": ".knowledge/requirement/project-scaffolding.md", "source": "requirement:project-scaffolding", "target": "decision:entry-points-over-build-tags", "target_category": "constraint", "target_type": "decision"}
 {"context": "body", "path": ".knowledge/requirement/project-scaffolding.md", "source": "requirement:project-scaffolding", "target": "data:build-config", "target_category": "structure", "target_type": "data"}
 {"context": "body", "path": ".knowledge/requirement/project-scaffolding.md", "source": "requirement:project-scaffolding", "target": "data:session-tuning-profile", "target_category": "structure", "target_type": "data"}

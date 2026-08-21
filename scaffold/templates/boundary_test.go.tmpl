@@ -6,41 +6,38 @@ import (
 	"github.com/shibukawa/ebigentserver/importcheck"
 )
 
-// Importing Ebitengine from anything but a client entry point breaks the
-// build (rule:engine-import-confined-to-client-entry). Every game module
-// carries this one test; the framework carries the same one over itself.
+// Importing Ebitengine from anything but a rendering entry point breaks
+// the build (rule:engine-import-confined-to-client-entry). Every game
+// module carries this test; the framework carries the same one over
+// itself.
 //
-// This is what makes the engine boundary a rule rather than a
-// convention. Moving a draw call into game/ compiles perfectly well and
-// fails here, with the import chain that did it — and the reason it
-// matters is that the dedicated and simulation targets drop the engine
-// by never importing it (decision:entry-points-over-build-tags), which
-// stops being true the moment a shared package reaches it.
+// This is what makes the engine boundary a rule rather than a convention.
+// Moving a draw call into game/ compiles perfectly well and fails here,
+// with the import chain that did it.
 //
-// The entries allowed to link the engine are listed below rather than
-// left to the framework's default patterns, which describe the
-// framework's own layout. Add a rendering entry here when you add one.
-//
-// A server built with the listen tag links the engine too, and is not
-// listed: the check inspects the default build, which is the headless one
-// — the artifact that actually ships, and the one whose engine-free
-// property is worth enforcing.
-//
-// One caveat worth knowing: the check shells out to the go toolchain,
-// and the test cache does not track that, so a pass can be served from
-// cache after an import change elsewhere in the module. Run it with
-// -count=1 when the import graph is what you are actually checking.
+// One caveat: the check shells out to the go toolchain, and the test
+// cache does not track that, so a pass can be served from cache after an
+// import change elsewhere. Run it with -count=1 when the import graph is
+// what you are actually checking.
 func TestModuleImportBoundary(t *testing.T) {
 	if testing.Short() {
 		t.Skip("shells out to the go toolchain")
 	}
-	cfg := importcheck.Default()
-	rendering := []string{
-{{- range .Targets}}{{if eq .Kind "client"}}
-		"cmd/{{.Name}}",
-{{- end}}{{end}}
-	}
-	cfg.Rules[0].AllowedEntries = append(cfg.Rules[0].AllowedEntries, rendering...)
-	cfg.AllowedCgoEntries = append(cfg.AllowedCgoEntries, rendering...)
-	importcheck.Enforce(t, ".", cfg)
-}
+	// The plain build renders, so its entry may link the engine.
+	playing := importcheck.Default()
+	playing.Rules[0].AllowedEntries = append(playing.Rules[0].AllowedEntries, renderingEntries...)
+	playing.AllowedCgoEntries = append(playing.AllowedCgoEntries, renderingEntries...)
+	importcheck.Enforce(t, ".", playing)
+{{if .Target.Tagged}}
+	// The tagged build is the one that ships headless, and nothing in it
+	// may reach a renderer — not the entry point either. The untagged
+	// graph above says nothing about this one, which is why both run.
+	headless := importcheck.Default()
+	headless.BuildTags = []string{"dedicated"}
+	importcheck.Enforce(t, ".", headless)
+{{end}}}
+
+// renderingEntries are this project's entry points allowed to link the
+// engine. Add one here when you add one; the framework's default patterns
+// describe the framework's own layout, not yours.
+var renderingEntries = []string{"cmd/{{.Target.Dir}}"}

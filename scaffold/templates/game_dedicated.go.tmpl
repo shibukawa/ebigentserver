@@ -1,0 +1,33 @@
+//go:build dedicated
+
+// The headless form of {{.Name}}: concept:dedicated-server-mode.
+//
+// This file imports no renderer, and that absence is the whole point —
+// the engine is dropped by not being linked rather than by a flag
+// (rule:engine-import-confined-to-client-entry). The import graph check
+// reads this build with the tag set, because the untagged graph says
+// nothing about it and this is the artifact that ships.
+package main
+
+import (
+	"context"
+	"fmt"
+
+	"github.com/shibukawa/ebigentserver/session"
+)
+
+// localSeats reports that this build plays none: every seat belongs to a
+// bot or, once transport is wired, to a remote peer.
+func localSeats() int { return 0 }
+
+// onWorld does nothing: nobody here is watching.
+func onWorld(*gameState) {}
+
+// serve drives the session on this goroutine until it ends or the process
+// is interrupted.
+func serve(ctx context.Context, h *host) error {
+	fmt.Println("{{.Name}}: headless, waiting on the transport seam")
+	err := h.session.RunRealtime(ctx, session.Paced)
+	fmt.Printf("{{.Name}}: session ended after %d ticks\n", h.session.Tick())
+	return err
+}

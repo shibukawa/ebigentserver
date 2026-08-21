@@ -19,7 +19,7 @@ not_asked:
   - the AI pipeline, always written per decision:ai-pipeline-always-scaffolded
 writes:
   - ebigent.toml carrying both data:build-config and data:run-config sections
-  - one cmd entry point per generated concept:build-target, with the server directory holding both linkage forms behind the listen tag
+  - cmd/<gamename>, the playable entry, which also hosts when a link exists and builds headless under the dedicated tag; plus a simulation entry
   - the game rules package, its data:session-tuning-profile declaration, and its tests
   - an import graph test holding the project to rule:engine-import-confined-to-client-entry
   - the chip library, the corpus directory, and the analysis skill at the path the chosen environment reads

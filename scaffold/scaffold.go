@@ -75,21 +75,16 @@ func SkillDirFor(agent string) string { return agentSkillDir[agent] }
 // project flips without regenerating anything.
 var Reaches = []string{"local", "linked"}
 
+// DedicatedTag makes the game entry a headless server instead of a
+// playing one. The tag removes the renderer rather than adding it, so the
+// build a developer runs all day is the untagged one and the shipped
+// server is the deliberate variant.
+const DedicatedTag = "dedicated"
+
 // reachTargets is the entry point set each reach needs. Local play needs
 // no server whatever the seat count or the camera. Peer and server play
 // generate the same set, because the host is orthogonal and lives behind
 // a build tag — what differs is which form the project expects to run.
-var reachTargets = map[string][]Target{
-	"local": {
-		{Name: "game", Kind: "client"},
-		{Name: "simulation", Kind: "simulation"},
-	},
-	"linked": {
-		{Name: "client", Kind: "client"},
-		{Name: "server", Kind: "server"},
-		{Name: "simulation", Kind: "simulation"},
-	},
-}
 
 // ReachFor derives the reach from the seat count.
 func ReachFor(seats int) string {
@@ -149,8 +144,22 @@ func SyncDefaultFor(style string) string {
 	return "server_authoritative"
 }
 
-// TargetsFor reports the entry points a seat count generates.
-func TargetsFor(seats int) []Target { return reachTargets[ReachFor(seats)] }
+// targetsFor reports the entry points a project generates. The playable
+// one carries the game's own name, because that is the binary a developer
+// runs and hands to somebody.
+func targetsFor(name string, seats int) []Target {
+	play := Target{Name: name, Dir: name, Kind: "client"}
+	if ReachFor(seats) != "local" {
+		// It hosts as well as plays, and the same directory builds a
+		// headless server under DedicatedTag.
+		play.Kind, play.HasDedicated = "listen", true
+	}
+	return []Target{play, {Name: "simulation", Dir: "simulation", Kind: "simulation"}}
+}
+
+// TargetsFor reports the entry points a seat count generates, for callers
+// that only care about the shape.
+func TargetsFor(seats int) []Target { return targetsFor("game", seats) }
 
 // SyncModesFor reports the synchronization modes a seat count can run.
 //
@@ -183,34 +192,29 @@ func NeedsUnreliable(seats int) bool { return seats > 1 }
 
 // Target is one generated entry point.
 type Target struct {
-	// Name is the directory under cmd and the target name in
-	// ebigent.toml.
+	// Name is the target name in ebigent.toml.
 	Name string
-	// Kind is the concept:build-target row: client, server, or
-	// simulation. A server carries both linkage forms in one directory
-	// and picks between them with a build tag, so listen and dedicated
-	// are not separate kinds.
+	// Dir is the directory under cmd holding it.
+	Dir string
+	// HasDedicated marks an entry that also builds headless under
+	// DedicatedTag.
+	HasDedicated bool
+	// Kind is the concept:build-target row this artifact occupies.
 	Kind string
 }
 
 // Entry is the main package path of this target.
-func (t Target) Entry() string { return "./cmd/" + t.Name }
+func (t Target) Entry() string { return "./cmd/" + t.Dir }
 
-// Tagged reports whether this target has a second linkage form selected
-// by a build tag (rule:build-tag-only-for-linkage). Only a server does:
-// built plain it is headless and never links the engine, built with the
-// listen tag it also seats the local player.
-func (t Target) Tagged() bool { return t.Kind == "server" }
+// Tagged reports whether this target also builds headless under
+// DedicatedTag (rule:build-tag-only-for-linkage).
+func (t Target) Tagged() bool { return t.HasDedicated }
 
-// ConfigKind maps a generated target onto the data:build-config kind,
-// which still names the two server forms separately because a built
-// artifact is one or the other.
-func (t Target) ConfigKind() string {
-	if t.Kind == "server" {
-		return "dedicated"
-	}
-	return t.Kind
-}
+// DedicatedName is what the headless form is called in ebigent.toml.
+func (t Target) DedicatedName() string { return t.Name + "-server" }
+
+// ConfigKind maps a generated target onto the data:build-config kind.
+func (t Target) ConfigKind() string { return t.Kind }
 
 // Spec is one project to write.
 type Spec struct {
@@ -298,7 +302,7 @@ func (s *Spec) Validate() error {
 }
 
 // Targets is the entry point set this process boundary generates.
-func (s *Spec) Targets() []Target { return reachTargets[ReachFor(s.Seats)] }
+func (s *Spec) Targets() []Target { return targetsFor(s.Name, s.Seats) }
 
 // Topology is the data:run-config topology this boundary starts at.
 func (s *Spec) Topology() string { return TopologyForStyle(s.Style) }
@@ -416,7 +420,6 @@ func render(spec *Spec) (map[string][]byte, error) {
 		"README.md":         "README.md.tmpl",
 		"game/game.go":      "game.go.tmpl",
 		"game/game_test.go": "game_test.go.tmpl",
-		"boundary_test.go":  "boundary_test.go.tmpl",
 	}
 	for name, tmpl := range fixed {
 		body, err := execute(tmpl, spec)
@@ -431,6 +434,25 @@ func render(spec *Spec) (map[string][]byte, error) {
 		out[name] = body
 	}
 
+	// The boundary test needs the playable entry in scope: it is the one
+	// allowed to link the engine, and the one whose tagged form must not.
+	for _, t := range spec.Targets() {
+		if t.Kind == "simulation" {
+			continue
+		}
+		body, err := execute("boundary_test.go.tmpl", struct {
+			*Spec
+			Target Target
+		}{spec, t})
+		if err != nil {
+			return nil, err
+		}
+		if body, err = gofmtSource("boundary_test.go", body); err != nil {
+			return nil, err
+		}
+		out["boundary_test.go"] = body
+	}
+
 	for _, t := range spec.Targets() {
 		data := struct {
 			*Spec
@@ -438,17 +460,26 @@ func render(spec *Spec) (map[string][]byte, error) {
 		}{spec, t}
 		// A server directory holds three files: the shared body and one
 		// small file per linkage form, selected by the listen tag.
-		files := map[string]string{"main.go": "main_" + t.Kind + ".go.tmpl"}
-		if t.Tagged() {
-			files["listen.go"] = "server_listen.go.tmpl"
-			files["headless.go"] = "server_headless.go.tmpl"
+		files := map[string]string{}
+		switch {
+		case t.Kind == "simulation":
+			files["main.go"] = "main_simulation.go.tmpl"
+		case t.Tagged():
+			// One directory, two linkage forms: the plain build plays
+			// and hosts, the tagged one drops the renderer.
+			files["main.go"] = "main_game.go.tmpl"
+			files["play.go"] = "game_play.go.tmpl"
+			files["dedicated.go"] = "game_dedicated.go.tmpl"
+		default:
+			files["main.go"] = "main_game.go.tmpl"
+			files["play.go"] = "game_play.go.tmpl"
 		}
 		for base, tmpl := range files {
 			body, err := execute(tmpl, data)
 			if err != nil {
 				return nil, err
 			}
-			name := path.Join("cmd", t.Name, base)
+			name := path.Join("cmd", t.Dir, base)
 			if body, err = gofmtSource(name, body); err != nil {
 				return nil, err
 			}
@@ -512,9 +543,8 @@ func gofmtSource(name string, src []byte) ([]byte, error) {
 func (s *Spec) DirectDeps() []string {
 	deps := []string{"github.com/shibukawa/fixmath"}
 	for _, t := range s.Targets() {
-		// A client renders, and a server renders under the listen tag;
-		// either way the engine has to resolve.
-		if t.Kind == "client" || t.Tagged() {
+		// The playable entry renders whether or not it also hosts.
+		if t.Kind == "client" || t.Kind == "listen" {
 			return append(deps, "github.com/hajimehoshi/ebiten/v2")
 		}
 	}
