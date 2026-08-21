@@ -41,6 +41,10 @@ corpus = "corpus"
 skill = "skills/behavior-analyze"
 
 [run]
+# A starting value, not a constraint: any seat count runs under either
+# host. Switch to "listen" and run the -tags listen build to have a player
+# hold the session — over WebRTC that needs no backend at all, which is
+# how a party game ships as static files.
 topology = "{{.Topology}}"
 {{- if ne .Topology "standalone"}}
 listen = "127.0.0.1:4433"

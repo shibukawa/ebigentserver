@@ -147,8 +147,9 @@ func ask(w *wizard, spec *scaffold.Spec, opts *InitOptions) error {
 		w.note("Two players reach each other in one hop, so a direct link is worth having:")
 		w.note("WebRTC or a LAN, no server. A dedicated server stays available as a run setting.")
 	case "multi":
-		w.note("Past two players every exchange is two hops, through a peer host or a server alike,")
-		w.note("so the default is the host whose results can be trusted. Either is a run setting.")
+		w.note("Past two players every exchange is two hops, through a peer host or a server alike.")
+		w.note("Starting with a dedicated host because its results can be trusted — but a player")
+		w.note("can hold the session just as well, and over WebRTC that needs no backend at all.")
 	}
 	modes := scaffold.SyncModesFor(spec.Seats)
 	if spec.SyncMode == "" && len(modes) > 0 {

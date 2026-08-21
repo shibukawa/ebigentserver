@@ -89,3 +89,29 @@ func TestEpisodeBlockIgnoredWhenRecordingIsOff(t *testing.T) {
 		t.Fatalf("recording off should not validate the block: %v", err)
 	}
 }
+
+// A player can hold a session of any size: four rows of
+// concept:deployment-combination carry a playing host at "2 or many"
+// seats, and a browser hosting a party over WebRTC with no backend is
+// concept:static-host-mode. Nothing here may tie the host to the seat
+// count.
+func TestAnyTopologyRunsAtAnySeatCount(t *testing.T) {
+	for _, topology := range topologies {
+		r := valid()
+		r.Topology = topology
+		if topology != "standalone" {
+			r.Listen = "0.0.0.0:4433"
+		}
+		r.Slot = []Slot{
+			{Index: 0, Kind: "human"},
+			{Index: 1, Kind: "remote"},
+			{Index: 2, Kind: "remote"},
+			{Index: 3, Kind: "remote"},
+			{Index: 4, Kind: "remote"},
+			{Index: 5, Kind: "remote"},
+		}
+		if err := r.Validate(); err != nil {
+			t.Errorf("topology %q with six seats: %v", topology, err)
+		}
+	}
+}

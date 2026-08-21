@@ -196,8 +196,10 @@ func TestStyleDecidesStructureNotTheSeating(t *testing.T) {
 	if got := scaffold.SeatsForStyle("multi", 6); got != 6 {
 		t.Errorf("multi seats = %d, want the given 6", got)
 	}
-	// Two seats default to a playing host; past two, to one that can be
-	// trusted with the result. Both remain run values either way.
+	// Two seats start at a playing host; past two, at one that can be
+	// trusted with the result. Both are starting values, not constraints:
+	// a player can hold a session of any size, which is what
+	// concept:static-host-mode is.
 	if got := scaffold.TopologyForSeats(2); got != "listen" {
 		t.Errorf("two-seat topology = %q, want listen", got)
 	}

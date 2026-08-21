@@ -85,11 +85,18 @@ func ReachFor(seats int) string {
 }
 
 // TopologyForSeats is the data:run-config topology a project starts at.
-// Two seats default to a playing host, because two seats is the one case
-// where a peer link is genuinely one hop and worth not running a server
-// for. Past two, a peer host and a dedicated one are both two hops
-// (concept:deployment-combination), so the default goes to the one whose
-// results can be trusted.
+//
+// A starting value, not a constraint. Every seat count can run under
+// either host: four rows of concept:deployment-combination carry a
+// playing host at "2 or many" seats, and a browser hosting a party over
+// WebRTC with no backend at all is concept:static-host-mode. The
+// generated config says so and both builds are produced, so flipping this
+// is a config edit rather than a regeneration.
+//
+// Two seats start at a playing host because that is the one case where a
+// peer link is genuinely one hop. Past two, a peer host and a dedicated
+// one are both two hops, so the starting value goes to the one whose
+// results can be trusted — which is a default, not a requirement.
 func TopologyForSeats(seats int) string {
 	switch {
 	case seats <= 1:
