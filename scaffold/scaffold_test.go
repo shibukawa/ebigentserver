@@ -21,7 +21,7 @@ func frameworkRoot(t *testing.T) string {
 	return filepath.Dir(wd)
 }
 
-func spec(t *testing.T, style string, seats int, localMulti bool) *scaffold.Spec {
+func spec(t *testing.T, style string, seats int, sharedScreen bool) *scaffold.Spec {
 	t.Helper()
 	seats = scaffold.SeatsForStyle(style, seats)
 	sync := ""
@@ -32,15 +32,15 @@ func spec(t *testing.T, style string, seats int, localMulti bool) *scaffold.Spec
 		}
 	}
 	return &scaffold.Spec{
-		Dir:              t.TempDir(),
-		Agent:            "claude",
-		Module:           "example.com/mygame",
-		Name:             "mygame",
-		Style:            style,
-		Seats:            seats,
-		LocalMultiplayer: localMulti,
-		SyncMode:         sync,
-		FrameworkPath:    frameworkRoot(t),
+		Dir:           t.TempDir(),
+		Agent:         "claude",
+		Module:        "example.com/mygame",
+		Name:          "mygame",
+		Style:         style,
+		Seats:         seats,
+		SharedScreen:  sharedScreen,
+		SyncMode:      sync,
+		FrameworkPath: frameworkRoot(t),
 	}
 }
 
@@ -54,20 +54,20 @@ func TestGeneratedProjectBuildsAndPassesItsTests(t *testing.T) {
 	// The five code patterns: solo, then duo and multi, each with or
 	// without several players on one machine.
 	for _, tc := range []struct {
-		name       string
-		style      string
-		seats      int
-		localMulti bool
+		name   string
+		style  string
+		seats  int
+		shared bool
 	}{
 		{"solo", "solo", 0, false},
-		{"duo_one_machine", "duo", 0, true},
-		{"duo_own_machines", "duo", 0, false},
-		{"multi_one_machine", "multi", 4, true},
-		{"multi_own_machines", "multi", 4, false},
+		{"duo_one_stage", "duo", 0, true},
+		{"duo_own_views", "duo", 0, false},
+		{"multi_one_stage", "multi", 4, true},
+		{"multi_own_views", "multi", 4, false},
 		{"multi_at_two_seats", "multi", 2, false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			s := spec(t, tc.style, tc.seats, tc.localMulti)
+			s := spec(t, tc.style, tc.seats, tc.shared)
 			generateAndTidy(t, s)
 			goRun(t, s.Dir, "build", "./...")
 			goRun(t, s.Dir, "test", "./...")
@@ -159,16 +159,16 @@ func TestSpecValidateRejectsUnreachableCombinations(t *testing.T) {
 		want string
 	}{
 		{"sync mode with no link to keep consistent", func(s *scaffold.Spec) {
-			s.Style, s.Seats, s.LocalMultiplayer, s.SyncMode = "solo", 1, false, "rollback"
+			s.Style, s.Seats, s.SharedScreen, s.SyncMode = "solo", 1, false, "rollback"
 		}, "no synchronization mode"},
 		{"unknown style", func(s *scaffold.Spec) { s.Style = "co_op" }, "play style"},
 		{"unknown agent environment", func(s *scaffold.Spec) { s.Agent = "emacs" }, "agent environment"},
 		{"a style whose seat count was overridden", func(s *scaffold.Spec) {
 			s.Style, s.Seats = "duo", 3
 		}, "declares 2 seats"},
-		{"one player sharing a machine", func(s *scaffold.Spec) {
-			s.Style, s.Seats, s.LocalMultiplayer, s.SyncMode = "solo", 1, true, ""
-		}, "cannot share a machine"},
+		{"one player sharing a screen", func(s *scaffold.Spec) {
+			s.Style, s.Seats, s.SharedScreen, s.SyncMode = "solo", 1, true, ""
+		}, "nobody to share a screen with"},
 		{"rollback past two seats", func(s *scaffold.Spec) {
 			s.Style, s.Seats, s.SyncMode = "multi", 4, "rollback"
 		}, "sync mode"},

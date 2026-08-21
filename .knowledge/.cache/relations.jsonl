@@ -969,6 +969,7 @@
 {"context": "body", "path": ".knowledge/flow/peer-authentication.md", "source": "flow:peer-authentication", "target": "concept:session", "target_category": "concept", "target_type": "concept"}
 {"context": "body", "path": ".knowledge/flow/peer-authentication.md", "source": "flow:peer-authentication", "target": "concept:trust-model", "target_category": "concept", "target_type": "concept"}
 {"context": "body", "path": ".knowledge/flow/project-init.md", "source": "flow:project-init", "target": "concept:participant-shape", "target_category": "concept", "target_type": "concept"}
+{"context": "body", "path": ".knowledge/flow/project-init.md", "source": "flow:project-init", "target": "concept:view-arrangement", "target_category": "concept", "target_type": "concept"}
 {"context": "body", "path": ".knowledge/flow/project-init.md", "source": "flow:project-init", "target": "concept:synchronization-mode", "target_category": "concept", "target_type": "concept"}
 {"context": "body", "path": ".knowledge/flow/project-init.md", "source": "flow:project-init", "target": "data:run-config", "target_category": "structure", "target_type": "data"}
 {"context": "body", "path": ".knowledge/flow/project-init.md", "source": "flow:project-init", "target": "decision:ai-pipeline-always-scaffolded", "target_category": "constraint", "target_type": "decision"}

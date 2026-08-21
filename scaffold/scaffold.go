@@ -226,14 +226,19 @@ type Spec struct {
 	// decides where the analysis skill is written so that environment
 	// finds it without being told.
 	Agent string
-	// LocalMultiplayer allows several people to play on one machine, each
-	// on their own device. It is the code-visible half of
-	// concept:view-arrangement: a shared surface, several
-	// api:input-adapter bindings, and no link between those seats.
+	// SharedScreen means every seat reads the same screen content, which
+	// is the shared arrangement of concept:view-arrangement.
 	//
-	// It does not exclude networked play; it decides whether the client
-	// can seat more than one person in front of it.
-	LocalMultiplayer bool
+	// It is about the content, not the machine. Two players at one
+	// keyboard and two on separate machines both read the same stage in a
+	// fighting game; both are this answer. What it excludes is a view per
+	// seat, which locally means split viewports and remotely means each
+	// window showing something different.
+	//
+	// What it decides in generated code: whether the client seats every
+	// slot in front of one view, and whether concept:visibility-scope can
+	// be anything but global.
+	SharedScreen bool
 	// Seats is how many concept:player-slot entries the rules declare.
 	// A number rather than a category: two seats and twenty generate the
 	// same wiring.
@@ -270,8 +275,8 @@ func (s *Spec) Validate() error {
 	if want, ok := seatsForStyle(s.Style, s.Seats); ok && s.Seats != want {
 		errs = append(errs, fmt.Errorf("the %q style declares %d seats, not %d", s.Style, want, s.Seats))
 	}
-	if s.Style == "solo" && s.LocalMultiplayer {
-		errs = append(errs, errors.New("one player cannot share a machine with anybody"))
+	if s.Style == "solo" && s.SharedScreen {
+		errs = append(errs, errors.New("one player has nobody to share a screen with"))
 	}
 	if s.Seats < 1 {
 		errs = append(errs, fmt.Errorf("a session needs at least one seat, not %d", s.Seats))

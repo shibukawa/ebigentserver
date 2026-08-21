@@ -49,11 +49,11 @@ type InitOptions struct {
 	Seats  int    `default:"0" help:"maximum players, for the multi style; 0 asks"`
 	// A string rather than a bool: a wizard has to tell "said no" apart
 	// from "did not say", and a bool cannot.
-	LocalMultiplayer string `default:"" help:"several players per machine: yes or no; empty asks"`
-	Sync             string `default:"" help:"synchronization mode; a shared surface has none"`
-	Yes              bool   `default:"false" help:"take the default for every unanswered question instead of prompting"`
-	FrameworkPath    string `default:"" help:"path to a local framework checkout, added as a replace directive"`
-	SkipTidy         bool   `default:"false" help:"do not run go mod tidy or the verification build"`
+	SharedScreen  string `default:"" help:"do all players read the same screen content: yes or no; empty asks"`
+	Sync          string `default:"" help:"synchronization mode; a shared surface has none"`
+	Yes           bool   `default:"false" help:"take the default for every unanswered question instead of prompting"`
+	FrameworkPath string `default:"" help:"path to a local framework checkout, added as a replace directive"`
+	SkipTidy      bool   `default:"false" help:"do not run go mod tidy or the verification build"`
 }
 
 // BuildOptions compiles one declared concept:build-target.

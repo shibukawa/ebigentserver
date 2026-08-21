@@ -8,7 +8,7 @@ title: Project Scaffolding
 ```yaml
 wizard_axes:
   - concept:participant-shape, which fixes or asks the seat count
-  - whether a machine may seat several players, the code visible half of concept:view-arrangement
+  - whether every seat reads the same screen content, which is concept:view-arrangement
   - concept:synchronization-mode, only when a link exists
 not_asked:
   - the build targets, which follow from whether a link exists

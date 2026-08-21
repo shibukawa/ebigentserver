@@ -13,13 +13,19 @@ arrangements:
   - name: per_agent
     camera: one view per seat, following that seat
     examples: shooters, anything with a per player position
-split_screen_is_both: >
-  several seats on one machine, each with its own camera. It is why the
-  camera is not the question a project is asked: shared against per_agent
-  cannot express it, since it is per_agent cameras on a shared machine.
-  What flow:project-init asks instead is whether a machine may seat more
-  than one person, and the camera inside that is a rendering choice made
-  in the draw call — one frame or several viewports.
+asked_as_content_not_as_machine: >
+  flow:project-init asks whether every seat reads the same screen content.
+  That is this axis and not a question about machines, which is the point:
+  two players at one keyboard and two on separate machines both read the
+  same stage in a fighting game, and both are the shared answer. Asking
+  about the machine instead would have described only the first and left
+  the second looking unsupported.
+split_screen_is_the_other_answer: >
+  several seats on one machine, each with its own camera, is per_agent —
+  the seats do not read the same content, they read adjacent viewports.
+  So the machine and the camera really are independent, and the question
+  picks the camera; how many viewports a machine then draws is a rendering
+  choice made in the draw call.
 orthogonal_to: concept:execution-topology, which is where the seats sit
 four_real_quadrants:
   - shared camera, one process: couch versus play; no link, so no concept:synchronization-mode

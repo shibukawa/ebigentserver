@@ -59,7 +59,9 @@ func main() {
 	if err := s.OpenAdmission(); err != nil {
 		fatal(err)
 	}
-{{if .LocalMultiplayer}}	// Several players share this machine, each on their own key. Whether
+{{if .SharedScreen}}	// One stage every seat reads, so every seat can sit in front of this
+	// window, each on their own key. A remote player joining later reads
+	// the same stage; only where they sit changes. Whether
 	// they read one view or a split one is a rendering choice made in
 	// Draw; the seating below is the same either way.
 	//

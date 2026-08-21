@@ -39,15 +39,15 @@ func runInit(c *context, opts *InitOptions) error {
 	}
 
 	spec := &scaffold.Spec{
-		Dir:              abs,
-		Module:           opts.Module,
-		Name:             name,
-		Agent:            opts.Agent,
-		Style:            opts.Style,
-		Seats:            opts.Seats,
-		LocalMultiplayer: opts.LocalMultiplayer == "yes",
-		SyncMode:         opts.Sync,
-		FrameworkPath:    opts.FrameworkPath,
+		Dir:           abs,
+		Module:        opts.Module,
+		Name:          name,
+		Agent:         opts.Agent,
+		Style:         opts.Style,
+		Seats:         opts.Seats,
+		SharedScreen:  opts.SharedScreen == "yes",
+		SyncMode:      opts.Sync,
+		FrameworkPath: opts.FrameworkPath,
 	}
 	if dir != "." {
 		w.note("Writing into %s%c", dir, filepath.Separator)
@@ -133,44 +133,33 @@ func ask(w *wizard, spec *scaffold.Spec, opts *InitOptions) error {
 	}
 	spec.Seats = scaffold.SeatsForStyle(spec.Style, spec.Seats)
 
+	const (
+		sharedYes = "the same content"
+		sharedNo  = "a view each"
+	)
 	switch {
 	case spec.Style == "solo":
-		w.note("One player: nothing to seat beside them, and no link to make.")
-	case opts.LocalMultiplayer == "yes":
-		spec.LocalMultiplayer = true
-	case opts.LocalMultiplayer == "no":
-	case opts.LocalMultiplayer != "":
-		return fmt.Errorf("local_multiplayer is %q; use yes or no", opts.LocalMultiplayer)
+		w.note("One player: no screen to share and no link to make.")
+	case opts.SharedScreen == "yes":
+		spec.SharedScreen = true
+	case opts.SharedScreen == "no":
+	case opts.SharedScreen != "":
+		return fmt.Errorf("shared_screen is %q; use yes or no", opts.SharedScreen)
 	default:
-		spec.LocalMultiplayer = w.yesNo(
-			"May several players share one machine, each on their own device?", true)
-	}
-	if spec.LocalMultiplayer {
-		// Whether they read one view or a split one is a rendering
-		// choice; either way they are looking at the same machine.
-		w.note("One machine means one set of facts: split the view or not, every seat at it may know.")
-		w.note("Hiding state between players needs them on separate machines.")
-	}
-
-	// The last question is about the developer's tooling rather than the
-	// game: the analysis skill of decision:ai-pipeline-always-scaffolded
-	// only works where the environment looks for it, and each looks
-	// somewhere different.
-	if spec.Agent == "" {
-		const (
-			claude = "Claude Code"
-			other  = "something else"
-		)
-		if w.choose("Which agentic environment do you work in?",
-			[]string{claude, other}, 0,
+		spec.SharedScreen = w.choose(
+			"Do all players read the same screen content?",
+			[]string{sharedYes, sharedNo}, 0,
 			map[string]string{
-				claude: "the analysis skill goes to .claude/skills",
-				other:  "the analysis skill goes to .agents/skills",
-			}) == claude {
-			spec.Agent = "claude"
-		} else {
-			spec.Agent = "other"
-		}
+				sharedYes: "one stage everyone reads — several pads at one machine and players on their own machines both work",
+				sharedNo:  "a view per player — split viewports at one machine, separate windows apart",
+			}) == sharedYes
+	}
+	if spec.SharedScreen {
+		// The constraint is the content, not the machine: a seat cannot
+		// be shown what it was not sent, so one stage means one set of
+		// facts wherever the players are sitting.
+		w.note("One stage means one set of facts: every seat may know whatever is on it.")
+		w.note("Hiding state between players needs a view per player.")
 	}
 
 	// Where the traffic goes is not asked. It follows the style, and what
@@ -221,6 +210,26 @@ func ask(w *wizard, spec *scaffold.Spec, opts *InitOptions) error {
 		}
 	}
 	w.note("Entry points: %s", strings.Join(names, ", "))
+	// The last question is about the developer's tooling rather than the
+	// game: the analysis skill of decision:ai-pipeline-always-scaffolded
+	// only works where the environment looks for it, and each looks
+	// somewhere different.
+	if spec.Agent == "" {
+		const (
+			claude = "Claude Code"
+			other  = "something else"
+		)
+		if w.choose("Which agentic environment do you work in?",
+			[]string{claude, other}, 0,
+			map[string]string{
+				claude: "the analysis skill goes to .claude/skills",
+				other:  "the analysis skill goes to .agents/skills",
+			}) == claude {
+			spec.Agent = "claude"
+		} else {
+			spec.Agent = "other"
+		}
+	}
 	return nil
 }
 
