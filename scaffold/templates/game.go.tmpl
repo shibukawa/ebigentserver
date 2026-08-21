@@ -1,0 +1,235 @@
+// Package game holds the rules of {{.Name}}: the one package every build
+// target links unchanged (concept:build-target).
+//
+// Nothing here may ask what controls a slot (decision:no-ai-game-mode).
+// A human, a bot, a behavior tree, and a replay stream all reach these
+// rules through the same session.Agent interface, so a branch on
+// controller kind inside this package would be a bug even where it
+// compiles.
+//
+// What ebigent init generated is a placeholder: two slots take turns
+// claiming cells, and whoever holds more at the end wins. Replace it a
+// piece at a time — the session loop around it already works.
+package game
+
+import (
+	"context"
+	"errors"
+	"fmt"
+
+	"github.com/shibukawa/ebigentserver/session"
+	"github.com/shibukawa/fixmath"
+)
+
+// Cells is the board size. It is a rule, not a setting: changing it
+// changes the game, so it lives here rather than in ebigent.toml.
+const Cells = 9
+
+// The player slots (concept:player-slot). Slot 0 is reserved by the
+// session, so slots start at 1.
+const (
+	SlotOne session.SlotID = 1
+	SlotTwo session.SlotID = 2
+)
+
+// Slots is the game-defined slot set.
+func Slots() []session.SlotID { return []session.SlotID{SlotOne, SlotTwo} }
+
+// State is the concept:world-state: everything the session commits.
+type State struct {
+	// Owner holds the slot that claimed each cell, 0 while unclaimed.
+	Owner [Cells]session.SlotID
+	// Next is the slot to move, 0 once the game is over.
+	Next session.SlotID
+	// Claimed counts cells taken, so the end condition is one compare.
+	Claimed uint8
+	// Over marks a finished game.
+	Over bool
+}
+
+// Action is one concept:action: claim a cell.
+type Action struct {
+	Cell uint8
+}
+
+// Observation is what one slot may see (concept:observation).
+//
+// It is a separate type from State even though this placeholder copies
+// the whole board into it. That separation is the point: narrowing
+// visibility later is a change to Project alone, and no agent can read
+// around it because no agent ever receives a State.
+type Observation struct {
+	// You is the observing slot.
+	You session.SlotID
+	// Owner is the board as this slot sees it. Global scope for now —
+	// see concept:visibility-scope when some of it should be hidden.
+	Owner [Cells]session.SlotID
+	// NextTurn is the slot to move, 0 when the game is over.
+	NextTurn session.SlotID
+	// Signal travels with the observation so every controller has a
+	// criterion without asking for one.
+	Signal session.EvaluationSignal
+}
+
+// Game implements session.Game. The zero value is ready to use.
+type Game struct{}
+
+// Start returns the opening position. seed is the session's shared RNG
+// seed (rule:shared-rng-seed); a game that needs randomness derives it
+// from here and never from the wall clock. This one is deterministic and
+// ignores it.
+func (Game) Start(seed uint64) State { return State{Next: SlotOne} }
+
+// ActingSlots returns who decides this step. Strict alternation, one
+// decision at a time; a realtime game returns every slot instead.
+func (Game) ActingSlots(s *State) []session.SlotID {
+	if s.Over {
+		return nil
+	}
+	return []session.SlotID{s.Next}
+}
+
+// Apply advances the world by one already-validated action. Legality was
+// settled by Validator, so Apply cannot fail and must not re-check.
+func (Game) Apply(s *State, slot session.SlotID, a Action) {
+	s.Owner[a.Cell] = slot
+	s.Claimed++
+	if int(s.Claimed) == Cells {
+		s.Over = true
+		s.Next = 0
+		return
+	}
+	s.Next = opponent(slot)
+}
+
+// Project builds a slot's observation.
+func (g Game) Project(s *State, slot session.SlotID) Observation {
+	return Observation{
+		You:      slot,
+		Owner:    s.Owner,
+		NextTurn: s.Next,
+		Signal:   g.Evaluate(s, slot),
+	}
+}
+
+// Evaluate computes a slot's data:evaluation-signal. The session calls
+// this; an agent never scores itself (rule:evaluation-computed-by-session).
+//
+// Values are fixed point, never float: rule:no-float-in-simulation keeps
+// reals out of anything that has to be reproducible across machines.
+func (Game) Evaluate(s *State, slot session.SlotID) session.EvaluationSignal {
+	mine, theirs := count(s, slot), count(s, opponent(slot))
+	sig := session.EvaluationSignal{
+		Score:      int64(mine),
+		Progress:   fixmath.FromInt32(int32(s.Claimed)).Div(fixmath.FromInt32(Cells)),
+		Evaluation: fixmath.FromInt32(int32(mine) - int32(theirs)),
+	}
+	if !s.Over {
+		return sig
+	}
+	switch {
+	case mine > theirs:
+		sig.Terminal = session.Win
+	case mine < theirs:
+		sig.Terminal = session.Lose
+	default:
+		sig.Terminal = session.Draw
+	}
+	return sig
+}
+
+// ErrOutOfRange and ErrTaken are the rejections Validator can produce.
+var (
+	ErrOutOfRange = errors.New("cell is off the board")
+	ErrTaken      = errors.New("cell is already claimed")
+)
+
+// Validator is api:action-validator: what is possible under the rules.
+// It runs before Apply and must not mutate the state.
+type Validator struct{}
+
+// Legal reports whether the action can be applied in this state.
+func (Validator) Legal(s *State, slot session.SlotID, a Action) error {
+	if int(a.Cell) >= Cells {
+		return fmt.Errorf("%w: %d", ErrOutOfRange, a.Cell)
+	}
+	if s.Owner[a.Cell] != 0 {
+		return fmt.Errorf("%w: %d", ErrTaken, a.Cell)
+	}
+	return nil
+}
+
+// Tuning is data:session-tuning-profile: the timing and bandwidth
+// constants of this game. The framework ships no defaults
+// (decision:no-framework-tuning-defaults) because a fighting game, a
+// shooter, and a strategy game disagree on every value here.
+//
+// A step-paced game ignores it; a realtime one requires it, so it is
+// declared now to keep the shape stable.
+func Tuning() session.TuningProfile {
+	return session.TuningProfile{
+		TickRate:      30,
+		SendRate:      15,
+		SnapshotEvery: 30,
+		HistoryDepth:  8,
+	}
+}
+
+// Config assembles a session over these rules. Every entry point builds
+// its session through here, so a rule change reaches all of them.
+func Config(id string, seed uint64) session.Config[State, Action, Observation] {
+	return session.Config[State, Action, Observation]{
+		ID:        id,
+		Slots:     Slots(),
+		Game:      Game{},
+		Validator: Validator{},
+		Seed:      seed,
+	}
+}
+
+func opponent(slot session.SlotID) session.SlotID {
+	if slot == SlotOne {
+		return SlotTwo
+	}
+	return SlotOne
+}
+
+func count(s *State, slot session.SlotID) int {
+	n := 0
+	for _, owner := range s.Owner {
+		if owner == slot {
+			n++
+		}
+	}
+	return n
+}
+
+// FirstFree is the simplest possible controller: claim the lowest
+// unclaimed cell. It lives here so every generated entry point has
+// something to seat, and it is the shape a real bot replaces.
+type FirstFree struct {
+	obs Observation
+	// Result is the outcome the session delivers at the end, kept so an
+	// entry point can report it. An agent never computes this itself
+	// (rule:evaluation-computed-by-session).
+	Result session.Result
+}
+
+// Joined records nothing; the observation carries the slot.
+func (b *FirstFree) Joined(session.SlotID) {}
+
+// Observe keeps the latest observation.
+func (b *FirstFree) Observe(obs Observation) { b.obs = obs }
+
+// Decide claims the lowest unclaimed cell.
+func (b *FirstFree) Decide(ctx context.Context) (Action, bool) {
+	for i, owner := range b.obs.Owner {
+		if owner == 0 {
+			return Action{Cell: uint8(i)}, true
+		}
+	}
+	return Action{}, false
+}
+
+// Ended is the session-end callback.
+func (b *FirstFree) Ended(r session.Result) { b.Result = r }

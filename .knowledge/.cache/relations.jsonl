@@ -748,6 +748,8 @@
 {"context": "body", "path": ".knowledge/decision/one-config-file-many-sections.md", "source": "decision:one-config-file-many-sections", "target": "requirement:layered-configuration", "target_category": "objective", "target_type": "requirement"}
 {"context": "body", "path": ".knowledge/decision/one-ebigent-binary.md", "source": "decision:one-ebigent-binary", "target": "decision:separate-game-cli", "target_category": "constraint", "target_type": "decision"}
 {"context": "body", "path": ".knowledge/decision/one-ebigent-binary.md", "source": "decision:one-ebigent-binary", "target": "system:popcornweb", "target_category": "external", "target_type": "system"}
+{"context": "body", "path": ".knowledge/decision/one-ebigent-binary.md", "source": "decision:one-ebigent-binary", "target": "ui:dev-console", "target_category": "interface", "target_type": "ui"}
+{"context": "body", "path": ".knowledge/decision/one-ebigent-binary.md", "source": "decision:one-ebigent-binary", "target": "decision:single-dev-console-ui", "target_category": "constraint", "target_type": "decision"}
 {"context": "body", "path": ".knowledge/decision/one-ebigent-binary.md", "source": "decision:one-ebigent-binary", "target": "requirement:unified-toolchain-binary", "target_category": "objective", "target_type": "requirement"}
 {"context": "body", "path": ".knowledge/decision/owner-namespaced-entity-ids.md", "source": "decision:owner-namespaced-entity-ids", "target": "term:rollback", "target_category": "vocabulary", "target_type": "term"}
 {"context": "body", "path": ".knowledge/decision/owner-namespaced-entity-ids.md", "source": "decision:owner-namespaced-entity-ids", "target": "concept:player-slot", "target_category": "concept", "target_type": "concept"}

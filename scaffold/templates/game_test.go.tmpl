@@ -1,0 +1,76 @@
+package game
+
+import (
+	"context"
+	"testing"
+
+	"github.com/shibukawa/ebigentserver/session"
+)
+
+// A session over these rules runs to a terminal state with two bots
+// seated. This is the test to keep as the rules change: it is the one
+// that says the loop still closes.
+func TestSessionRunsToATerminalState(t *testing.T) {
+	s, err := session.New(Config("{{.Name}}-test", 1))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := s.OpenAdmission(); err != nil {
+		t.Fatal(err)
+	}
+	one, two := &FirstFree{}, &FirstFree{}
+	if err := s.Admit(SlotOne, one); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Admit(SlotTwo, two); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Run(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if one.obs.Signal.Terminal == session.NotTerminal {
+		t.Error("the session ended without a terminal signal")
+	}
+}
+
+// Legality is decided before Apply, so Apply never has to re-check.
+func TestValidatorRejectsWhatApplyMustNeverSee(t *testing.T) {
+	s := State{Next: SlotOne}
+	s.Owner[0] = SlotTwo
+
+	if err := (Validator{}).Legal(&s, SlotOne, Action{Cell: 0}); err == nil {
+		t.Error("claiming a taken cell should be illegal")
+	}
+	if err := (Validator{}).Legal(&s, SlotOne, Action{Cell: Cells}); err == nil {
+		t.Error("claiming a cell off the board should be illegal")
+	}
+	if err := (Validator{}).Legal(&s, SlotOne, Action{Cell: 1}); err != nil {
+		t.Errorf("claiming a free cell should be legal: %v", err)
+	}
+}
+
+// An agent reads only its observation, so the projection is what decides
+// what a controller can know. Widening it is a rules change; this test
+// pins the current scope so widening it is deliberate.
+func TestProjectionCarriesTheSlotAndItsSignal(t *testing.T) {
+	g := Game{}
+	s := g.Start(1)
+	obs := g.Project(&s, SlotOne)
+	if obs.You != SlotOne {
+		t.Errorf("You = %d, want %d", obs.You, SlotOne)
+	}
+	if obs.NextTurn != SlotOne {
+		t.Errorf("NextTurn = %d, want the opening slot", obs.NextTurn)
+	}
+	if obs.Signal.Terminal != session.NotTerminal {
+		t.Error("the opening position should not be terminal")
+	}
+}
+
+// The declared tuning profile has to be internally consistent before a
+// realtime session will accept it.
+func TestTuningProfileIsConsistent(t *testing.T) {
+	if err := Tuning().Validate(); err != nil {
+		t.Fatalf("declared tuning profile: %v", err)
+	}
+}

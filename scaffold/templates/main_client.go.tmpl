@@ -1,0 +1,110 @@
+// Command {{.Target.Name}} plays {{.Name}} in the terminal.
+//
+// This is a client entry point: the one place rendering and input
+// parsing live, and the only kind of entry that may import Ebitengine
+// (rule:engine-import-confined-to-client-entry). Nothing under game/ may
+// import it, which is what lets a dedicated server drop the engine by
+// never linking this package (decision:entry-points-over-build-tags).
+//
+// Presentation is here on purpose. A human at a terminal and a bot reach
+// the rules through the identical session.Agent interface.
+package main
+
+import (
+	"bufio"
+	"context"
+	"fmt"
+	"os"
+	"strconv"
+	"strings"
+
+	"{{.Module}}/game"
+	"github.com/shibukawa/ebigentserver/config/confload"
+	"github.com/shibukawa/ebigentserver/config/runconf"
+	"github.com/shibukawa/ebigentserver/session"
+)
+
+func main() {
+	run := runconf.Bind()
+	if _, err := confload.Load(confload.Options{
+		Owned:    runconf.Prefixes(),
+		Validate: []func() error{func() error { return run.Validate() }},
+	}); err != nil {
+		fatal(err)
+	}
+
+	s, err := session.New(game.Config("{{.Name}}-client", 1))
+	if err != nil {
+		fatal(err)
+	}
+	if err := s.OpenAdmission(); err != nil {
+		fatal(err)
+	}
+	if err := s.Admit(game.SlotOne, &human{in: bufio.NewScanner(os.Stdin)}); err != nil {
+		fatal(err)
+	}
+	if err := s.Admit(game.SlotTwo, &game.FirstFree{}); err != nil {
+		fatal(err)
+	}
+	if err := s.Run(context.Background()); err != nil {
+		fatal(err)
+	}
+}
+
+// human is a controller reading from the terminal. It implements the
+// same session.Agent every other controller does.
+type human struct {
+	in   *bufio.Scanner
+	obs  game.Observation
+	slot session.SlotID
+}
+
+func (h *human) Joined(slot session.SlotID) { h.slot = slot }
+
+func (h *human) Observe(obs game.Observation) {
+	h.obs = obs
+	fmt.Println(render(obs))
+}
+
+func (h *human) Decide(ctx context.Context) (game.Action, bool) {
+	for {
+		fmt.Printf("slot %d, claim a cell [0-%d]: ", h.slot, game.Cells-1)
+		if !h.in.Scan() {
+			return game.Action{}, false
+		}
+		cell, err := strconv.Atoi(strings.TrimSpace(h.in.Text()))
+		if err != nil || cell < 0 || cell >= game.Cells {
+			fmt.Println("  not a cell on this board")
+			continue
+		}
+		return game.Action{Cell: uint8(cell)}, true
+	}
+}
+
+func (h *human) Ended(r session.Result) {
+	fmt.Println(render(h.obs))
+	fmt.Printf("slot %d: %s\n", h.slot, r.Signal.Terminal)
+}
+
+// render draws the board. Replace this with Ebitengine when the game
+// gets a window; the agent interface above does not change.
+func render(obs game.Observation) string {
+	var b strings.Builder
+	for i, owner := range obs.Owner {
+		switch owner {
+		case 0:
+			fmt.Fprintf(&b, " %d ", i)
+		default:
+			fmt.Fprintf(&b, " %d ", owner)
+		}
+		if i%3 == 2 {
+			b.WriteByte('\n')
+		}
+	}
+	return b.String()
+}
+
+func fatal(err error) {
+	fmt.Fprintln(os.Stderr, "{{.Target.Name}}:", err)
+	os.Exit(1)
+}

@@ -1,0 +1,8 @@
+module {{.Module}}
+
+go {{if .GoVersion}}{{.GoVersion}}{{else}}1.26.5{{end}}
+
+require {{.Framework}} v0.0.0
+{{if .FrameworkPath}}
+replace {{.Framework}} => {{.FrameworkPath}}
+{{end}}

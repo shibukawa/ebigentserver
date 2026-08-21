@@ -44,6 +44,7 @@ verbs:
   - name: version
     action: print the toolchain version
 verb_mechanism: one configbind SubCommand per verb, with options, positionals, and usage text generated from a struct
+option_placement: a verb consumes every argument after its own name, so a data:build-config or data:run-config key is given before the verb and a verb option after it; the wrong side is a usage error, not a silent no-op
 codegen_dependency: system:tinybind
 unification: decision:one-ebigent-binary, serving requirement:unified-toolchain-binary
 separation: decision:separate-game-cli

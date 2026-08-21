@@ -1,0 +1,43 @@
+# {{.Name}} — written by ebigent init.
+#
+# One file, and a section prefix decides which struct binds a key: the
+# ebigent tool reads [project], [build], [generate], [dev], and
+# [behavior]; a built artifact reads [run]. Each ignores the other's
+# sections, so both can share this file.
+#
+# Every key below also has an environment variable and a command-line
+# option. The order is fixed: default < this file < environment < option.
+# Run `ebigent config scaffold` to see every key with its default.
+
+[project]
+module = "{{.Module}}"
+rules = "./game"
+{{- if .GoVersion}}
+go = "{{.GoVersion}}"
+{{- end}}
+{{range .Targets}}
+[[build.target]]
+name = "{{.Name}}"
+kind = "{{.Kind}}"
+entry = "{{.Entry}}"
+{{end}}
+[dev]
+target = "{{.DevTarget}}"
+console = "127.0.0.1:8930"
+
+[behavior]
+library = "behavior/chips.json"
+corpus = "corpus"
+skill = "skills/behavior-analyze"
+
+[run]
+topology = "{{.Topology}}"
+{{- if ne .Topology "standalone"}}
+listen = "127.0.0.1:4433"
+{{- end}}
+sync.mode = "{{.SyncMode}}"
+
+# Recording is off until a directory is named. Turn it on before you need
+# the data: a corpus cannot be collected retroactively.
+# episode.dir = "corpus"
+# episode.mode = "analysis_sampled"

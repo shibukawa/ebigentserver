@@ -29,9 +29,9 @@
 | `concept:continuous-match-loop` | 済(最小) | [matchloop/](matchloop/) — fresh seed/試合 + `metric:episode-outcome`集計。pairing方針はplay関数側 |
 | `data:agent-loadout` / `concept:tactic-selector` 生成 | 済 | [behavior/loadout.go](behavior/loadout.go) — 作戦セレクタ+チップ決定リストの静的Go生成。TTTで同一ライブラリから別個性(center-first)を組み立て |
 | Reversi蒸留(判断語の語彙) | 済 | [samples/reversi/distill/](samples/reversi/distill/) — `best_move_is_k`(argmax判断)を[dpred](samples/reversi/distill/dpred/)としてレビュー可能なGoに。61チップ(到達可能最大)、GreedyBotとビット一致 |
-| 分析 / `metric:balance-signals` | 済 | [analysis/](analysis/) + `cmd/corpus-report` — 純Go集計(kind別勝率・duration分布・拒否ランキング等)+ DuckDB用SQL生成(実duckdbで検証済み)。Parquet変換は未 |
-| `ui:behavior-tree-editor` / `ui:chip-benchmark` | 済(初版) | [cmd/behavior-editor](cmd/behavior-editor/) — チップ承認/却下(理由付き)、証拠ペイン(episode+tickの実局面)、述語使用状況、levelタグ行列、再生成diff、ベンチ表。`-library chips.json`で起動 |
-| LLM Analyzer | 済(skill) | [skills/behavior-analyze/](skills/behavior-analyze/) — LLMは開発者自身のagentic環境(Claude Code等)でskillとして分析する。導入=skillフォルダ共有+duckdb CLI(任意)。scriptは純Python stdlib。`ttt-export`がanalysis-request.json(語彙+bit列化済み決定)を出力し、提案は`validate_proposals.py`とGo側`behavior.ValidateProposals`が二重に検証(語彙外条件の拒否・coverage再計算・証拠実在確認)してから`cmd/behavior-merge`でdiffマージ。**提案は助言であって権威ではない** |
+| 分析 / `metric:balance-signals` | 済 | [analysis/](analysis/) + `ebigent analyze` — 純Go集計(kind別勝率・duration分布・拒否ランキング等)+ DuckDB用SQL生成(実duckdbで検証済み)。Parquet変換は未 |
+| `ui:behavior-tree-editor` / `ui:chip-benchmark` | 済(初版) | [cmd/behavior-editor](cmd/behavior-editor/) — `ebigent edit` に統合予定。チップ承認/却下(理由付き)、証拠ペイン(episode+tickの実局面)、述語使用状況、levelタグ行列、再生成diff、ベンチ表。`-library chips.json`で起動 |
+| LLM Analyzer | 済(skill) | [skills/behavior-analyze/](skills/behavior-analyze/) — LLMは開発者自身のagentic環境(Claude Code等)でskillとして分析する。導入=skillフォルダ共有+duckdb CLI(任意)。scriptは純Python stdlib。`ttt-export`がanalysis-request.json(語彙+bit列化済み決定)を出力し、提案は`validate_proposals.py`とGo側`behavior.ValidateProposals`が二重に検証(語彙外条件の拒否・coverage再計算・証拠実在確認)してから`ebigent merge`でdiffマージ。**提案は助言であって権威ではない** |
 
 ### 完了条件の対応
 
@@ -188,6 +188,9 @@
 - `behavior` — 蒸留パイプライン: 語彙・分析(Analyzer差替可)・チップライブラリ・再生成マージ・Goコード生成。
 - `matchloop` — 無人連続対局と結果集計。
 - `analysis` — corpus集計とDuckDB SQL生成(ゲームプロセス外の分析ツール)。
+- `config/buildconf`, `config/runconf`, `config/confload` — `ebigent.toml` 1ファイルを prefix でセクション分けして bind。既定 < ファイル < 環境変数 < オプションの順で上書き。
+- `scaffold` — `ebigent init` が書き出すプロジェクト雛形。生成物がビルドでき自身のテストが通ることをテストで担保している。
+- `cli`, `cmd/ebigent` — ツールチェーン本体。
 - `signaltoken` — 帯域外シグナリングトークン(WebRTC招待/応答)。
 - `discovery` — LANセッション発見ビーコン。
 - `netplay` — セッションを実トランスポートに接続する汎用層。admission→peer、view別状態配信(`MakeSender`ファクトリで席・役割ごとに投影を選択)、観戦者enforcement、離脱検出、abuse対策。
@@ -201,6 +204,30 @@
 - `importcheck` — 依存の閉じ込め検査。ゲームモジュールは `importcheck.Enforce(t, ".", importcheck.Default())` を 1 テスト持つ。
 - `examples/phase0` — Phase 0 の証明: 固定小数点型 + 生成 CBOR コーデック + delta、build target ごとの cmd エントリポイント。
 - `examples/phase0/sim` — Phase 0 スタック全体（fixmath の Sin/Atan2/Sqrt → 宣言スケール量子化 → 生成 delta エンコード）を通した決定的エピソード。digest をテストで固定しており、これが Phase 2 のクロスアーキテクチャ検証の種になる。
+
+## ツールチェーン
+
+```bash
+go build -o bin/ebigent ./cmd/ebigent
+```
+
+`ebigent` 1つに統合済み(`decision:one-ebigent-binary`)。`corpus-report` は `ebigent analyze`、`behavior-merge` は `ebigent merge` になった。`behavior-editor` は `ebigent edit` として `ui:dev-console` に統合予定で、それまでは単体コマンドのまま残る。
+
+```bash
+ebigent init            # ウィザードでプロジェクト雛形を生成
+ebigent build [target]  # 宣言済み build target をビルド
+ebigent config show     # 実効値と、それを設定した層
+ebigent doctor          # 動かない理由
+ebigent --help          # 全 verb
+```
+
+設定オプションは verb の**前**に置く(verb は自分の名前より後ろの引数を全部取るため):
+
+```bash
+ebigent --run-topology dedicated build server
+```
+
+`dev` / `run` / `simulate` / `replay` / `edit` は宣言済みだが未実装で、実行すると何待ちかを表示する。
 
 ## コード生成
 

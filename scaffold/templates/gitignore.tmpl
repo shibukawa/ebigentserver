@@ -1,0 +1,21 @@
+# Binaries
+/bin/
+*.exe
+*.wasm
+
+# Test artifacts
+*.test
+*.out
+coverage.*
+
+# Recorded episodes: data:episode-log grows without bound and is
+# reproducible from a seed. Keep the directory, not its contents.
+/corpus/*
+!/corpus/.gitkeep
+
+# Editor
+.DS_Store
+.idea/
+.vscode/
+
+# Generated Go is committed on purpose, so nothing is ignored here.

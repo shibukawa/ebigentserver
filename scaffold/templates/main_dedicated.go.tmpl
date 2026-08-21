@@ -1,0 +1,65 @@
+// Command {{.Target.Name}} hosts {{.Name}} headless: concept:dedicated-server-mode.
+//
+// It never imports Ebitengine — not by a build tag, but by not importing
+// it (decision:entry-points-over-build-tags). The import graph check is
+// what enforces that, so keep rendering out of this file.
+//
+// TRANSPORT SEAM. This entry hosts the session and seats local
+// controllers. Accepting remote peers is the piece to add next: the
+// session is already independent of transport and controller kind
+// (rule:session-independent-of-transport-and-agent-kind), so wiring
+// package netplay in front of it changes this file and nothing under
+// game/. Until then it runs a complete match against seated bots, which
+// is what makes it useful as a smoke test.
+package main
+
+import (
+	"context"
+	"fmt"
+	"os"
+
+	"{{.Module}}/game"
+	"github.com/shibukawa/ebigentserver/config/confload"
+	"github.com/shibukawa/ebigentserver/config/runconf"
+	"github.com/shibukawa/ebigentserver/session"
+)
+
+func main() {
+	run := runconf.Bind()
+	if _, err := confload.Load(confload.Options{
+		Owned:    runconf.Prefixes(),
+		Validate: []func() error{func() error { return run.Validate() }},
+	}); err != nil {
+		fatal(err)
+	}
+	fmt.Printf("{{.Target.Name}}: topology %s, sync %s, listen %q\n",
+		run.Topology, run.Sync.Mode, run.Listen)
+
+	s, err := session.New(game.Config("{{.Name}}-server", 1))
+	if err != nil {
+		fatal(err)
+	}
+	if err := s.OpenAdmission(); err != nil {
+		fatal(err)
+	}
+	// Seat a controller per slot. Once transport is wired, a remote peer
+	// is admitted here in exactly the same way — the session cannot tell
+	// the difference, which is the point of the agent abstraction.
+	one, two := &game.FirstFree{}, &game.FirstFree{}
+	if err := s.Admit(game.SlotOne, one); err != nil {
+		fatal(err)
+	}
+	if err := s.Admit(game.SlotTwo, two); err != nil {
+		fatal(err)
+	}
+	if err := s.Run(context.Background()); err != nil {
+		fatal(err)
+	}
+	fmt.Printf("{{.Target.Name}}: session ended after %d ticks, slot 1 %s\n",
+		s.Tick(), one.Result.Signal.Terminal)
+}
+
+func fatal(err error) {
+	fmt.Fprintln(os.Stderr, "{{.Target.Name}}:", err)
+	os.Exit(1)
+}
