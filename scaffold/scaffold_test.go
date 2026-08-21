@@ -4,6 +4,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -105,7 +106,7 @@ func TestGeneratedProjectWritesTheWholePipeline(t *testing.T) {
 	// decision:ai-pipeline-always-scaffolded — never asked about, always
 	// written, because a corpus cannot be collected retroactively.
 	for _, want := range []string{
-		"ebigent.toml", "go.mod", ".gitignore", "README.md",
+		"ebigent.toml", ".gitignore", "README.md",
 		"game/game.go", "game/game_test.go", "boundary_test.go",
 		"cmd/game/main.go", "cmd/simulation/main.go",
 		"behavior/chips.json", "corpus/.gitkeep",
@@ -301,8 +302,10 @@ func generateAndTidy(t *testing.T, s *scaffold.Spec) {
 	if _, err := scaffold.Generate(s); err != nil {
 		t.Fatalf("generate: %v", err)
 	}
-	if err := scaffold.Tidy(s.Dir, []string{"GOFLAGS=-mod=mod", "GOPROXY=off"}); err != nil {
-		t.Fatalf("tidy: %v", err)
+	// A local framework checkout, so resolution reads that directory's
+	// requirements and needs no network.
+	if err := scaffold.InitModule(s.Dir, s, []string{"GOFLAGS=-mod=mod", "GOPROXY=off"}); err != nil {
+		t.Fatalf("module init: %v", err)
 	}
 }
 
@@ -324,4 +327,53 @@ func contains(list []string, want string) bool {
 		}
 	}
 	return false
+}
+
+// The generated go.mod is built by the go tool, not written from a
+// template, so its go directive follows the installed toolchain rather
+// than whatever a template froze.
+func TestGeneratedModuleIsBuiltByTheGoTool(t *testing.T) {
+	if testing.Short() {
+		t.Skip("shells out to the go toolchain")
+	}
+	s := spec(t, "solo", 0, false)
+	generateAndTidy(t, s)
+
+	body, err := os.ReadFile(filepath.Join(s.Dir, "go.mod"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := string(body)
+	if !strings.Contains(got, "module example.com/mygame") {
+		t.Errorf("go.mod names the wrong module:\n%s", got)
+	}
+	// go mod init writes a directive for the toolchain in hand; a
+	// template could only ever name the one it was written against.
+	installed := strings.TrimPrefix(runtime.Version(), "go")
+	major := strings.Join(strings.SplitN(installed, ".", 3)[:2], ".")
+	if !strings.Contains(got, "go "+major) {
+		t.Errorf("go directive does not follow the installed toolchain %s:\n%s", installed, got)
+	}
+	// Everything the sources import has to be required, whether the
+	// framework pulled it in or the game did.
+	for _, want := range []string{
+		"github.com/shibukawa/ebigentserver",
+		"github.com/shibukawa/fixmath",
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("go.mod is missing %s:\n%s", want, got)
+		}
+	}
+}
+
+// A project with a rendering entry needs the engine resolvable; one
+// without it should not be asked to fetch it.
+func TestDirectDepsFollowTheTargets(t *testing.T) {
+	withClient := spec(t, "solo", 0, false).DirectDeps()
+	if !contains(withClient, "github.com/hajimehoshi/ebiten/v2") {
+		t.Errorf("a rendering project needs the engine, got %v", withClient)
+	}
+	if !contains(withClient, "github.com/shibukawa/fixmath") {
+		t.Errorf("every project uses fixed point, got %v", withClient)
+	}
 }

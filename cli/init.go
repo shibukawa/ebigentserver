@@ -71,11 +71,11 @@ func runInit(c *context, opts *InitOptions) error {
 	}
 
 	if opts.SkipTidy {
-		fmt.Fprintln(c.stdout, "\nskipped go mod tidy; run it before building")
+		fmt.Fprintln(c.stdout, "\nskipped module resolution; run go mod init and go get before building")
 		return nil
 	}
 	fmt.Fprintln(c.stdout, "\nresolving modules...")
-	if err := scaffold.Tidy(spec.Dir, nil); err != nil {
+	if err := scaffold.InitModule(spec.Dir, spec, nil); err != nil {
 		return err
 	}
 	fmt.Fprintln(c.stdout, "building...")

@@ -412,7 +412,6 @@ func render(spec *Spec) (map[string][]byte, error) {
 
 	fixed := map[string]string{
 		"ebigent.toml":      "ebigent.toml.tmpl",
-		"go.mod":            "go.mod.tmpl",
 		".gitignore":        "gitignore.tmpl",
 		"README.md":         "README.md.tmpl",
 		"game/game.go":      "game.go.tmpl",
@@ -508,9 +507,56 @@ func gofmtSource(name string, src []byte) ([]byte, error) {
 	return formatted, nil
 }
 
-// Tidy runs go mod tidy in the project, which is step 7 of
-// flow:project-init: the generated go.mod names the framework at a
-// placeholder version and tidy resolves it, writing go.sum.
+// DirectDeps are the modules the generated sources import by name,
+// beyond the framework itself.
+func (s *Spec) DirectDeps() []string {
+	deps := []string{"github.com/shibukawa/fixmath"}
+	for _, t := range s.Targets() {
+		// A client renders, and a server renders under the listen tag;
+		// either way the engine has to resolve.
+		if t.Kind == "client" || t.Tagged() {
+			return append(deps, "github.com/hajimehoshi/ebiten/v2")
+		}
+	}
+	return deps
+}
+
+// InitModule builds the generated project's go.mod with the go tool
+// rather than writing one.
+//
+// A written go.mod freezes whatever the template said — a go directive
+// from whenever it was authored, and a version for every dependency. go
+// mod init writes the directive the installed toolchain actually wants,
+// and go get resolves what is current at the moment the project is made,
+// which is the version a new project should start on.
+//
+// The exception is a local framework checkout: there, the point is to
+// build against that checkout, so its own requirements are what the
+// project should inherit. tidy reads them straight out of the replaced
+// directory, and asking a proxy for anything newer would only introduce a
+// version skew the developer did not ask for.
+func InitModule(dir string, spec *Spec, env []string) error {
+	if err := goRun(dir, env, "mod", "init", spec.Module); err != nil {
+		return err
+	}
+	if spec.FrameworkPath != "" {
+		if err := goRun(dir, env, "mod", "edit",
+			"-require="+FrameworkModule+"@v0.0.0",
+			"-replace="+FrameworkModule+"="+spec.FrameworkPath); err != nil {
+			return err
+		}
+		return Tidy(dir, env)
+	}
+	for _, mod := range append([]string{FrameworkModule}, spec.DirectDeps()...) {
+		if err := goRun(dir, env, "get", mod); err != nil {
+			return err
+		}
+	}
+	return Tidy(dir, env)
+}
+
+// Tidy runs go mod tidy, resolving whatever the sources import and
+// writing go.sum.
 //
 // It is separate from Generate so that writing files never depends on a
 // toolchain or a network, and so a caller can report the two failures

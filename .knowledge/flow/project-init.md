@@ -24,7 +24,9 @@ writes:
   - an import graph test holding the project to rule:engine-import-confined-to-client-entry
   - the chip library, the corpus directory, and the analysis skill at the path the chosen environment reads
 then:
-  - run go mod tidy and tinybind codegen
+  - build go.mod with the go tool rather than writing one — go mod init for the directive the installed toolchain wants, then go get for what is current now, so a new project does not start on versions a template froze
+  - against a local framework checkout, inherit that checkout's requirements instead, since building against it is the point
+  - run tinybind codegen
   - build once and report the result
 prompts: a terminal gets the bubbles interface; anything else — a pipe, a test driving the command in process, a CI job — gets the plain text one, since a prompt that only renders cannot be scripted
 non_interactive: every answer is also a CLI option, so init runs unattended in a test
