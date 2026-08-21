@@ -59,10 +59,13 @@ func main() {
 	if err := s.OpenAdmission(); err != nil {
 		fatal(err)
 	}
-{{if and (eq .View "shared") (gt .Seats 1)}}	// A shared camera means every seat is at this machine, each on its own
-	// keys. Every seat is Detached: its observations arrive as the
-	// broadcast world the renderer already holds, so delivering them to
-	// the seat as well would duplicate the path a remote player uses.
+{{if .LocalMultiplayer}}	// Several players share this machine, each on their own key. Whether
+	// they read one view or a split one is a rendering choice made in
+	// Draw; the seating below is the same either way.
+	//
+	// Every seat is Detached: its observations arrive as the broadcast
+	// world the renderer already holds, so delivering them to the seat as
+	// well would duplicate the path a remote player uses.
 	inboxes := make([]*session.Inbox[game.Action], 0, len(game.Slots()))
 	for _, slot := range game.Slots() {
 		if err := s.Admit(slot, session.Detached[game.Observation, game.Action]{}); err != nil {

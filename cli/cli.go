@@ -41,15 +41,18 @@ var Version = "dev"
 
 // InitOptions scaffolds a new project (flow:project-init).
 type InitOptions struct {
-	Dir           string `arg:"optional" help:"project directory, created if missing (default: the current directory)"`
-	Module        string `default:"" help:"go module path"`
-	Name          string `default:"" help:"game name; defaults to the directory name"`
-	Seats         int    `default:"0" help:"how many players share one session; 0 asks"`
-	View          string `default:"" help:"camera: shared for one view everybody reads, per_agent for a view each"`
-	Sync          string `default:"" help:"synchronization mode; a shared surface has none"`
-	Yes           bool   `default:"false" help:"take the default for every unanswered question instead of prompting"`
-	FrameworkPath string `default:"" help:"path to a local framework checkout, added as a replace directive"`
-	SkipTidy      bool   `default:"false" help:"do not run go mod tidy or the verification build"`
+	Dir    string `arg:"optional" help:"project directory, created if missing (default: the current directory)"`
+	Module string `default:"" help:"go module path"`
+	Name   string `default:"" help:"game name; defaults to the directory name"`
+	Style  string `default:"" help:"play style: solo, duo, or multi"`
+	Seats  int    `default:"0" help:"maximum players, for the multi style; 0 asks"`
+	// A string rather than a bool: a wizard has to tell "said no" apart
+	// from "did not say", and a bool cannot.
+	LocalMultiplayer string `default:"" help:"several players per machine: yes or no; empty asks"`
+	Sync             string `default:"" help:"synchronization mode; a shared surface has none"`
+	Yes              bool   `default:"false" help:"take the default for every unanswered question instead of prompting"`
+	FrameworkPath    string `default:"" help:"path to a local framework checkout, added as a replace directive"`
+	SkipTidy         bool   `default:"false" help:"do not run go mod tidy or the verification build"`
 }
 
 // BuildOptions compiles one declared concept:build-target.

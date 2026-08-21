@@ -44,10 +44,14 @@ type Tuning struct {
 	HistoryDepth  int
 }
 
-// Views is concept:view-arrangement: the camera. Independent of reach —
-// an online fighting game shares a camera across separate processes, and
-// a split screen console game splits one inside a single process.
-var Views = []string{"shared", "per_agent"}
+// Styles is how a project is played, which is the first thing a developer
+// can answer without knowing anything about transports.
+//
+// duo is its own style rather than "multi with two seats" because two is
+// where a peer link is genuinely one hop: the host is the other player.
+// Past two, every exchange goes through a host either way, so the one-hop
+// netcodes stop being reachable (concept:deployment-combination).
+var Styles = []string{"solo", "duo", "multi"}
 
 // Reaches is where the traffic goes. It is derived from the seat count
 // rather than asked: solo has nowhere to go, and past two seats the
@@ -111,13 +115,12 @@ func tuningForSeats(seats int) Tuning {
 	}
 }
 
-// SyncDefaultFor is the synchronization mode a camera usually wants, and
-// only ever applies when a link exists. A shared camera puts a
-// mispredicted frame in front of every player at once, which is the case
-// term:rollback was invented for; a per-agent camera hides most
-// corrections outside the frame, so authority plus prediction is enough.
-func SyncDefaultFor(view string) string {
-	if view == "shared" {
+// SyncDefaultFor is the synchronization mode a style usually wants. Two
+// players reach each other in one hop, which is what term:rollback
+// assumes; past two, every exchange is two hops and authority plus
+// concept:client-prediction is what is left.
+func SyncDefaultFor(style string) string {
+	if style == "duo" {
 		return "rollback"
 	}
 	return "server_authoritative"
@@ -194,9 +197,16 @@ type Spec struct {
 	Module string
 	// Name identifies the game in session IDs and the chip library.
 	Name string
-	// View is concept:view-arrangement: the camera, shared or per_agent.
-	// Independent of Link.
-	View string
+	// Style is how the project is played: solo, duo, or multi.
+	Style string
+	// LocalMultiplayer allows several people to play on one machine, each
+	// on their own device. It is the code-visible half of
+	// concept:view-arrangement: a shared surface, several
+	// api:input-adapter bindings, and no link between those seats.
+	//
+	// It does not exclude networked play; it decides whether the client
+	// can seat more than one person in front of it.
+	LocalMultiplayer bool
 	// Seats is how many concept:player-slot entries the rules declare.
 	// A number rather than a category: two seats and twenty generate the
 	// same wiring.
@@ -224,15 +234,19 @@ func (s *Spec) Validate() error {
 		errs = append(errs, errors.New("Name is required"))
 	}
 
-	if !slices.Contains(Views, s.View) {
-		errs = append(errs, fmt.Errorf("view arrangement %q is not one of %v", s.View, Views))
+	if !slices.Contains(Styles, s.Style) {
+		errs = append(errs, fmt.Errorf("play style %q is not one of %v", s.Style, Styles))
+	}
+	if want, ok := seatsForStyle(s.Style, s.Seats); ok && s.Seats != want {
+		errs = append(errs, fmt.Errorf("the %q style declares %d seats, not %d", s.Style, want, s.Seats))
+	}
+	if s.Style == "solo" && s.LocalMultiplayer {
+		errs = append(errs, errors.New("one player cannot share a machine with anybody"))
 	}
 	if s.Seats < 1 {
 		errs = append(errs, fmt.Errorf("a session needs at least one seat, not %d", s.Seats))
 	}
-	if s.Seats == 1 && s.View != "shared" {
-		errs = append(errs, errors.New("one seat has no camera to arrange; use the shared view"))
-	}
+
 	if s.Seats > 8 {
 		errs = append(errs, fmt.Errorf("%d seats is past what the generated placeholder renders; declare the slots by hand instead", s.Seats))
 	}
@@ -260,6 +274,28 @@ func (s *Spec) Tuning() Tuning { return tuningForSeats(s.Seats) }
 // RequireUnreliable reports whether the generated run config asks for a
 // datagram channel.
 func (s *Spec) RequireUnreliable() bool { return NeedsUnreliable(s.Seats) }
+
+// seatsForStyle reports the seat count a style fixes, and whether it
+// fixes one at all — multi takes its count from the developer.
+func seatsForStyle(style string, seats int) (int, bool) {
+	switch style {
+	case "solo":
+		return 1, true
+	case "duo":
+		return 2, true
+	default:
+		return seats, false
+	}
+}
+
+// SeatsForStyle reports the seat count a style implies, using fallback
+// for the style that does not fix one.
+func SeatsForStyle(style string, fallback int) int {
+	if n, ok := seatsForStyle(style, fallback); ok {
+		return n
+	}
+	return fallback
+}
 
 // SlotNames renders the generated slot identifiers, so the rules template
 // can declare one constant per seat.

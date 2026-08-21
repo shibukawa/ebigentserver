@@ -13,6 +13,13 @@ arrangements:
   - name: per_agent
     camera: one view per seat, following that seat
     examples: shooters, anything with a per player position
+split_screen_is_both: >
+  several seats on one machine, each with its own camera. It is why the
+  camera is not the question a project is asked: shared against per_agent
+  cannot express it, since it is per_agent cameras on a shared machine.
+  What flow:project-init asks instead is whether a machine may seat more
+  than one person, and the camera inside that is a rendering choice made
+  in the draw call — one frame or several viewports.
 orthogonal_to: concept:execution-topology, which is where the seats sit
 four_real_quadrants:
   - shared camera, one process: couch versus play; no link, so no concept:synchronization-mode

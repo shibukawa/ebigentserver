@@ -29,17 +29,16 @@ func runInit(c *context, opts *InitOptions) error {
 	}
 
 	spec := &scaffold.Spec{
-		Dir:           abs,
-		Module:        opts.Module,
-		Name:          opts.Name,
-		View:          opts.View,
-		Seats:         opts.Seats,
-		SyncMode:      opts.Sync,
+		Dir:    abs,
+		Module: opts.Module,
+		Name:   opts.Name,
+		Style:  opts.Style,
+		Seats:  opts.Seats, SyncMode: opts.Sync,
 		FrameworkPath: opts.FrameworkPath,
 	}
 
 	w := &wizard{in: bufio.NewScanner(os.Stdin), out: c.stdout, auto: opts.Yes}
-	if err := ask(w, spec); err != nil {
+	if err := ask(w, spec, opts); err != nil {
 		return err
 	}
 	if err := spec.Validate(); err != nil {
@@ -82,7 +81,7 @@ func runInit(c *context, opts *InitOptions) error {
 // ask fills the unanswered half of the spec, narrowing each question by
 // the answers before it: step 2 offers only the synchronization modes
 // the chosen topology supports, and step 3 only the targets it can use.
-func ask(w *wizard, spec *scaffold.Spec) error {
+func ask(w *wizard, spec *scaffold.Spec, opts *InitOptions) error {
 	if spec.Name == "" {
 		spec.Name = defaultName(spec.Dir)
 		spec.Name = w.text("Game name", spec.Name)
@@ -90,48 +89,64 @@ func ask(w *wizard, spec *scaffold.Spec) error {
 	if spec.Module == "" {
 		spec.Module = w.text("Go module path", "example.com/"+spec.Name)
 	}
-	// Two questions, and the first can make the second moot. Everything
-	// else follows: the entry points, the topology, the tuning, and which
-	// synchronization modes are reachable.
-	if spec.Seats == 0 {
-		spec.Seats = w.number("How many players share one session?", 2, 1, 8)
-	}
-	if spec.Seats == 1 {
-		spec.View = "shared"
-		w.note("One player: no view to arrange and no link to make.")
-	}
-
-	// The camera. Independent of where the seats sit — an online fighting
-	// game shares a camera across machines, and a split screen console
-	// game splits one inside a single process (concept:view-arrangement).
-	if spec.View == "" {
+	// How it is played, then how many, then whether a machine may seat
+	// more than one person. Each question is skipped when the answer
+	// before it settled the matter.
+	if spec.Style == "" {
 		const (
-			shared = "one view everybody reads"
-			apart  = "a view per player"
+			solo  = "one player"
+			duo   = "two players"
+			multi = "multiplayer"
 		)
-		if w.choose("What does each player see?", []string{shared, apart}, 0,
+		switch w.choose(
+			"How is it played?",
+			[]string{solo, duo, multi}, 0,
 			map[string]string{
-				shared: "fighting games, board games, party games — several pads on one machine also fit here",
-				apart:  "shooters, anything with a per player camera; one app instance per player",
-			}) == shared {
-			spec.View = "shared"
-		} else {
-			spec.View = "per_agent"
-		}
-		if spec.View == "shared" {
-			w.note("One view means one set of facts: whatever is on screen, every player may know.")
-			w.note("Hiding state between players needs a view per player.")
+				solo:  "one seat; no link, nothing to synchronize",
+				duo:   "exactly two, and they reach each other in one hop — the case rollback is for",
+				multi: "more than two, so every exchange goes through a host either way",
+			}) {
+		case solo:
+			spec.Style = "solo"
+		case duo:
+			spec.Style = "duo"
+		default:
+			spec.Style = "multi"
 		}
 	}
+	// solo and duo fix their own seat count; only multi has one to give.
+	if spec.Style == "multi" && spec.Seats == 0 {
+		spec.Seats = w.number("At most how many players in one session?", 4, 3, 8)
+	}
+	spec.Seats = scaffold.SeatsForStyle(spec.Style, spec.Seats)
 
-	// Where the traffic goes is not asked. It follows the seat count, and
-	// what remains of it is a run value rather than a code difference
-	// (concept:deployment-combination).
 	switch {
-	case spec.Seats == 2:
-		w.note("Two players can reach each other in one hop, so a direct link is worth having:")
+	case spec.Style == "solo":
+		w.note("One player: nothing to seat beside them, and no link to make.")
+	case opts.LocalMultiplayer == "yes":
+		spec.LocalMultiplayer = true
+	case opts.LocalMultiplayer == "no":
+	case opts.LocalMultiplayer != "":
+		return fmt.Errorf("local_multiplayer is %q; use yes or no", opts.LocalMultiplayer)
+	default:
+		spec.LocalMultiplayer = w.yesNo(
+			"May several players share one machine, each on their own device?", true)
+	}
+	if spec.LocalMultiplayer {
+		// Whether they read one view or a split one is a rendering
+		// choice; either way they are looking at the same machine.
+		w.note("One machine means one set of facts: split the view or not, every seat at it may know.")
+		w.note("Hiding state between players needs them on separate machines.")
+	}
+
+	// Where the traffic goes is not asked. It follows the style, and what
+	// remains of it is a run value rather than a code difference
+	// (concept:deployment-combination).
+	switch spec.Style {
+	case "duo":
+		w.note("Two players reach each other in one hop, so a direct link is worth having:")
 		w.note("WebRTC or a LAN, no server. A dedicated server stays available as a run setting.")
-	case spec.Seats > 2:
+	case "multi":
 		w.note("Past two players every exchange is two hops, through a peer host or a server alike,")
 		w.note("so the default is the host whose results can be trusted. Either is a run setting.")
 	}
@@ -139,7 +154,7 @@ func ask(w *wizard, spec *scaffold.Spec) error {
 	if spec.SyncMode == "" && len(modes) > 0 {
 		def := 0
 		for i, m := range modes {
-			if m == scaffold.SyncDefaultFor(spec.View) {
+			if m == scaffold.SyncDefaultFor(spec.Style) {
 				def = i
 			}
 		}
@@ -196,6 +211,33 @@ func defaultName(dir string) string {
 		return "game"
 	}
 	return name
+}
+
+// yesNo asks a yes or no question.
+func (w *wizard) yesNo(prompt string, def bool) bool {
+	label := "Y/n"
+	if !def {
+		label = "y/N"
+	}
+	if w.auto {
+		w.note("%s %v", prompt, def)
+		return def
+	}
+	for {
+		fmt.Fprintf(w.out, "%s [%s]: ", prompt, label)
+		if !w.in.Scan() {
+			return def
+		}
+		switch strings.ToLower(strings.TrimSpace(w.in.Text())) {
+		case "":
+			return def
+		case "y", "yes":
+			return true
+		case "n", "no":
+			return false
+		}
+		fmt.Fprintln(w.out, "  y or n")
+	}
 }
 
 // number asks for a count, refusing anything outside the range rather

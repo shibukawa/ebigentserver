@@ -190,9 +190,9 @@
 - `analysis` — corpus集計とDuckDB SQL生成(ゲームプロセス外の分析ツール)。
 - `config/buildconf`, `config/runconf`, `config/confload` — `ebigent.toml` 1ファイルを prefix でセクション分けして bind。既定 < ファイル < 環境変数 < オプションの順で上書き。
 - `scaffold` — `ebigent init` が書き出すプロジェクト雛形。既定は Ebitengine の Flappy Bird 風(2羽が同じパイプ列を飛ぶ、操作はflapのみ)で、リアルタイムsession・固定小数点物理・シード付きRNG・engineをclientエントリに閉じ込める構成が最初から動く。生成物がビルドでき自身のテスト(境界テスト含む)が通ることをテストで担保している。
-  ウィザードは2問: **人数** → **画面**(`concept:view-arrangement` = 同一ビュー / 席ごと)。人数1なら2問目もスキップ。生成されるコードパターンは5通り(1人 / 2人×2画面種 / 3人以上×2画面種)。
-  トランスポートは質問しない。P2Pはstar型(meshは非対応)なので、**3人以上ではピア経由もサーバ経由も等しく2ホップ**になり、1ホップの直結は2人のときだけ存在する。したがって人数が同期方式の候補を決める(2人はrollback/delayが射程内、3人以上は権威型)。ピアかdedicatedかは残るがコード差ではなく `data:run-config` の値。
-  カメラは到達範囲と独立で4象限すべて実在する(座って対戦格闘 / オンライン対戦格闘 / 分割画面 / オンラインFPS)。ホストがplayingかdedicatedかは `cmd/server/` 1ディレクトリを `listen` ビルドタグで切り替える(`rule:build-tag-only-for-linkage`)。到達可能なトランスポートの組み合わせは `concept:deployment-combination` に列挙。
+  ウィザードは3問: **プレイスタイル**(1人 / 2人 / マルチ) → **最大人数**(マルチのときだけ) → **1台で複数人が遊べるようにするか**(1人以外)。生成されるコードパターンは5通り。
+  2人が独立したスタイルなのは、star型P2Pでは**3人以上だとピア経由もサーバ経由も等しく2ホップ**になり、1ホップの直結が2人のときだけ成立するため。したがって2人は rollback/delay が射程内、3人以上は権威型。ピアかdedicatedかはコード差ではなく `data:run-config` の値。
+  3問目が「カメラが共有か」でないのは、**画面分割**が「カメラは各自 + 1台を共有」で二択に収まらないため。1台を共有するかを聞けば、その中のカメラは描画の詳細になる(`concept:view-arrangement`)。ホストがplayingかdedicatedかは `cmd/server/` 1ディレクトリを `listen` ビルドタグで切り替える(`rule:build-tag-only-for-linkage`)。到達可能なトランスポートの組み合わせは `concept:deployment-combination` に列挙。
 - `cli`, `cmd/ebigent` — ツールチェーン本体。
 - `signaltoken` — 帯域外シグナリングトークン(WebRTC招待/応答)。
 - `discovery` — LANセッション発見ビーコン。

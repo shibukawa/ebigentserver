@@ -59,7 +59,7 @@ func TestInitNonInteractiveProducesAWorkingProject(t *testing.T) {
 	dir := t.TempDir()
 	code, out, errOut := run(t, "", "init", dir,
 		"--yes", "--module", "example.com/probe", "--name", "probe",
-		"--seats", "1",
+		"--style", "solo",
 		"--framework_path", frameworkRoot(t))
 	if code != 0 {
 		t.Fatalf("exit %d\nstdout:\n%s\nstderr:\n%s", code, out, errOut)
@@ -82,7 +82,7 @@ func TestInitRefusesAnExistingProject(t *testing.T) {
 	}
 	code, _, errOut := run(t, "", "init", dir, "--yes",
 		"--module", "example.com/probe", "--name", "probe",
-		"--seats", "1", "--skip_tidy")
+		"--style", "solo", "--skip_tidy")
 	if code == 0 {
 		t.Fatal("a second init should fail")
 	}
@@ -154,6 +154,28 @@ func TestConfigScaffoldRendersEverySection(t *testing.T) {
 
 // A verb that is declared but not built yet says what it is waiting on,
 // which is more useful than an unknown-command error.
+// A wizard has to tell "said no" apart from "did not say", which a bool
+// flag cannot: --local_multiplayer=false would still have prompted.
+func TestExplicitNoSkipsTheLocalMultiplayerQuestion(t *testing.T) {
+	if testing.Short() {
+		t.Skip("shells out to the go toolchain")
+	}
+	dir := t.TempDir()
+	code, out, errOut := run(t, "", "init", dir,
+		"--yes", "--module", "example.com/probe", "--name", "probe",
+		"--style", "duo", "--local_multiplayer", "no",
+		"--framework_path", frameworkRoot(t))
+	if code != 0 {
+		t.Fatalf("exit %d\n%s\n%s", code, out, errOut)
+	}
+	if strings.Contains(out, "May several players share one machine") {
+		t.Error("an explicit no should not be asked again")
+	}
+	if strings.Contains(out, "every seat at it may know") {
+		t.Error("the shared-machine warning belongs to a yes")
+	}
+}
+
 func TestPendingVerbNamesWhatItWaitsOn(t *testing.T) {
 	code, _, errOut := run(t, t.TempDir(), "dev")
 	if code == 0 {

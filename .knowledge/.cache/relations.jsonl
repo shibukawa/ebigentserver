@@ -481,6 +481,7 @@
 {"context": "body", "path": ".knowledge/concept/trust-model.md", "source": "concept:trust-model", "target": "data:identity-token", "target_category": "structure", "target_type": "data"}
 {"context": "body", "path": ".knowledge/concept/trust-model.md", "source": "concept:trust-model", "target": "data:progress-report", "target_category": "structure", "target_type": "data"}
 {"context": "body", "path": ".knowledge/concept/trust-model.md", "source": "concept:trust-model", "target": "rule:asymmetric-ticket-signature", "target_category": "constraint", "target_type": "rule"}
+{"context": "body", "path": ".knowledge/concept/view-arrangement.md", "source": "concept:view-arrangement", "target": "flow:project-init", "target_category": "behavior", "target_type": "flow"}
 {"context": "body", "path": ".knowledge/concept/view-arrangement.md", "source": "concept:view-arrangement", "target": "concept:execution-topology", "target_category": "concept", "target_type": "concept"}
 {"context": "body", "path": ".knowledge/concept/view-arrangement.md", "source": "concept:view-arrangement", "target": "concept:synchronization-mode", "target_category": "concept", "target_type": "concept"}
 {"context": "body", "path": ".knowledge/concept/view-arrangement.md", "source": "concept:view-arrangement", "target": "term:rollback", "target_category": "vocabulary", "target_type": "term"}
