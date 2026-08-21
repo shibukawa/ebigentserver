@@ -10,7 +10,7 @@ file: ebigent.toml, shared with data:run-config under decision:one-config-file-m
 locator: every verb walks upward from the working directory until it finds this file, the way system:popcornweb finds popcornweb.toml
 sections:
   - project: module path, game rules package, pinned go toolchain
-  - targets: one entry per concept:build-target with its cmd entry point, goos, goarch, and the linkage it may not cross
+  - targets: one entry per concept:build-target with its cmd entry point, goos, goarch, and its build tags; two entries may share one entry point and differ only in tags, which is how the listen and headless forms of one server are declared under rule:build-tag-only-for-linkage
   - generate: packages carrying tinybind codegen and the generated file paths they own
   - dev: default target to run, watch roots, ignore globs, debounce, ui:dev-console address
   - behavior: chip library path, corpus root, analysis skill directory

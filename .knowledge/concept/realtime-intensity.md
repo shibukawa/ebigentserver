@@ -9,7 +9,7 @@ How much a game's feel depends on the delay between an input and its visible eff
 tiers:
   - name: turn_based
     pacing: the session waits for a decision, session.Run rather than RunRealtime
-    needs: a reliable ordered stream only, so system:websocket is sufficient and no datagram transport is required at all
+    needs: a reliable ordered stream for the moves themselves; whether a datagram channel is wanted depends on what moves between turns, see simulation_pace_is_not_transport_pace below
     sync: authority is trivial because only one slot acts at a time
     relay_hop: free — nobody notices a hundred milliseconds on a move that took a person ten seconds
     tuning: tick rate is a formality, see data:session-tuning-profile

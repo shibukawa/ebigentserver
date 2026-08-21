@@ -6,15 +6,26 @@ title: Project Init
 `ebigent init` from an empty directory to a project that already runs.
 
 ```yaml
-steps:
-  - 1: ask concept:execution-topology
-  - 2: ask concept:synchronization-mode, offering only modes the chosen topology supports
-  - 3: ask the concept:build-target set, warning when a target drops a capability, such as wasm excluding api:lan-discovery
-  - 4: write ebigent.toml as data:build-config and a commented data:run-config scaffold
-  - 5: write one cmd entry point per target, the game rules package, and a data:session-tuning-profile preset matching the synchronization mode
-  - 6: write the AI pipeline scaffold, see decision:ai-pipeline-always-scaffolded
-  - 7: run go mod tidy and tinybind codegen
-  - 8: build once and report the result
+questions:
+  - 1: game name and go module path
+  - 2: concept:participant-shape — solo, duo, or multi
+  - 3: the seat count, asked only under multi; solo and duo fix their own
+  - 4: whether a machine may seat several players, asked only when there is more than one
+  - 5: concept:synchronization-mode, asked only when a link exists, offering only the modes the seat count can reach
+not_asked:
+  - the build targets, which follow from whether a link exists rather than being chosen
+  - where the traffic goes, which is a data:run-config value a project changes without regenerating
+  - the AI pipeline, always written per decision:ai-pipeline-always-scaffolded
+writes:
+  - ebigent.toml carrying both data:build-config and data:run-config sections
+  - one cmd entry point per generated concept:build-target, with the server directory holding both linkage forms behind the listen tag
+  - the game rules package, its data:session-tuning-profile declaration, and its tests
+  - an import graph test holding the project to rule:engine-import-confined-to-client-entry
+  - the chip library, corpus directory, and analysis skill folder
+then:
+  - run go mod tidy and tinybind codegen
+  - build once and report the result
 non_interactive: every answer is also a CLI option, so init runs unattended in a test
+refuses: a directory already holding any file it would write, rather than overwriting work
 serves: requirement:project-scaffolding
 ```
