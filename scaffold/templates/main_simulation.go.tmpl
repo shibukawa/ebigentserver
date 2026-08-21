@@ -1,9 +1,10 @@
 // Command {{.Target.Name}} runs {{.Name}} headless: concept:simulation-mode,
 // session and local state only, no transport and no engine.
 //
-// It is the entry point automated playtests and AI training run through
-// (requirement:offline-simulation), and the one that proves the rules do
-// not need a human or a network to advance.
+// It is what automated playtests and AI training run through
+// (requirement:offline-simulation), and it is the proof that the rules
+// need neither a human nor a window to advance. Unlimited pacing means it
+// runs as fast as the machine allows rather than at the tick rate.
 package main
 
 import (
@@ -26,31 +27,51 @@ func main() {
 		fatal(err)
 	}
 
-	// The seed is the session's shared RNG stream (rule:shared-rng-seed).
-	// Holding it fixed is what makes a run reproducible; vary it to
-	// sweep, never to add entropy.
+	// Holding the seed fixed is what makes a run reproducible; vary it
+	// to sweep, never to add entropy (rule:shared-rng-seed).
 	const seed = 1
 
-	s, err := session.New(game.Config("{{.Name}}-sim", seed))
+	one, two := &game.Bot{}, &game.Bot{}
+	var drivers []*game.Driver
+
+	s, err := session.New(game.Config("{{.Name}}-sim", seed, func(_ session.Tick, world *game.State) {
+		for _, d := range drivers {
+			d.OnWorld(world)
+		}
+	}))
 	if err != nil {
 		fatal(err)
 	}
 	if err := s.OpenAdmission(); err != nil {
 		fatal(err)
 	}
-	one, two := &game.FirstFree{}, &game.FirstFree{}
-	if err := s.Admit(game.SlotOne, one); err != nil {
-		fatal(err)
+	// A local bot is admitted directly rather than as session.Detached:
+	// the session delivers the final observation and Ended to whatever
+	// sits in the seat, and a local controller wants both. Detached is
+	// for a seat whose real controller is across a link, where local
+	// delivery would duplicate the stream it already receives.
+	for i, slot := range game.Slots() {
+		agent := one
+		if i == 1 {
+			agent = two
+		}
+		if err := s.Admit(slot, agent); err != nil {
+			fatal(err)
+		}
+		inbox, err := s.Inbox(slot)
+		if err != nil {
+			fatal(err)
+		}
+		drivers = append(drivers, &game.Driver{Slot: slot, Agent: agent, Inbox: inbox})
 	}
-	if err := s.Admit(game.SlotTwo, two); err != nil {
-		fatal(err)
-	}
-	if err := s.Run(context.Background()); err != nil {
+	if err := s.RunRealtime(context.Background(), session.Unlimited); err != nil {
 		fatal(err)
 	}
 
-	fmt.Printf("{{.Name}} simulation: seed %d, %d ticks, slot 1 %s, slot 2 %s\n",
-		seed, s.Tick(), one.Result.Signal.Terminal, two.Result.Signal.Terminal)
+	fmt.Printf("{{.Name}} simulation: seed %d, %d ticks, slot 1 %s (%d pipes), slot 2 %s (%d pipes)\n",
+		seed, s.Tick(),
+		one.Result.Signal.Terminal, one.Result.Signal.Score,
+		two.Result.Signal.Terminal, two.Result.Signal.Score)
 }
 
 func fatal(err error) {

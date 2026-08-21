@@ -1064,6 +1064,10 @@
 {"context": "body", "path": ".knowledge/requirement/project-scaffolding.md", "source": "requirement:project-scaffolding", "target": "data:build-config", "target_category": "structure", "target_type": "data"}
 {"context": "body", "path": ".knowledge/requirement/project-scaffolding.md", "source": "requirement:project-scaffolding", "target": "data:run-config", "target_category": "structure", "target_type": "data"}
 {"context": "body", "path": ".knowledge/requirement/project-scaffolding.md", "source": "requirement:project-scaffolding", "target": "data:session-tuning-profile", "target_category": "structure", "target_type": "data"}
+{"context": "body", "path": ".knowledge/requirement/project-scaffolding.md", "source": "requirement:project-scaffolding", "target": "rule:engine-import-confined-to-client-entry", "target_category": "constraint", "target_type": "rule"}
+{"context": "body", "path": ".knowledge/requirement/project-scaffolding.md", "source": "requirement:project-scaffolding", "target": "system:ebitengine", "target_category": "external", "target_type": "system"}
+{"context": "body", "path": ".knowledge/requirement/project-scaffolding.md", "source": "requirement:project-scaffolding", "target": "rule:no-float-in-simulation", "target_category": "constraint", "target_type": "rule"}
+{"context": "body", "path": ".knowledge/requirement/project-scaffolding.md", "source": "requirement:project-scaffolding", "target": "rule:shared-rng-seed", "target_category": "constraint", "target_type": "rule"}
 {"context": "body", "path": ".knowledge/requirement/project-scaffolding.md", "source": "requirement:project-scaffolding", "target": "flow:project-init", "target_category": "behavior", "target_type": "flow"}
 {"context": "body", "path": ".knowledge/requirement/project-scaffolding.md", "source": "requirement:project-scaffolding", "target": "decision:mirror-popcornweb-dx", "target_category": "constraint", "target_type": "decision"}
 {"context": "body", "path": ".knowledge/requirement/replay-and-episode-recording.md", "source": "requirement:replay-and-episode-recording", "target": "concept:episode", "target_category": "concept", "target_type": "concept"}

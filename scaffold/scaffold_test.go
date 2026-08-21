@@ -74,11 +74,12 @@ func TestGeneratedSimulationRunsToCompletion(t *testing.T) {
 	if !strings.Contains(out, "mygame simulation:") {
 		t.Errorf("simulation output = %q", out)
 	}
-	// The placeholder game gives the first slot the odd cell, so the
-	// outcome is decided rather than arbitrary. If this changes, the
-	// rules changed.
-	if !strings.Contains(out, "slot 1 win") {
-		t.Errorf("simulation output = %q, want slot 1 to win", out)
+	// Two identical bots flying the same seeded pipe field tie, and both
+	// reach the target. Anything else means either the physics stopped
+	// being deterministic or the placeholder bot stopped being able to
+	// fly — both worth failing over.
+	if !strings.Contains(out, "slot 1 draw (10 pipes)") || !strings.Contains(out, "slot 2 draw (10 pipes)") {
+		t.Errorf("simulation output = %q, want both bots to clear 10 pipes and tie", out)
 	}
 }
 
@@ -92,7 +93,7 @@ func TestGeneratedProjectWritesTheWholePipeline(t *testing.T) {
 	// written, because a corpus cannot be collected retroactively.
 	for _, want := range []string{
 		"ebigent.toml", "go.mod", ".gitignore", "README.md",
-		"game/game.go", "game/game_test.go",
+		"game/game.go", "game/game_test.go", "boundary_test.go",
 		"cmd/client/main.go", "cmd/simulation/main.go",
 		"behavior/chips.json", "corpus/.gitkeep",
 		"skills/behavior-analyze/SKILL.md",

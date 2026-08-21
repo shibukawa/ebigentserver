@@ -5,18 +5,18 @@
 // what enforces that, so keep rendering out of this file.
 //
 // TRANSPORT SEAM. This entry hosts the session and seats local
-// controllers. Accepting remote peers is the piece to add next: the
-// session is already independent of transport and controller kind
-// (rule:session-independent-of-transport-and-agent-kind), so wiring
-// package netplay in front of it changes this file and nothing under
-// game/. Until then it runs a complete match against seated bots, which
-// is what makes it useful as a smoke test.
+// controllers. Accepting remote peers is the piece to add next, and the
+// shape is already right: every seat here is session.Detached, receiving
+// input through an Inbox, which is exactly how a networked peer arrives.
+// Wiring package netplay in front changes this file and nothing under
+// game/ (rule:session-independent-of-transport-and-agent-kind).
 package main
 
 import (
 	"context"
 	"fmt"
 	"os"
+	"os/signal"
 
 	"{{.Module}}/game"
 	"github.com/shibukawa/ebigentserver/config/confload"
@@ -35,28 +35,47 @@ func main() {
 	fmt.Printf("{{.Target.Name}}: topology %s, sync %s, listen %q\n",
 		run.Topology, run.Sync.Mode, run.Listen)
 
-	s, err := session.New(game.Config("{{.Name}}-server", 1))
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer stop()
+
+	one, two := &game.Bot{}, &game.Bot{}
+	var drivers []*game.Driver
+
+	s, err := session.New(game.Config("{{.Name}}-server", 1, func(_ session.Tick, world *game.State) {
+		for _, d := range drivers {
+			d.OnWorld(world)
+		}
+	}))
 	if err != nil {
 		fatal(err)
 	}
 	if err := s.OpenAdmission(); err != nil {
 		fatal(err)
 	}
-	// Seat a controller per slot. Once transport is wired, a remote peer
-	// is admitted here in exactly the same way — the session cannot tell
-	// the difference, which is the point of the agent abstraction.
-	one, two := &game.FirstFree{}, &game.FirstFree{}
-	if err := s.Admit(game.SlotOne, one); err != nil {
+	// A local bot is admitted directly rather than as session.Detached:
+	// the session delivers the final observation and Ended to whatever
+	// sits in the seat, and a local controller wants both. Detached is
+	// for a seat whose real controller is across a link, where local
+	// delivery would duplicate the stream it already receives.
+	for i, slot := range game.Slots() {
+		agent := one
+		if i == 1 {
+			agent = two
+		}
+		if err := s.Admit(slot, agent); err != nil {
+			fatal(err)
+		}
+		inbox, err := s.Inbox(slot)
+		if err != nil {
+			fatal(err)
+		}
+		drivers = append(drivers, &game.Driver{Slot: slot, Agent: agent, Inbox: inbox})
+	}
+	if err := s.RunRealtime(ctx, session.Paced); err != nil {
 		fatal(err)
 	}
-	if err := s.Admit(game.SlotTwo, two); err != nil {
-		fatal(err)
-	}
-	if err := s.Run(context.Background()); err != nil {
-		fatal(err)
-	}
-	fmt.Printf("{{.Target.Name}}: session ended after %d ticks, slot 1 %s\n",
-		s.Tick(), one.Result.Signal.Terminal)
+	fmt.Printf("{{.Target.Name}}: session ended after %d ticks, slot 1 %s (%d pipes)\n",
+		s.Tick(), one.Result.Signal.Terminal, one.Result.Signal.Score)
 }
 
 func fatal(err error) {

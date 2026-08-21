@@ -1,30 +1,45 @@
-// Command {{.Target.Name}} plays {{.Name}} and hosts the session in the
+// Command {{.Target.Name}} plays {{.Name}} and holds the authority in the
 // same process: concept:listen-server-mode.
 //
-// A listen server is a client that also holds the authority, so this
-// entry links everything a client and a session need. Being a client
-// entry, it is allowed to import Ebitengine
+// A listen server is a client that also hosts, so this entry links
+// everything a client and a session need. Being a client entry, it is
+// allowed to import Ebitengine
 // (rule:engine-import-confined-to-client-entry); nothing under game/ is.
 //
 // TRANSPORT SEAM. The local player and a seated bot are wired below.
 // Accepting remote peers is the piece to add next, through package
-// netplay, and it changes this file alone — the session is already
-// independent of transport and controller kind.
+// netplay, and it changes this file alone: every seat here is already
+// session.Detached, which is exactly how a networked peer arrives.
+//
+// Keyboard reading happens only here, where a raw key becomes a game
+// action (rule:no-engine-input-in-game-logic). The session-side seat is
+// session.Detached, exactly as it would be for a remote player — so the
+// session cannot tell a local window from a network peer.
+//
+//	space or up arrow    flap
 package main
 
 import (
-	"bufio"
 	"context"
 	"fmt"
+	"image/color"
 	"os"
-	"strconv"
-	"strings"
+	"sync"
+
+	"github.com/hajimehoshi/ebiten/v2"
+	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
+	"github.com/hajimehoshi/ebiten/v2/inpututil"
+	"github.com/hajimehoshi/ebiten/v2/vector"
 
 	"{{.Module}}/game"
 	"github.com/shibukawa/ebigentserver/config/confload"
 	"github.com/shibukawa/ebigentserver/config/runconf"
 	"github.com/shibukawa/ebigentserver/session"
 )
+
+// scale turns game units into pixels. The simulation never knows this
+// number exists.
+const scale = 2
 
 func main() {
 	run := runconf.Bind()
@@ -34,81 +49,147 @@ func main() {
 	}); err != nil {
 		fatal(err)
 	}
-	fmt.Printf("{{.Target.Name}}: hosting locally, listen %q\n", run.Listen)
 
-	s, err := session.New(game.Config("{{.Name}}-listen", 1))
+	v := &view{}
+	var drivers []*game.Driver
+
+	s, err := session.New(game.Config("{{.Name}}-listen", 1, func(_ session.Tick, world *game.State) {
+		v.store(world)
+		for _, d := range drivers {
+			d.OnWorld(world)
+		}
+	}))
 	if err != nil {
 		fatal(err)
 	}
 	if err := s.OpenAdmission(); err != nil {
 		fatal(err)
 	}
-	if err := s.Admit(game.SlotOne, &human{in: bufio.NewScanner(os.Stdin)}); err != nil {
+	// The window's seat is Detached: its observations arrive as the
+	// broadcast world the renderer already holds, so delivering them to
+	// the seat too would duplicate the path a remote player would use.
+	// The bot is admitted directly, because a local controller does want
+	// the final observation and Ended.
+	if err := s.Admit(game.SlotOne, session.Detached[game.Observation, game.Action]{}); err != nil {
 		fatal(err)
 	}
-	if err := s.Admit(game.SlotTwo, &game.FirstFree{}); err != nil {
+	bot := &game.Bot{}
+	if err := s.Admit(game.SlotTwo, bot); err != nil {
 		fatal(err)
 	}
-	if err := s.Run(context.Background()); err != nil {
+	playerInbox, err := s.Inbox(game.SlotOne)
+	if err != nil {
 		fatal(err)
 	}
-}
+	botInbox, err := s.Inbox(game.SlotTwo)
+	if err != nil {
+		fatal(err)
+	}
+	drivers = append(drivers, &game.Driver{Slot: game.SlotTwo, Agent: bot, Inbox: botInbox})
 
-// human is the local player. A remote peer admitted later implements
-// this same interface, which is why the session needs no change to
-// accept one.
-type human struct {
-	in   *bufio.Scanner
-	obs  game.Observation
-	slot session.SlotID
-}
-
-func (h *human) Joined(slot session.SlotID) { h.slot = slot }
-
-func (h *human) Observe(obs game.Observation) {
-	h.obs = obs
-	fmt.Println(render(obs))
-}
-
-func (h *human) Decide(ctx context.Context) (game.Action, bool) {
-	for {
-		fmt.Printf("slot %d, claim a cell [0-%d]: ", h.slot, game.Cells-1)
-		if !h.in.Scan() {
-			return game.Action{}, false
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go func() {
+		if err := s.RunRealtime(ctx, session.Paced); err != nil {
+			fatal(err)
 		}
-		cell, err := strconv.Atoi(strings.TrimSpace(h.in.Text()))
-		if err != nil || cell < 0 || cell >= game.Cells {
-			fmt.Println("  not a cell on this board")
+	}()
+
+	ebiten.SetWindowSize(game.FieldW*scale, game.FieldH*scale)
+	ebiten.SetWindowTitle("{{.Name}}")
+	if err := ebiten.RunGame(&app{view: v, inbox: playerInbox}); err != nil {
+		fatal(err)
+	}
+}
+
+// view holds the latest committed world for the renderer. Broadcast runs
+// on the session goroutine and Draw on Ebitengine's, so the copy is taken
+// under a lock — and it is a copy, because the session keeps mutating the
+// state it handed over.
+type view struct {
+	mu    sync.Mutex
+	world game.State
+	got   bool
+}
+
+func (v *view) store(w *game.State) {
+	v.mu.Lock()
+	defer v.mu.Unlock()
+	v.world = *w
+	v.world.Pipes = append([]game.Pipe(nil), w.Pipes...)
+	v.got = true
+}
+
+func (v *view) load() (game.State, bool) {
+	v.mu.Lock()
+	defer v.mu.Unlock()
+	return v.world, v.got
+}
+
+// app is the Ebitengine side. It reads input and draws; it holds no
+// rules, and every rule it needs it reads off the world.
+type app struct {
+	view  *view
+	inbox *session.Inbox[game.Action]
+}
+
+// Update turns a key press into a game action. This is the whole of
+// api:input-adapter's job at this scale.
+func (a *app) Update() error {
+	if inpututil.IsKeyJustPressed(ebiten.KeySpace) || inpututil.IsKeyJustPressed(ebiten.KeyArrowUp) {
+		a.inbox.Submit(game.Action{Flap: true})
+	}
+	return nil
+}
+
+var (
+	sky    = color.RGBA{0x7a, 0xc7, 0xe8, 0xff}
+	pipeC  = color.RGBA{0x3f, 0xa2, 0x4a, 0xff}
+	youC   = color.RGBA{0xf7, 0xd0, 0x51, 0xff}
+	rivalC = color.RGBA{0xe0, 0x6c, 0x75, 0xff}
+)
+
+// Draw renders the world. Nothing here decides anything: if the picture
+// is wrong, the rules are wrong.
+func (a *app) Draw(screen *ebiten.Image) {
+	screen.Fill(sky)
+	world, ok := a.view.load()
+	if !ok {
+		return
+	}
+	for _, p := range world.Pipes {
+		x := float32(p.X.FloorToInt()-game.PipeW/2) * scale
+		gap := float32(p.GapY.FloorToInt()) * scale
+		half := float32(game.GapH/2) * scale
+		w := float32(game.PipeW) * scale
+		vector.DrawFilledRect(screen, x, 0, w, gap-half, pipeC, false)
+		vector.DrawFilledRect(screen, x, gap+half, w, float32(game.FieldH)*scale, pipeC, false)
+	}
+	for i, b := range world.Bird {
+		if !b.Alive {
 			continue
 		}
-		return game.Action{Cell: uint8(cell)}, true
+		c := youC
+		if i == 1 {
+			c = rivalC
+		}
+		vector.DrawFilledCircle(screen,
+			float32(game.BirdX)*scale, float32(b.Y.FloorToInt())*scale,
+			float32(game.BirdR)*scale, c, true)
 	}
+	msg := fmt.Sprintf("space to flap    you %d   rival %d",
+		world.Bird[0].Passed, world.Bird[1].Passed)
+	if world.Over {
+		msg = fmt.Sprintf("game over    you %d   rival %d",
+			world.Bird[0].Passed, world.Bird[1].Passed)
+	}
+	ebitenutil.DebugPrintAt(screen, msg, 4, 4)
 }
 
-func (h *human) Ended(r session.Result) {
-	fmt.Println(render(h.obs))
-	fmt.Printf("slot %d: %s\n", h.slot, r.Signal.Terminal)
-}
-
-// render draws the board. Replace this with Ebitengine when the game
-// gets a window; the agent interface above does not change.
-func render(obs game.Observation) string {
-	var b strings.Builder
-	for i, owner := range obs.Owner {
-		switch owner {
-		case 0:
-			fmt.Fprintf(&b, " %d ", i)
-		default:
-			fmt.Fprintf(&b, " %d ", owner)
-		}
-		if i%3 == 2 {
-			b.WriteByte('\n')
-		}
-	}
-	return b.String()
-}
+// Layout fixes the logical resolution; Ebitengine scales it to the window.
+func (a *app) Layout(int, int) (int, int) { return game.FieldW * scale, game.FieldH * scale }
 
 func fatal(err error) {
-	fmt.Fprintln(os.Stderr, "{{.Target.Name}}:", err)
+	os.Stderr.WriteString("{{.Target.Name}}: " + err.Error() + "\n")
 	os.Exit(1)
 }

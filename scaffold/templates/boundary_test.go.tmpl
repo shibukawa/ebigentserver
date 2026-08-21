@@ -1,0 +1,33 @@
+package {{.Name}}_test
+
+import (
+	"testing"
+
+	"github.com/shibukawa/ebigentserver/importcheck"
+)
+
+// Importing Ebitengine from anything but a client entry point breaks the
+// build (rule:engine-import-confined-to-client-entry). Every game module
+// carries this one test; the framework carries the same one over itself.
+//
+// This is what makes the engine boundary a rule rather than a
+// convention. Moving a draw call into game/ compiles perfectly well and
+// fails here, with the import chain that did it — and the reason it
+// matters is that the dedicated and simulation targets drop the engine
+// by never importing it (decision:entry-points-over-build-tags), which
+// stops being true the moment a shared package reaches it.
+//
+// The allowed entries are cmd/*client*, cmd/*listen*, cmd/*static*, and
+// presentation packages. Renaming a rendering entry outside those
+// patterns will fail this test.
+//
+// One caveat worth knowing: the check shells out to the go toolchain,
+// and the test cache does not track that, so a pass can be served from
+// cache after an import change elsewhere in the module. Run it with
+// -count=1 when the import graph is what you are actually checking.
+func TestModuleImportBoundary(t *testing.T) {
+	if testing.Short() {
+		t.Skip("shells out to the go toolchain")
+	}
+	importcheck.Enforce(t, ".", importcheck.Default())
+}

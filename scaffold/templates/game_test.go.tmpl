@@ -7,63 +7,128 @@ import (
 	"github.com/shibukawa/ebigentserver/session"
 )
 
-// A session over these rules runs to a terminal state with two bots
-// seated. This is the test to keep as the rules change: it is the one
-// that says the loop still closes.
-func TestSessionRunsToATerminalState(t *testing.T) {
-	s, err := session.New(Config("{{.Name}}-test", 1))
+// runHeadless plays a whole match with both slots on bots, as fast as the
+// machine allows. It is the shape every generated entry point uses.
+func runHeadless(t *testing.T, seed uint64) (*session.Session[State, Action, Observation], *Bot, *Bot) {
+	t.Helper()
+	one, two := &Bot{}, &Bot{}
+	var drivers []*Driver
+
+	s, err := session.New(Config("{{.Name}}-test", seed, func(_ session.Tick, world *State) {
+		for _, d := range drivers {
+			d.OnWorld(world)
+		}
+	}))
 	if err != nil {
 		t.Fatal(err)
 	}
 	if err := s.OpenAdmission(); err != nil {
 		t.Fatal(err)
 	}
-	one, two := &FirstFree{}, &FirstFree{}
-	if err := s.Admit(SlotOne, one); err != nil {
+	for i, slot := range Slots() {
+		agent := one
+		if i == 1 {
+			agent = two
+		}
+		if err := s.Admit(slot, agent); err != nil {
+			t.Fatal(err)
+		}
+		inbox, err := s.Inbox(slot)
+		if err != nil {
+			t.Fatal(err)
+		}
+		drivers = append(drivers, &Driver{Slot: slot, Agent: agent, Inbox: inbox})
+	}
+	if err := s.RunRealtime(context.Background(), session.Unlimited); err != nil {
 		t.Fatal(err)
 	}
-	if err := s.Admit(SlotTwo, two); err != nil {
-		t.Fatal(err)
+	return s, one, two
+}
+
+// A realtime session over these rules runs to a terminal state. This is
+// the test to keep as the rules change: it is the one that says the loop
+// still closes.
+func TestRealtimeSessionRunsToATerminalState(t *testing.T) {
+	_, one, two := runHeadless(t, 1)
+	if one.Result.Signal.Terminal == session.NotTerminal {
+		t.Error("slot 1 ended without a terminal signal")
 	}
-	if err := s.Run(context.Background()); err != nil {
-		t.Fatal(err)
+	if two.Result.Signal.Terminal == session.NotTerminal {
+		t.Error("slot 2 ended without a terminal signal")
 	}
-	if one.obs.Signal.Terminal == session.NotTerminal {
-		t.Error("the session ended without a terminal signal")
+}
+
+// The bot has to actually fly: a scaffold whose placeholder controller
+// dies on the first pipe teaches nothing about the loop.
+func TestBotClearsPipes(t *testing.T) {
+	_, one, _ := runHeadless(t, 1)
+	if one.Result.Signal.Score < 1 {
+		t.Errorf("the bot cleared %d pipes; it should clear at least one", one.Result.Signal.Score)
+	}
+}
+
+// Same seed, same episode. Fixed point arithmetic and a seeded RNG that
+// travels inside the state are what buy this
+// (rule:no-float-in-simulation, rule:shared-rng-seed); it is also what
+// replay and rollback are built on, so it is worth a test of its own.
+func TestSameSeedProducesTheSameEpisode(t *testing.T) {
+	a, aOne, _ := runHeadless(t, 42)
+	b, bOne, _ := runHeadless(t, 42)
+	if a.Tick() != b.Tick() {
+		t.Errorf("tick counts differ: %d vs %d", a.Tick(), b.Tick())
+	}
+	if aOne.Result.Signal.Score != bOne.Result.Signal.Score {
+		t.Errorf("scores differ: %d vs %d", aOne.Result.Signal.Score, bOne.Result.Signal.Score)
+	}
+}
+
+// A different seed lays out different pipes, which is what the seed is
+// for.
+func TestDifferentSeedsLayDifferentPipes(t *testing.T) {
+	a, b := Game{}.Start(1), Game{}.Start(2)
+	if a.Pipes[0].GapY == b.Pipes[0].GapY {
+		t.Error("two seeds produced the same opening pipe")
+	}
+}
+
+// Physics is integer arithmetic, so a flap has an exact effect rather
+// than an approximate one.
+func TestFlapSetsUpwardVelocityExactly(t *testing.T) {
+	g := Game{}
+	s := g.Start(1)
+	g.Apply(&s, SlotOne, Action{Flap: true})
+	if s.Bird[0].VY != flapVY {
+		t.Errorf("VY = %v, want %v", s.Bird[0].VY, flapVY)
 	}
 }
 
 // Legality is decided before Apply, so Apply never has to re-check.
-func TestValidatorRejectsWhatApplyMustNeverSee(t *testing.T) {
-	s := State{Next: SlotOne}
-	s.Owner[0] = SlotTwo
-
-	if err := (Validator{}).Legal(&s, SlotOne, Action{Cell: 0}); err == nil {
-		t.Error("claiming a taken cell should be illegal")
+func TestValidatorRejectsADeadBird(t *testing.T) {
+	s := Game{}.Start(1)
+	if err := (Validator{}).Legal(&s, SlotOne, Action{Flap: true}); err != nil {
+		t.Errorf("a living bird may flap: %v", err)
 	}
-	if err := (Validator{}).Legal(&s, SlotOne, Action{Cell: Cells}); err == nil {
-		t.Error("claiming a cell off the board should be illegal")
-	}
-	if err := (Validator{}).Legal(&s, SlotOne, Action{Cell: 1}); err != nil {
-		t.Errorf("claiming a free cell should be legal: %v", err)
+	s.Bird[0].Alive = false
+	if err := (Validator{}).Legal(&s, SlotOne, Action{Flap: true}); err == nil {
+		t.Error("a dead bird may not flap")
 	}
 }
 
-// An agent reads only its observation, so the projection is what decides
-// what a controller can know. Widening it is a rules change; this test
-// pins the current scope so widening it is deliberate.
-func TestProjectionCarriesTheSlotAndItsSignal(t *testing.T) {
+// An agent reads only its observation, so the projection decides what a
+// controller can know. This pins the current scope so widening it is
+// deliberate.
+func TestProjectionGivesEachSlotItsOwnBird(t *testing.T) {
 	g := Game{}
 	s := g.Start(1)
+	s.Bird[0].Passed = 3
+
 	obs := g.Project(&s, SlotOne)
-	if obs.You != SlotOne {
-		t.Errorf("You = %d, want %d", obs.You, SlotOne)
+	if obs.You != SlotOne || obs.Self.Passed != 3 || obs.Rival.Passed != 0 {
+		t.Errorf("slot 1 observation = %+v", obs)
 	}
-	if obs.NextTurn != SlotOne {
-		t.Errorf("NextTurn = %d, want the opening slot", obs.NextTurn)
-	}
-	if obs.Signal.Terminal != session.NotTerminal {
-		t.Error("the opening position should not be terminal")
+	rival := g.Project(&s, SlotTwo)
+	if rival.Self.Passed != 0 || rival.Rival.Passed != 3 {
+		t.Errorf("slot 2 observation = %+v", rival)
 	}
 }
 

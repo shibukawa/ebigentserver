@@ -230,6 +230,7 @@ func render(spec *Spec) (map[string][]byte, error) {
 		"README.md":         "README.md.tmpl",
 		"game/game.go":      "game.go.tmpl",
 		"game/game_test.go": "game_test.go.tmpl",
+		"boundary_test.go":  "boundary_test.go.tmpl",
 	}
 	for name, tmpl := range fixed {
 		body, err := execute(tmpl, spec)

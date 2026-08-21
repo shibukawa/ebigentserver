@@ -189,7 +189,7 @@
 - `matchloop` — 無人連続対局と結果集計。
 - `analysis` — corpus集計とDuckDB SQL生成(ゲームプロセス外の分析ツール)。
 - `config/buildconf`, `config/runconf`, `config/confload` — `ebigent.toml` 1ファイルを prefix でセクション分けして bind。既定 < ファイル < 環境変数 < オプションの順で上書き。
-- `scaffold` — `ebigent init` が書き出すプロジェクト雛形。生成物がビルドでき自身のテストが通ることをテストで担保している。
+- `scaffold` — `ebigent init` が書き出すプロジェクト雛形。既定は Ebitengine の Flappy Bird 風(2羽が同じパイプ列を飛ぶ、操作はflapのみ)で、リアルタイムsession・固定小数点物理・シード付きRNG・engineをclientエントリに閉じ込める構成が最初から動く。生成物がビルドでき自身のテスト(境界テスト含む)が通ることをテストで担保している。
 - `cli`, `cmd/ebigent` — ツールチェーン本体。
 - `signaltoken` — 帯域外シグナリングトークン(WebRTC招待/応答)。
 - `discovery` — LANセッション発見ビーコン。

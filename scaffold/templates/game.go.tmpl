@@ -1,15 +1,20 @@
 // Package game holds the rules of {{.Name}}: the one package every build
 // target links unchanged (concept:build-target).
 //
-// Nothing here may ask what controls a slot (decision:no-ai-game-mode).
-// A human, a bot, a behavior tree, and a replay stream all reach these
-// rules through the same session.Agent interface, so a branch on
-// controller kind inside this package would be a bug even where it
-// compiles.
+// Nothing here imports Ebitengine, or any engine at all. Rendering and
+// keyboard reading live in the client entry point, which is the only
+// package allowed to import one (rule:engine-import-confined-to-client-entry).
+// That is also what lets a headless target drop the engine entirely — by
+// never importing it, not by a build tag
+// (decision:entry-points-over-build-tags).
 //
-// What ebigent init generated is a placeholder: two slots take turns
-// claiming cells, and whoever holds more at the end wins. Replace it a
-// piece at a time — the session loop around it already works.
+// Nothing here asks what controls a slot either (decision:no-ai-game-mode).
+// A human at a keyboard and the bot below reach these rules through the
+// same session.Agent interface.
+//
+// What ebigent init generated is a playable placeholder: two birds fly
+// through the same pipes, one flap button each. Replace it a piece at a
+// time — the realtime loop around it already works.
 package game
 
 import (
@@ -21,9 +26,42 @@ import (
 	"github.com/shibukawa/fixmath"
 )
 
-// Cells is the board size. It is a rule, not a setting: changing it
-// changes the game, so it lives here rather than in ebigent.toml.
-const Cells = 9
+// Field geometry in game units. The renderer scales these to pixels; the
+// simulation never knows what a pixel is.
+const (
+	FieldW = 240
+	FieldH = 320
+	// BirdX is where both birds sit horizontally. They differ only in
+	// height, so one pipe field is fair for both.
+	BirdX  = 60
+	BirdR  = 7
+	PipeW  = 26
+	GapH   = 96
+	// PipeEvery is the spawn interval in ticks.
+	PipeEvery = 90
+	// TargetPipes ends the game, so a good pilot cannot fly forever and
+	// an unattended simulation always terminates.
+	TargetPipes = 10
+)
+
+// Motion constants. Every one is fixed point: rule:no-float-in-simulation
+// keeps reals out of anything that has to reproduce bit for bit on
+// another machine, which is what replay and rollback depend on.
+var (
+	// A flap held down rises at |flapVY| per tick and, once released,
+	// coasts a further flapVY^2/(2*gravity) units. At -4 and 0.5 that
+	// overshoot is 16 units, comfortably inside the 48-unit half gap —
+	// the constraint to keep in mind when retuning these.
+	gravity = fixmath.FromScaled(1, 1)  // 0.5 units per tick per tick
+	flapVY  = fixmath.FromInt32(-4)     // upward is negative
+	maxVY   = fixmath.FromInt32(8)
+	pipeVX  = fixmath.FromInt32(-2)
+	birdR   = fixmath.FromInt32(BirdR)
+	halfGap = fixmath.FromInt32(GapH / 2)
+	pipeHW  = fixmath.FromInt32(PipeW / 2)
+	birdXF  = fixmath.FromInt32(BirdX)
+	floorY  = fixmath.FromInt32(FieldH)
+)
 
 // The player slots (concept:player-slot). Slot 0 is reserved by the
 // session, so slots start at 1.
@@ -35,102 +73,227 @@ const (
 // Slots is the game-defined slot set.
 func Slots() []session.SlotID { return []session.SlotID{SlotOne, SlotTwo} }
 
-// State is the concept:world-state: everything the session commits.
-type State struct {
-	// Owner holds the slot that claimed each cell, 0 while unclaimed.
-	Owner [Cells]session.SlotID
-	// Next is the slot to move, 0 once the game is over.
-	Next session.SlotID
-	// Claimed counts cells taken, so the end condition is one compare.
-	Claimed uint8
-	// Over marks a finished game.
-	Over bool
+// Bird is one slot's flyer.
+type Bird struct {
+	Y     fixmath.F64
+	VY    fixmath.F64
+	Alive bool
+	// Passed counts pipes cleared, which is the score.
+	Passed int32
 }
 
-// Action is one concept:action: claim a cell.
+// Pipe is one obstacle: a vertical wall with a gap centered on GapY.
+type Pipe struct {
+	X    fixmath.F64
+	GapY fixmath.F64
+	// Cleared records, per slot index, that this pipe was already
+	// counted, so a score cannot tick twice on one pipe.
+	Cleared [2]bool
+}
+
+// State is the concept:world-state: everything the session commits.
+type State struct {
+	Tick  session.Tick
+	Bird  [2]Bird
+	Pipes []Pipe
+	// Rand travels with the state so the pipe field is a function of the
+	// seed alone. Advancing it anywhere but a simulation step would make
+	// the episode unreproducible (rule:shared-rng-seed).
+	Rand fixmath.Rand
+	// Since counts ticks since the last spawn.
+	Since int32
+	Over  bool
+}
+
+// Action is one concept:action. One button, which is the whole game.
 type Action struct {
-	Cell uint8
+	Flap bool
 }
 
 // Observation is what one slot may see (concept:observation).
 //
-// It is a separate type from State even though this placeholder copies
-// the whole board into it. That separation is the point: narrowing
-// visibility later is a change to Project alone, and no agent can read
-// around it because no agent ever receives a State.
+// It is a separate type from State on purpose. Narrowing what a slot can
+// know later is a change to Project alone, and no controller can read
+// around it because none ever receives a State.
 type Observation struct {
-	// You is the observing slot.
 	You session.SlotID
-	// Owner is the board as this slot sees it. Global scope for now —
-	// see concept:visibility-scope when some of it should be hidden.
-	Owner [Cells]session.SlotID
-	// NextTurn is the slot to move, 0 when the game is over.
-	NextTurn session.SlotID
+	// Self is the observing slot's bird, Rival the other one.
+	Self  Bird
+	Rival Bird
+	// Pipes is the field ahead. Everything is visible here — see
+	// concept:visibility-scope when some of it should not be.
+	Pipes []Pipe
+	Tick  session.Tick
+	Over  bool
 	// Signal travels with the observation so every controller has a
 	// criterion without asking for one.
 	Signal session.EvaluationSignal
 }
 
-// Game implements session.Game. The zero value is ready to use.
+// index maps a slot to its array position.
+func index(slot session.SlotID) int {
+	if slot == SlotTwo {
+		return 1
+	}
+	return 0
+}
+
+// Game implements session.TickGame: session.Game plus Advance, which is
+// what a realtime session needs.
 type Game struct{}
 
-// Start returns the opening position. seed is the session's shared RNG
-// seed (rule:shared-rng-seed); a game that needs randomness derives it
-// from here and never from the wall clock. This one is deterministic and
-// ignores it.
-func (Game) Start(seed uint64) State { return State{Next: SlotOne} }
+var _ session.TickGame[State, Action, Observation] = Game{}
 
-// ActingSlots returns who decides this step. Strict alternation, one
-// decision at a time; a realtime game returns every slot instead.
+// Start returns the opening position, derived from the session's shared
+// RNG seed (rule:shared-rng-seed). Two runs with the same seed produce
+// the same pipes, which is what makes an episode replayable.
+func (Game) Start(seed uint64) State {
+	mid := fixmath.FromInt32(FieldH / 2)
+	s := State{
+		Rand: fixmath.NewRand(seed),
+		Bird: [2]Bird{
+			{Y: mid, Alive: true},
+			{Y: mid, Alive: true},
+		},
+	}
+	s.spawn()
+	return s
+}
+
+// spawn appends one pipe at the right edge with a random gap height.
+func (s *State) spawn() {
+	const margin = GapH/2 + 20
+	span := int64(FieldH - 2*margin)
+	gap := fixmath.FromInt32(int32(margin + int(s.Rand.Int64n(span))))
+	s.Pipes = append(s.Pipes, Pipe{X: fixmath.FromInt32(FieldW + PipeW), GapY: gap})
+	s.Since = 0
+}
+
+// ActingSlots returns the slots still flying. A realtime session reads
+// inputs from every slot each tick rather than asking whose turn it is,
+// so this mainly answers "is anyone left".
 func (Game) ActingSlots(s *State) []session.SlotID {
 	if s.Over {
 		return nil
 	}
-	return []session.SlotID{s.Next}
+	var out []session.SlotID
+	for _, slot := range Slots() {
+		if s.Bird[index(slot)].Alive {
+			out = append(out, slot)
+		}
+	}
+	return out
 }
 
-// Apply advances the world by one already-validated action. Legality was
+// Apply advances the state by one already-validated action. Legality was
 // settled by Validator, so Apply cannot fail and must not re-check.
 func (Game) Apply(s *State, slot session.SlotID, a Action) {
-	s.Owner[a.Cell] = slot
-	s.Claimed++
-	if int(s.Claimed) == Cells {
-		s.Over = true
-		s.Next = 0
+	b := &s.Bird[index(slot)]
+	if a.Flap && b.Alive {
+		b.VY = flapVY
+	}
+}
+
+// Advance runs one simulation step after this tick's inputs were
+// applied. This is the whole of the game's physics, and every line of it
+// is integer arithmetic.
+func (Game) Advance(s *State) {
+	if s.Over {
 		return
 	}
-	s.Next = opponent(slot)
+	for i := range s.Bird {
+		b := &s.Bird[i]
+		if !b.Alive {
+			continue
+		}
+		b.VY = b.VY.Add(gravity).Min(maxVY)
+		b.Y = b.Y.Add(b.VY)
+		if b.Y.Sub(birdR) <= 0 || b.Y.Add(birdR) >= floorY {
+			b.Alive = false
+		}
+	}
+
+	for i := range s.Pipes {
+		s.Pipes[i].X = s.Pipes[i].X.Add(pipeVX)
+	}
+	// Drop pipes that have left the field, oldest first.
+	keep := s.Pipes[:0]
+	for _, p := range s.Pipes {
+		if p.X.Add(pipeHW) > 0 {
+			keep = append(keep, p)
+		}
+	}
+	s.Pipes = keep
+
+	for i := range s.Pipes {
+		p := &s.Pipes[i]
+		for j := range s.Bird {
+			b := &s.Bird[j]
+			if !b.Alive {
+				continue
+			}
+			if overlapsX(p.X) {
+				if b.Y.Sub(birdR) < p.GapY.Sub(halfGap) || b.Y.Add(birdR) > p.GapY.Add(halfGap) {
+					b.Alive = false
+					continue
+				}
+			}
+			if !p.Cleared[j] && p.X.Add(pipeHW) < birdXF.Sub(birdR) {
+				p.Cleared[j] = true
+				b.Passed++
+			}
+		}
+	}
+
+	s.Since++
+	if s.Since >= PipeEvery {
+		s.spawn()
+	}
+	s.Tick++
+
+	s.Over = true
+	for _, b := range s.Bird {
+		if b.Alive && b.Passed < TargetPipes {
+			s.Over = false
+		}
+	}
+}
+
+// overlapsX reports whether a pipe at x covers the birds' column.
+func overlapsX(x fixmath.F64) bool {
+	return x.Sub(pipeHW) < birdXF.Add(birdR) && x.Add(pipeHW) > birdXF.Sub(birdR)
 }
 
 // Project builds a slot's observation.
 func (g Game) Project(s *State, slot session.SlotID) Observation {
+	i := index(slot)
 	return Observation{
-		You:      slot,
-		Owner:    s.Owner,
-		NextTurn: s.Next,
-		Signal:   g.Evaluate(s, slot),
+		You:    slot,
+		Self:   s.Bird[i],
+		Rival:  s.Bird[1-i],
+		Pipes:  append([]Pipe(nil), s.Pipes...),
+		Tick:   s.Tick,
+		Over:   s.Over,
+		Signal: g.Evaluate(s, slot),
 	}
 }
 
 // Evaluate computes a slot's data:evaluation-signal. The session calls
 // this; an agent never scores itself (rule:evaluation-computed-by-session).
-//
-// Values are fixed point, never float: rule:no-float-in-simulation keeps
-// reals out of anything that has to be reproducible across machines.
 func (Game) Evaluate(s *State, slot session.SlotID) session.EvaluationSignal {
-	mine, theirs := count(s, slot), count(s, opponent(slot))
+	me, rival := s.Bird[index(slot)], s.Bird[1-index(slot)]
 	sig := session.EvaluationSignal{
-		Score:      int64(mine),
-		Progress:   fixmath.FromInt32(int32(s.Claimed)).Div(fixmath.FromInt32(Cells)),
-		Evaluation: fixmath.FromInt32(int32(mine) - int32(theirs)),
+		Score:      int64(me.Passed),
+		Progress:   fixmath.FromInt32(me.Passed).Div(fixmath.FromInt32(TargetPipes)),
+		Evaluation: fixmath.FromInt32(me.Passed - rival.Passed),
 	}
 	if !s.Over {
 		return sig
 	}
 	switch {
-	case mine > theirs:
+	case me.Passed > rival.Passed:
 		sig.Terminal = session.Win
-	case mine < theirs:
+	case me.Passed < rival.Passed:
 		sig.Terminal = session.Lose
 	default:
 		sig.Terminal = session.Draw
@@ -138,98 +301,121 @@ func (Game) Evaluate(s *State, slot session.SlotID) session.EvaluationSignal {
 	return sig
 }
 
-// ErrOutOfRange and ErrTaken are the rejections Validator can produce.
-var (
-	ErrOutOfRange = errors.New("cell is off the board")
-	ErrTaken      = errors.New("cell is already claimed")
-)
+// ErrDead is the one rejection Validator can produce.
+var ErrDead = errors.New("this bird is no longer flying")
 
 // Validator is api:action-validator: what is possible under the rules.
 // It runs before Apply and must not mutate the state.
+//
+// One button leaves little to reject, which is the point: the hook is
+// occupied and typed, so the first real rule has somewhere to go.
 type Validator struct{}
 
 // Legal reports whether the action can be applied in this state.
 func (Validator) Legal(s *State, slot session.SlotID, a Action) error {
-	if int(a.Cell) >= Cells {
-		return fmt.Errorf("%w: %d", ErrOutOfRange, a.Cell)
-	}
-	if s.Owner[a.Cell] != 0 {
-		return fmt.Errorf("%w: %d", ErrTaken, a.Cell)
+	if !s.Bird[index(slot)].Alive {
+		return fmt.Errorf("%w: slot %d", ErrDead, slot)
 	}
 	return nil
 }
 
 // Tuning is data:session-tuning-profile: the timing and bandwidth
 // constants of this game. The framework ships no defaults
-// (decision:no-framework-tuning-defaults) because a fighting game, a
-// shooter, and a strategy game disagree on every value here.
+// (decision:no-framework-tuning-defaults) because a flyer, a shooter,
+// and a strategy game disagree on every value here.
 //
-// A step-paced game ignores it; a realtime one requires it, so it is
-// declared now to keep the shape stable.
+// SendRate equals TickRate so a local renderer gets a fresh world every
+// frame; a networked build lowers it and interpolates.
 func Tuning() session.TuningProfile {
 	return session.TuningProfile{
-		TickRate:      30,
-		SendRate:      15,
-		SnapshotEvery: 30,
+		TickRate:      60,
+		SendRate:      60,
+		SnapshotEvery: 120,
 		HistoryDepth:  8,
 	}
 }
 
 // Config assembles a session over these rules. Every entry point builds
 // its session through here, so a rule change reaches all of them.
-func Config(id string, seed uint64) session.Config[State, Action, Observation] {
+//
+// broadcast receives the committed world at the send cadence: it is the
+// seam where a renderer takes a copy and where local controllers are
+// pumped. Pass nil for a session nobody is watching.
+func Config(id string, seed uint64, broadcast func(session.Tick, *State)) session.Config[State, Action, Observation] {
+	tuning := Tuning()
 	return session.Config[State, Action, Observation]{
 		ID:        id,
 		Slots:     Slots(),
 		Game:      Game{},
 		Validator: Validator{},
 		Seed:      seed,
+		Tuning:    &tuning,
+		Broadcast: broadcast,
 	}
 }
 
-func opponent(slot session.SlotID) session.SlotID {
-	if slot == SlotOne {
-		return SlotTwo
-	}
-	return SlotOne
-}
-
-func count(s *State, slot session.SlotID) int {
-	n := 0
-	for _, owner := range s.Owner {
-		if owner == slot {
-			n++
-		}
-	}
-	return n
-}
-
-// FirstFree is the simplest possible controller: claim the lowest
-// unclaimed cell. It lives here so every generated entry point has
-// something to seat, and it is the shape a real bot replaces.
-type FirstFree struct {
-	obs Observation
+// Bot flies by aiming at the gap ahead: flap when it is below the target
+// height. Deliberately minimal — this project's AI depth is meant to come
+// from episode distillation, not from hand-written play.
+type Bot struct {
+	last Observation
 	// Result is the outcome the session delivers at the end, kept so an
-	// entry point can report it. An agent never computes this itself
-	// (rule:evaluation-computed-by-session).
+	// entry point can report it.
 	Result session.Result
 }
 
-// Joined records nothing; the observation carries the slot.
-func (b *FirstFree) Joined(session.SlotID) {}
+var _ session.Agent[Observation, Action] = (*Bot)(nil)
 
-// Observe keeps the latest observation.
-func (b *FirstFree) Observe(obs Observation) { b.obs = obs }
+// Joined does nothing; the observation carries the slot.
+func (*Bot) Joined(session.SlotID) {}
 
-// Decide claims the lowest unclaimed cell.
-func (b *FirstFree) Decide(ctx context.Context) (Action, bool) {
-	for i, owner := range b.obs.Owner {
-		if owner == 0 {
-			return Action{Cell: uint8(i)}, true
+// Observe retains the latest observation.
+func (b *Bot) Observe(obs Observation) { b.last = obs }
+
+// Decide flaps when the bird has fallen below the next gap's centre.
+func (b *Bot) Decide(context.Context) (Action, bool) {
+	if !b.last.Self.Alive {
+		return Action{}, false
+	}
+	target := fixmath.FromInt32(FieldH / 2)
+	for _, p := range b.last.Pipes {
+		if p.X.Add(pipeHW) >= birdXF.Sub(birdR) {
+			target = p.GapY
+			break
 		}
+	}
+	if b.last.Self.Y > target {
+		return Action{Flap: true}, true
 	}
 	return Action{}, false
 }
 
 // Ended is the session-end callback.
-func (b *FirstFree) Ended(r session.Result) { b.Result = r }
+func (b *Bot) Ended(r session.Result) { b.Result = r }
+
+// Driver pumps a local controller into a realtime session.
+//
+// A realtime session never calls Observe or Decide itself: input arrives
+// through the slot's Inbox, because that is the same path a remote peer
+// uses. A local controller therefore needs something to turn each
+// broadcast world into an observation, ask for a decision, and submit
+// it — which is all this is.
+//
+// OnWorld runs on the session's own goroutine, so a controller that
+// blocks here stalls the tick. That is fine for the bot; a slow
+// controller belongs behind step pacing instead
+// (decision:dual-mode-agent-pacing).
+type Driver struct {
+	Slot  session.SlotID
+	Agent session.Agent[Observation, Action]
+	Inbox *session.Inbox[Action]
+}
+
+// OnWorld feeds one broadcast world to the controller.
+func (d *Driver) OnWorld(state *State) {
+	obs := Game{}.Project(state, d.Slot)
+	d.Agent.Observe(obs)
+	if action, ok := d.Agent.Decide(context.Background()); ok {
+		d.Inbox.Submit(action)
+	}
+}
