@@ -155,8 +155,8 @@ Ebitengine は `Update` を固定レートで呼び、`Draw` は画面のリフ�
 
 いま入っている構造のうち、2つだけが後のステップで意味を持つ。
 
-**`cellAt` の出口** — ピクセルがセル番号になったこの地点が、step 2 で `Agent` を差し込む場所に
-なる。人間の手も、ボットの手も、リプレイの手も、ここから先は同じ「セル番号」として流れる。
+**`cellAt` の出口** — ピクセルがセル番号になったこの地点が、step 2 では `Submit` の引数になる。
+その行き先がローカルの inbox なのか1マシン先のソケットなのかを、この行は知らないままでいられる。
 
 **`game` パッケージが engine を知らないこと** — step 2 では `Simulation[S, A, O]` を実装するが、
 ルールを移す必要はない。`Project` と `Evaluate` を**足す**だけで済む。
@@ -170,4 +170,4 @@ Ebitengine は `Update` を固定レートで呼び、`Draw` は画面のリフ�
 「いま O の番ならボットに考えさせる」と書くこともできるが、その1行が
 [最初に禁じた分岐](/overview/#一つの抽象で足りるのか)そのものになる。
 
-<LinkCard title="Ebitengine への統合" href="/integration/ebitengine/" description="step 2 の行き先。session を別 goroutine に置き、席を Detached にする配線。" />
+<LinkCard title="step 2 — ロビーと LAN 対戦" href="/tutorial/step2/" description="3つ目の操作者を、CPU ではなく別のマシンから座らせる。" />

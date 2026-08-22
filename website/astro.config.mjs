@@ -32,6 +32,7 @@ export default defineConfig({
 					items: [
 						{ label: 'ここから始める', slug: 'tutorial' },
 						{ label: 'step 1 — マウス1つで交互に指す', slug: 'tutorial/step1' },
+						{ label: 'step 2 — ロビーと LAN 対戦', slug: 'tutorial/step2' },
 					],
 				},
 				{

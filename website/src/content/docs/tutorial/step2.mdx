@@ -1,0 +1,181 @@
+---
+title: step 2 — ロビーと LAN 対戦
+description: 2つ起動するだけで対人戦になる。Update が何も決めなくなり、どちらがルールを走らせたかがコードから見えなくなる。
+---
+
+import { Aside, FileTree, Steps, LinkCard } from '@astrojs/starlight/components';
+
+step 1 の三目並べに CPU を足そうとすると、`Update` の中に「いま O の番ならボットに考えさせる」と
+書きたくなる。その1行が、この framework が最初に禁じた分岐そのものになる。
+
+なのでその前に、**もう一人を別のマシンから座らせる**。
+
+```bash
+go run ./tutorial/step2-lobby
+```
+
+2つ起動する。別のマシンでも、同じマシンで2回でも構わない。設定はなく、アドレスも打たない。
+
+<Steps>
+
+1. 各インスタンスが1.5秒だけネットワークを探す
+
+2. 最初に起動した方は誰も応えないので、**自分がホストになる**
+
+3. 次の方はそれを見つけて、空いている席のチケットをもらう
+
+4. どちらもクリックで着席し、**二人目が来た時点で対局が始まる**
+
+</Steps>
+
+## `Update` が何も決めなくなる
+
+描画はほぼ step 1 のままだ。変わったのはここになる。
+
+```go
+func (v *view) Intake(seating run.Seating[game.Action]) {
+	for _, seat := range seating.LocalSeats() {
+		// 不正なセルは上流のバリデータが弾くので、盤上ならどこでも送ってよい
+		_ = seating.Submit(seat.Slot, game.Action{Cell: cell})
+	}
+}
+```
+
+step 1 の `Update` は盤面に印を置いていた。こちらは行動を提出して、盤面がどうなったかを
+教えてもらうまで待つ。
+
+そして `Submit` の行き先は、ホストなら1 goroutine 先の inbox、ゲストなら1マシン先のソケットだ。
+**どちらのインスタンスが実際にルールを走らせたのかは、このファイルからは見えない。**
+
+<Aside type="note" title="run.Seating">
+`Intake` が受け取るのは `Match` ではなく席の抽象で、ローカルの試合もリンクも同じように満たす。
+1つの再生シーンがホストとゲストの両方を務められるのは、シーンの側から見た差が
+「`Submit` の行き先」しかないからだ。
+</Aside>
+
+## ルールは移らず、メソッドが増える
+
+step 1 の約束どおり、`Legal` はそのまま残った。その周りに5つ増えただけだ。
+
+```go
+type Simulation struct{}
+
+func (Simulation) Start(uint64) State { ... }
+func (Simulation) ActingSlots(s *State) []session.SlotID { ... }
+func (Simulation) Apply(s *State, slot session.SlotID, a Action) { ... }
+func (Simulation) Advance(*State) {}
+func (g Simulation) Project(s *State, slot session.SlotID) Observation { ... }
+func (Simulation) Evaluate(s *State, slot session.SlotID) session.EvaluationSignal { ... }
+```
+
+`Advance` が空なのは手抜きではない。リアルタイムループは全てのゲームに毎 tick の前進を尋ねるが、
+**盤面は着手でしか動かない**。ターン制が「何も起きていない」と答えるのは欠落ではなく、
+同じループ・同じ記録・同じリンクがボードゲームにもシューターにも使える理由になっている。
+
+## 盤面にワイヤ形式ができる
+
+step 1 は盤面をただの Go 配列に持っていて、それがどう運ばれるかを言う必要がなかった。
+2台目が同じ盤を見る以上、**バイト列の形は2つのビルドの間の契約**になる。
+
+```go
+// tutorial/step2-lobby/msg/types.go
+type TTTState struct {
+	Cells  []uint8 `cbor:"cells,key=1"`
+	Turn   uint16  `cbor:"turn,key=2"`
+	Winner uint16  `cbor:"winner,key=3"`
+	Line   []uint8 `cbor:"line,key=4"`
+	Moves  uint8   `cbor:"moves,key=5"`
+	Over   bool    `cbor:"over,key=6"`
+}
+
+var _ = cborbind.GenerateWorldDelta[TTTState]()
+```
+
+```bash
+go generate ./tutorial/step2-lobby/msg/
+```
+
+生成された `CBORProtocolVersion` がそのままハンドシェイクのプロトコル版になるので、
+**ワイヤが1バイト動けば版も動く**。版の違う相手は席をもらう前に断られる。
+
+<Aside type="caution" title="スライスを持つ状態の罠">
+盤面がスライスになったので、`Codec.Clone` は深いコピーでなければならない。値コピーだと
+保持された全ての baseline が最新の盤面を指してしまい、差分が常に空になる。
+これはテストで固定してある（`TestCloneDoesNotAliasTheBoard`）。
+</Aside>
+
+## 相手が来るのを待つ
+
+宣言はこれで全部だ。
+
+```go
+// tutorial/step2-lobby/game/bind.go
+func Binding() run.Binding[State, Action, Observation] {
+	return run.Binding[State, Action, Observation]{
+		Slots:             Slots(),
+		Config:            Config,
+		ProtocolVersion:   Protocol,
+		EvaluationVersion: Evaluation,
+	}
+}
+
+func Network() run.Networking[State, Action, Observation] {
+	return lan.Auto(LANOptions(), 1500*time.Millisecond)
+}
+```
+
+**`NewAgent` がない。** 空席はボットの席ではなく、**まだ起動していない人の席**だからだ。
+ロビーは `NoBots: true` でそれを宣言し、最後の席が埋まった瞬間に対局を始める——
+誰かが画面を見ていて押す必要はない。
+
+## 「繋がる Agent」とは何か
+
+ここが分かりにくいところなので、はっきりさせておく。**Agent がワイヤを渡ってくるわけではない。**
+
+ホスト側では、操作者が人である席には——ローカルでもリモートでも——`session.Detached` が座る。
+何もしないスタブで、セッションは代わりにその席の `Inbox` を読む。つまりセッションから見た
+「人が入ってきた」は、**Agent の到着ではなく Inbox に入力が届き始めること**だ。実際に繋がるのは
+admission が席に束ねた接続になる。
+
+本物の Agent はゲスト側にいる。状態が届くたびに `Observe` → `Decide` が呼ばれ、返った行動が
+上流に送られる。**ホストはどちらか知らない**——だから step 3 でボットを座らせるのは、
+同じ席に別の `Agent` を置くだけの話になる。
+
+## 順序という制約
+
+このステップで一番読み応えがあるのは、実は framework 側の制約だ。
+
+**ピアは席に inbox があって初めて着席できる。** つまりセッションが存在してからだ。ところが
+人はロビーが集めている最中に来る。
+
+なので LAN プリセットは、**接続を早期に受けて駐機させ、試合開始と同時に流し込む**。
+ゲストはハンドシェイクの中で待つので、ポーリングは要らない。待っている状態がそのままロビーになる。
+
+<LinkCard title="トランスポート" href="/connection/transports/" description="駐機した接続が乗る WebSocket と、その上の seqack 層。" />
+
+## 確かめ方
+
+ウィンドウなしで全体が通ることをテストが固定している。
+
+- `TestTwoInstancesPlayOneBoard` — ホストが集め、ゲストが実 WebSocket で空席に着き、**両方の席が実際に指し**、ゲストはルールを一度も走らせずに同じ最終盤面に到達する
+- `TestCodecRoundTripsTheBoard` — snapshot と delta の両方が盤面を復元する
+- `TestObservationCarriesTheLegalMoves` — 手番でない席の合法手は空
+
+<FileTree>
+- tutorial/step2-lobby/
+  - main.go engine を import する唯一の場所
+  - game/
+    - game.go ルール。session.Simulation の実装
+    - bind.go Options / Binding / Network の宣言
+    - net_test.go 2インスタンスの通し
+  - msg/
+    - types.go ワイヤ型の宣言
+    - cborbind_gen.go 生成物（コミットする）
+</FileTree>
+
+## まだないもの
+
+対戦相手が来ないときのボットがない。記録も取っていない。`eb.Options.Record` に出力先を書けば
+この対局がそのままコーパスになり、それが step 3 の入口になる。
+
+<LinkCard title="ログが AI になるまで" href="/ai/" description="step 3 の行き先。記録から承認済みチップ、そして生成された Go まで。" />
