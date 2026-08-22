@@ -28,6 +28,12 @@ type Binding[S, A, O any] struct {
 	// seat nobody took. The returned id labels the seat in the lobby
 	// and the episode header — an enemy kind belongs here, because that
 	// is what makes a corpus separable per kind later.
+	//
+	// Optional. A seat left empty is not necessarily a seat for a bot:
+	// a person arriving over a link is an ordinary concept:agent too,
+	// and one that cannot exist before the game is running. A game that
+	// only waits for people therefore has no factory to name, and
+	// FillBots — the one caller — reports its absence where it matters.
 	NewAgent func(slot session.SlotID) (id string, agent session.Agent[O, A])
 	// ProtocolVersion and EvaluationVersion travel into every episode
 	// header so a corpus cannot silently mix incompatible runs.
@@ -42,9 +48,6 @@ func (b Binding[S, A, O]) Validate() error {
 	}
 	if b.Config == nil {
 		return errors.New("run: Binding.Config is required")
-	}
-	if b.NewAgent == nil {
-		return errors.New("run: Binding.NewAgent is required; a seat nobody takes still needs a controller")
 	}
 	return nil
 }

@@ -267,7 +267,8 @@ func (r *Roster[S, A, O]) Ready() bool {
 // player's, so the same rules produce a corpus with nobody watching.
 func (r *Roster[S, A, O]) FillBots(newAgent func(slot session.SlotID) (id string, agent session.Agent[O, A])) error {
 	if newAgent == nil {
-		return fmt.Errorf("run: FillBots needs a factory")
+		return fmt.Errorf("run: no Binding.NewAgent, so empty seats cannot be filled with bots; " +
+			"declare one, or leave the seats for people arriving over a link")
 	}
 	for _, slot := range r.Slots() {
 		r.mu.Lock()
