@@ -27,7 +27,7 @@ func Slots() []session.SlotID { return []session.SlotID{SlotX, SlotO} }
 // Protocol identifies this game's message schema in every episode header
 // and in every handshake. It comes from the generated code, so a change
 // that moves one byte on the wire moves this too.
-const Protocol = msg.CBORProtocolVersion
+const Protocol = msg.SchemaVersion
 
 // Evaluation versions the scoring in Evaluate.
 const Evaluation = 1

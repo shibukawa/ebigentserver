@@ -13,5 +13,5 @@ import (
 
 func main() {
 	fmt.Println("phase0 client (rendering arrives in Phase 1)")
-	fmt.Println("protocol version:", msg.CBORProtocolVersion)
+	fmt.Println("protocol version:", msg.SchemaVersion)
 }

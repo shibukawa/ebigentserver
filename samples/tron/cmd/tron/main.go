@@ -65,7 +65,7 @@ func main() {
 
 	var s *session.Session[tron.State, tron.Input, tron.Observation]
 	server, err := netplay.NewServer(ctx, netplay.ServerConfig[tron.State, tron.Input]{
-		SessionID: "tron-local", Protocol: msg.CBORProtocolVersion,
+		SessionID: "tron-local", Protocol: msg.SchemaVersion,
 		Verifier: verifier, Seed: uint64(time.Now().UnixNano()), Tuning: tuning, Budget: bud,
 		MakeSender: func(session.SlotID, string) (statesync.ViewSender[tron.State], error) {
 			return statesync.NewSender(tron.Codec(), tuning)
@@ -130,7 +130,7 @@ func main() {
 		go func(slot session.SlotID) {
 			defer wg.Done()
 			c, err := netplay.Connect(ctx, clientConn, ticket, netplay.ClientConfig[tron.State, tron.Input, msg.TronStateDelta, tron.Observation]{
-				Protocol: msg.CBORProtocolVersion, Tuning: tuning, Codec: tron.Codec(),
+				Protocol: msg.SchemaVersion, Tuning: tuning, Codec: tron.Codec(),
 				EncodeInput: func(dst []byte, a tron.Input) []byte { return a.AppendCBORTo(dst) },
 				Project:     func(w *tron.State, sl session.SlotID) tron.Observation { return tron.RuleSet{}.Project(w, sl) },
 			})

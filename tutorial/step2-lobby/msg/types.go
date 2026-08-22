@@ -15,25 +15,45 @@ import (
 // Move is data:player-input: the cell a player claims.
 type Move struct {
 	// Cell is 0..8, row-major from the top-left.
-	Cell uint8 `cbor:"cell,key=1"`
+	Cell uint8 `json:"cell"`
 }
-
-var _ = cborbind.GenerateWireCodec[Move]()
 
 // TTTState is the authoritative board on the world profile.
 type TTTState struct {
 	// Cells is the grid, 9 entries: 0 empty, 1 X, 2 O.
-	Cells []uint8 `cbor:"cells,key=1"`
+	Cells []uint8 `json:"cells"`
 	// Turn is the slot to move, 0 once the game is over.
-	Turn uint16 `cbor:"turn,key=2"`
+	Turn uint16 `json:"turn"`
 	// Winner is the winning slot, 0 on a draw or an open game.
-	Winner uint16 `cbor:"winner,key=3"`
+	Winner uint16 `json:"winner"`
 	// Line is the winning triple, meaningful only when Winner is set.
-	Line []uint8 `cbor:"line,key=4"`
+	Line []uint8 `json:"line"`
 	// Moves counts marks placed.
-	Moves uint8 `cbor:"moves,key=5"`
+	Moves uint8 `json:"moves"`
 	// Over marks a finished game, won or drawn.
-	Over bool `cbor:"over,key=6"`
+	Over bool `json:"over"`
 }
 
-var _ = cborbind.GenerateWorldDelta[TTTState]()
+// The calls below are what ask the generator for each codec: there is no
+// declaration to write any more, and naming an entry point is the ask
+// (requirement:cborbind-migration).
+//
+// Which container a type uses is a contract rather than a preference. An
+// input is an array — positional, no field names on the wire, and both
+// ends rebuilt together — which is concept:cbor-wire-profile. The board is
+// a map, so a decoder can skip a key it does not know and the two ends may
+// ship apart, which is concept:cbor-world-profile.
+
+// AppendMove writes one move in the array shape.
+func AppendMove(dst []byte, v Move) []byte { return cborbind.AppendCBORInArrayTo(dst, v) }
+
+// DecodeMove reads one move.
+func DecodeMove(data []byte) (Move, error) { return cborbind.DecodeCBORInArrayFrom[Move](data) }
+
+// AppendTTTState writes one board in the map shape.
+func AppendTTTState(dst []byte, v TTTState) []byte { return cborbind.AppendCBORInMapTo(dst, v) }
+
+// DecodeTTTState reads one board.
+func DecodeTTTState(data []byte) (TTTState, error) {
+	return cborbind.DecodeCBORInMapFrom[TTTState](data)
+}

@@ -6,7 +6,10 @@ import "testing"
 // and the generated codec bytes together. If this test breaks, either a
 // protocol-relevant bit moved (bump data:protocol-version and repin
 // deliberately) or a regression changed simulation output (fix it).
-const pinnedDigest = 0x47f77d8f35a9438e
+// Moved once, when concept:cbor-world-profile became the map shape of
+// tinybind v0.5.23 and members began carrying their names instead of
+// integer labels. An episode digest covers world state, so it followed.
+const pinnedDigest = 0x073ace847b778cc8
 
 func TestEpisodeDigestIsReproducible(t *testing.T) {
 	first := Run(1000)

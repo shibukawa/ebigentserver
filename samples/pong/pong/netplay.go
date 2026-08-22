@@ -146,7 +146,7 @@ func (ps *PeerSet) Broadcast(tick session.Tick, world *State) {
 func AdmitRemote[SlotSource interface {
 	Inbox(session.SlotID) (*session.Inbox[Input], error)
 }](ctx context.Context, conn transport.Conn, src SlotSource, verifier *admission.Verifier, seed uint64, tuning session.TuningProfile) (*RemotePeer, error) {
-	claims, err := admission.Accept(ctx, conn, msg.CBORProtocolVersion, verifier, seed)
+	claims, err := admission.Accept(ctx, conn, msg.SchemaVersion, verifier, seed)
 	if err != nil {
 		return nil, err
 	}
@@ -171,7 +171,7 @@ type NetClient struct {
 // or bad ticket surfaces here as admission.ErrRejected), then the state
 // stream.
 func Connect(ctx context.Context, conn transport.Conn, ticket string, tuning session.TuningProfile) (*NetClient, error) {
-	welcome, err := admission.Join(ctx, conn, msg.CBORProtocolVersion, ticket)
+	welcome, err := admission.Join(ctx, conn, msg.SchemaVersion, ticket)
 	if err != nil {
 		return nil, err
 	}

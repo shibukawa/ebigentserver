@@ -137,7 +137,7 @@ func TestEightPlayerDigestPinned(t *testing.T) {
 		w := episode.NewWriter[tron.State, tron.Input, tron.Observation](
 			episode.Streams{Events: &events},
 			episode.ReplayComplete,
-			episode.Meta{EpisodeID: "tron-8", ProtocolVersion: msg.CBORProtocolVersion},
+			episode.Meta{EpisodeID: "tron-8", ProtocolVersion: msg.SchemaVersion},
 		)
 		tuning := testTuning
 		s, err := session.New(session.Config[tron.State, tron.Input, tron.Observation]{
@@ -172,7 +172,12 @@ func TestEightPlayerDigestPinned(t *testing.T) {
 	if ticks != ticks2 || last != last2 {
 		t.Fatalf("two runs diverged: %d/%+v vs %d/%+v", ticks, last, ticks2, last2)
 	}
-	const wantTick, wantWorld, wantAction = 33, "f998ccd248453b42", "a2c67407a65952f1"
+// The world digests moved once, when concept:cbor-world-profile became the
+// map shape of tinybind v0.5.23: the profile's integer labels are gone and
+// members carry their names. The action digests did not move, because the
+// array shape encodes byte for byte what the wire profile did — which is
+// what shows the encoding changed and the simulation did not.
+	const wantTick, wantWorld, wantAction = 33, "f3e117369e1acf88", "a2c67407a65952f1"
 	if last.Tick != wantTick || last.WorldHash != wantWorld || last.ActionHash != wantAction {
 		t.Fatalf("final checkpoint tick %d world %s action %s (pinned %d / %s / %s)",
 			last.Tick, last.WorldHash, last.ActionHash, wantTick, wantWorld, wantAction)

@@ -43,59 +43,84 @@ type Command struct {
 	TargetY uint8
 }
 
-var _ = cborbind.GenerateWireCodec[Command]()
-
 // Unit is one combat unit in the full state.
 type Unit struct {
-	ID    uint32 `cbor:"id,key=1,identity"`
-	X     uint8  `cbor:"x,key=2"`
-	Y     uint8  `cbor:"y,key=3"`
-	TX    uint8  `cbor:"tx,key=4"`
-	TY    uint8  `cbor:"ty,key=5"`
-	HP    int8   `cbor:"hp,key=6"`
-	Alive bool   `cbor:"alive,key=7"`
+	ID    uint32 `json:"id"`
+	X     uint8  `json:"x"`
+	Y     uint8  `json:"y"`
+	TX    uint8  `json:"tx"`
+	TY    uint8  `json:"ty"`
+	HP    int8   `json:"hp"`
+	Alive bool   `json:"alive"`
 }
 
 // RTSState is the authoritative world: large enough that sending it
 // whole every tick is visibly the wrong answer.
 type RTSState struct {
-	Tick      uint64 `cbor:"tick,key=1"`
-	Units     []Unit `cbor:"units,key=2"`
-	NextSeq   uint32 `cbor:"next_seq,key=3"`
-	TickLimit uint32 `cbor:"limit,key=4"`
-	Over      bool   `cbor:"over,key=5"`
+	Tick      uint64 `json:"tick"`
+	Units     []Unit `json:"units"`
+	NextSeq   uint32 `json:"next_seq"`
+	TickLimit uint32 `json:"limit"`
+	Over      bool   `json:"over"`
 	// Winner is the surviving slot, 0 while playing or on a draw.
-	Winner uint16 `cbor:"winner,key=6"`
+	Winner uint16 `json:"winner"`
 }
-
-var _ = cborbind.GenerateWorldDelta[RTSState]()
 
 // Glimpse is an enemy unit as fog of war lets a player see it: identity,
 // position, owner — no orders, no exact health.
 type Glimpse struct {
-	ID    uint32 `cbor:"id,key=1,identity"`
-	X     uint8  `cbor:"x,key=2"`
-	Y     uint8  `cbor:"y,key=3"`
-	Owner uint16 `cbor:"owner,key=4"`
+	ID    uint32 `json:"id"`
+	X     uint8  `json:"x"`
+	Y     uint8  `json:"y"`
+	Owner uint16 `json:"owner"`
 }
 
 // PlayerView is one player's fog-of-war projection: own units in full,
 // enemies only inside sight range of some own unit (interest management
 // through concept:agent-view — a player receives a fraction of the map).
 type PlayerView struct {
-	Tick uint64 `cbor:"tick,key=1"`
-	You  uint16 `cbor:"you,key=2"`
+	Tick uint64 `json:"tick"`
+	You  uint16 `json:"you"`
 	// Own is every unit the player commands, in full.
-	Own []Unit `cbor:"own,key=3"`
+	Own []Unit `json:"own"`
 	// Visible is the fraction of enemy units inside sight.
-	Visible []Glimpse `cbor:"visible,key=4"`
+	Visible []Glimpse `json:"visible"`
 	// OwnAlive and EnemyAlive give the scoped score material: total
 	// enemy count is public knowledge in this game (army sizes are
 	// announced), positions are not.
-	OwnAlive   uint16 `cbor:"own_alive,key=5"`
-	EnemyAlive uint16 `cbor:"enemy_alive,key=6"`
-	Over       bool   `cbor:"over,key=7"`
-	Winner     uint16 `cbor:"winner,key=8"`
+	OwnAlive   uint16 `json:"own_alive"`
+	EnemyAlive uint16 `json:"enemy_alive"`
+	Over       bool   `json:"over"`
+	Winner     uint16 `json:"winner"`
 }
 
-var _ = cborbind.GenerateWorldDelta[PlayerView]()
+// The calls below are what ask the generator for each codec: there is no
+// declaration to write any more, and naming an entry point is the ask
+// (requirement:cborbind-migration).
+//
+// Which container a type uses is a contract rather than a preference. An
+// input is an array — positional, no field names on the wire, and both
+// ends rebuilt together — which is concept:cbor-wire-profile. A world
+// state is a map, so a decoder can skip a key it does not know and the two
+// ends may ship apart, which is concept:cbor-world-profile.
+
+
+// AppendCommand writes one command in the array shape.
+func AppendCommand(dst []byte, v Command) []byte { return cborbind.AppendCBORInArrayTo(dst, v) }
+
+// DecodeCommand reads one command.
+func DecodeCommand(data []byte) (Command, error) { return cborbind.DecodeCBORInArrayFrom[Command](data) }
+
+
+// AppendRTSState writes one rtsstate in the map shape.
+func AppendRTSState(dst []byte, v RTSState) []byte { return cborbind.AppendCBORInMapTo(dst, v) }
+
+// DecodeRTSState reads one rtsstate.
+func DecodeRTSState(data []byte) (RTSState, error) { return cborbind.DecodeCBORInMapFrom[RTSState](data) }
+
+
+// AppendPlayerView writes one playerview in the map shape.
+func AppendPlayerView(dst []byte, v PlayerView) []byte { return cborbind.AppendCBORInMapTo(dst, v) }
+
+// DecodePlayerView reads one playerview.
+func DecodePlayerView(data []byte) (PlayerView, error) { return cborbind.DecodeCBORInMapFrom[PlayerView](data) }

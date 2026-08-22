@@ -12,8 +12,8 @@ require (
 	github.com/quic-go/quic-go v0.61.0
 	github.com/quic-go/webtransport-go v0.12.0
 	github.com/shibukawa/fixmath v0.9.0
-	github.com/shibukawa/tinybind-go v0.5.17
-	github.com/shibukawa/tinygodriver v1.2.6
+	github.com/shibukawa/tinybind-go v0.5.23
+	github.com/shibukawa/tinygodriver v1.2.7
 )
 
 require (

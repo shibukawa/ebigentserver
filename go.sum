@@ -122,8 +122,12 @@ github.com/shibukawa/fixmath v0.9.0 h1:j0tNy1/Ixr1oSTt3BVcmoNdbaie1BGFHvkgkTBKV7
 github.com/shibukawa/fixmath v0.9.0/go.mod h1:wAhMHDZxEqcGtjUoOsWC6dPLqgVGbbqqHcRXI/m0nzI=
 github.com/shibukawa/tinybind-go v0.5.17 h1:25uNsm3Co87dVig0TOZs0tYvrO9l8AD1W2dP4usLLe0=
 github.com/shibukawa/tinybind-go v0.5.17/go.mod h1:+ENPVbiK6wvD6n4QqQK4hSyDELmTC5lKbBZJlkXFbQo=
+github.com/shibukawa/tinybind-go v0.5.23 h1:NWlBtymfSElKbUoZQCFfyEmQnC2SBa0Q7vNZj3TguE8=
+github.com/shibukawa/tinybind-go v0.5.23/go.mod h1:W95ybJt/JaxgyCbyIGriqM59nkEVSDYpyaEma1IVfKc=
 github.com/shibukawa/tinygodriver v1.2.6 h1:zXsex7fYGWm03G/1KvVPkpdhIrzz10xKJRIksFDXwtk=
 github.com/shibukawa/tinygodriver v1.2.6/go.mod h1:DLwOzLMnjY7+kmpALZ+lnwv7s8sWNXT1HanLp2WIUkk=
+github.com/shibukawa/tinygodriver v1.2.7 h1:ppvHOdGoIt4j1815xNSteANO2ttATUoK4ouP2QFCR5c=
+github.com/shibukawa/tinygodriver v1.2.7/go.mod h1:DLwOzLMnjY7+kmpALZ+lnwv7s8sWNXT1HanLp2WIUkk=
 github.com/stretchr/testify v1.11.1 h1:7s2iGBzp5EwR7/aIZr8ao5+dra3wiQyKjjFuvgVKu7U=
 github.com/stretchr/testify v1.11.1/go.mod h1:wZwfW3scLgRK+23gO65QZefKpKQRnfz6sD981Nm4B6U=
 github.com/valyala/bytebufferpool v1.0.0 h1:GqA5TC/0021Y/b9FG4Oi9Mr3q7XYx6KllzawFIhcdPw=

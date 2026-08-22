@@ -119,8 +119,18 @@ func TestBaselineModesDivergeMeasurably(t *testing.T) {
 	if !(bounded.bytes < conf.bytes) {
 		t.Errorf("bounded (%dB) not cheaper than confirmed_only (%dB)", bounded.bytes, conf.bytes)
 	}
-	if conf.bytes < spec.bytes*11/10 {
-		t.Errorf("modes did not diverge measurably: confirmed %dB vs speculative %dB", conf.bytes, spec.bytes)
+	// The margin used to be a byte ratio, which measured the modes through
+	// a total the encoding size moves: when concept:cbor-world-profile
+	// became a map carrying member names, the snapshot constant grew and
+	// the same behavioural gap read as a smaller fraction of it.
+	//
+	// What the modes actually control is how often a baseline is
+	// unavailable and a snapshot has to be sent instead, so that is what
+	// is asserted. It is the mechanism rather than a proxy for it, and it
+	// does not move when the encoding does.
+	if conf.snaps < spec.snaps*2 {
+		t.Errorf("modes did not diverge measurably: confirmed_only forced %d snapshot(s) against speculative's %d",
+			conf.snaps, spec.snaps)
 	}
 }
 

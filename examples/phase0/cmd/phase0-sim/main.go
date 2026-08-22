@@ -15,6 +15,6 @@ import (
 func main() {
 	const ticks = 1000
 	fmt.Println("phase0 simulation (headless, deterministic)")
-	fmt.Println("protocol version:", msg.CBORProtocolVersion)
+	fmt.Println("protocol version:", msg.SchemaVersion)
 	fmt.Printf("ticks: %d, episode digest: %016x\n", ticks, sim.Run(ticks))
 }

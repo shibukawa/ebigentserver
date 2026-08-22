@@ -52,107 +52,137 @@ type ActionInput struct {
 	Y uint8
 }
 
-var _ = cborbind.GenerateWireCodec[ActionInput]()
-
 // Adventurer is one party member in the full state and the DM view.
 type Adventurer struct {
-	ID       uint16 `cbor:"id,key=1,identity"`
-	X        uint8  `cbor:"x,key=2"`
-	Y        uint8  `cbor:"y,key=3"`
-	Role     uint8  `cbor:"role,key=4"`
-	HP       int8   `cbor:"hp,key=5"`
-	Alive    bool   `cbor:"alive,key=6"`
-	Carrying bool   `cbor:"carrying,key=7"`
+	ID       uint16 `json:"id"`
+	X        uint8  `json:"x"`
+	Y        uint8  `json:"y"`
+	Role     uint8  `json:"role"`
+	HP       int8   `json:"hp"`
+	Alive    bool   `json:"alive"`
+	Carrying bool   `json:"carrying"`
 }
 
 // Trap is a dungeon master device. Discovered means the party has seen
 // it; only discovered traps ever reach an adventurer view.
 type Trap struct {
-	ID         uint32 `cbor:"id,key=1,identity"`
-	X          uint8  `cbor:"x,key=2"`
-	Y          uint8  `cbor:"y,key=3"`
-	Armed      bool   `cbor:"armed,key=4"`
-	Discovered bool   `cbor:"disc,key=5"`
+	ID         uint32 `json:"id"`
+	X          uint8  `json:"x"`
+	Y          uint8  `json:"y"`
+	Armed      bool   `json:"armed"`
+	Discovered bool   `json:"disc"`
 }
 
 // DungeonState is the authoritative world (concept:world-state). It is
 // used for simulation, canonical checkpoints, and recording — never as a
 // wire message to a client.
 type DungeonState struct {
-	Tick        uint64       `cbor:"tick,key=1"`
-	Walls       []uint8      `cbor:"walls,key=2"`
-	Explored    []uint8      `cbor:"explored,key=3"`
-	Adventurers []Adventurer `cbor:"advs,key=4"`
-	Traps       []Trap       `cbor:"traps,key=5"`
-	TrapBudget  uint8        `cbor:"budget,key=6"`
-	TreasureX   uint8        `cbor:"tx,key=7"`
-	TreasureY   uint8        `cbor:"ty,key=8"`
-	ExitX       uint8        `cbor:"ex,key=9"`
-	ExitY       uint8        `cbor:"ey,key=10"`
-	TickLimit   uint32       `cbor:"limit,key=11"`
-	Over        bool         `cbor:"over,key=12"`
+	Tick        uint64       `json:"tick"`
+	Walls       []uint8      `json:"walls"`
+	Explored    []uint8      `json:"explored"`
+	Adventurers []Adventurer `json:"advs"`
+	Traps       []Trap       `json:"traps"`
+	TrapBudget  uint8        `json:"budget"`
+	TreasureX   uint8        `json:"tx"`
+	TreasureY   uint8        `json:"ty"`
+	ExitX       uint8        `json:"ex"`
+	ExitY       uint8        `json:"ey"`
+	TickLimit   uint32       `json:"limit"`
+	Over        bool         `json:"over"`
 	// Winner: 0 none, 1 party, 2 dungeon master.
-	Winner uint8 `cbor:"winner,key=13"`
+	Winner uint8 `json:"winner"`
 }
-
-var _ = cborbind.GenerateWorldDelta[DungeonState]()
 
 // PartyMate is a teammate as an adventurer sees one (team scope).
 type PartyMate struct {
-	ID       uint16 `cbor:"id,key=1,identity"`
-	X        uint8  `cbor:"x,key=2"`
-	Y        uint8  `cbor:"y,key=3"`
-	Role     uint8  `cbor:"role,key=4"`
-	Alive    bool   `cbor:"alive,key=5"`
-	Carrying bool   `cbor:"carrying,key=6"`
+	ID       uint16 `json:"id"`
+	X        uint8  `json:"x"`
+	Y        uint8  `json:"y"`
+	Role     uint8  `json:"role"`
+	Alive    bool   `json:"alive"`
+	Carrying bool   `json:"carrying"`
 }
 
 // AdventurerView is the party wire view: self and team scopes plus role
 // extras. Walls appear only inside explored cells; traps only once
 // discovered; the exit only for the navigator (concept:visibility-scope).
 type AdventurerView struct {
-	Tick     uint64 `cbor:"tick,key=1"`
-	You      uint16 `cbor:"you,key=2"`
-	Role     uint8  `cbor:"role,key=3"`
-	HP       int8   `cbor:"hp,key=4"`
-	X        uint8  `cbor:"x,key=5"`
-	Y        uint8  `cbor:"y,key=6"`
-	Carrying bool   `cbor:"carrying,key=7"`
+	Tick     uint64 `json:"tick"`
+	You      uint16 `json:"you"`
+	Role     uint8  `json:"role"`
+	HP       int8   `json:"hp"`
+	X        uint8  `json:"x"`
+	Y        uint8  `json:"y"`
+	Carrying bool   `json:"carrying"`
 	// Explored is the team's accumulated knowledge (team scope).
-	Explored []uint8 `cbor:"explored,key=8"`
+	Explored []uint8 `json:"explored"`
 	// KnownWalls is the wall bitmap masked to explored cells.
-	KnownWalls []uint8 `cbor:"walls,key=9"`
+	KnownWalls []uint8 `json:"walls"`
 	// Party is every teammate's position (team scope).
-	Party []PartyMate `cbor:"party,key=10"`
+	Party []PartyMate `json:"party"`
 	// KnownTraps holds only discovered traps.
-	KnownTraps []Trap `cbor:"traps,key=11"`
+	KnownTraps []Trap `json:"traps"`
 	// TreasureX/Y are Unknown until the treasure's cell is explored.
-	TreasureX uint8 `cbor:"tx,key=12"`
-	TreasureY uint8 `cbor:"ty,key=13"`
+	TreasureX uint8 `json:"tx"`
+	TreasureY uint8 `json:"ty"`
 	// ExitX/Y are Unknown for everyone but the navigator (role scope).
-	ExitX  uint8 `cbor:"ex,key=14"`
-	ExitY  uint8 `cbor:"ey,key=15"`
-	Over   bool  `cbor:"over,key=16"`
-	Winner uint8 `cbor:"winner,key=17"`
+	ExitX  uint8 `json:"ex"`
+	ExitY  uint8 `json:"ey"`
+	Over   bool  `json:"over"`
+	Winner uint8 `json:"winner"`
 }
-
-var _ = cborbind.GenerateWorldDelta[AdventurerView]()
 
 // DMView is the dungeon master wire view: the whole map (role scope),
 // including what the party has explored so far.
 type DMView struct {
-	Tick        uint64       `cbor:"tick,key=1"`
-	Walls       []uint8      `cbor:"walls,key=2"`
-	Explored    []uint8      `cbor:"explored,key=3"`
-	Adventurers []Adventurer `cbor:"advs,key=4"`
-	Traps       []Trap       `cbor:"traps,key=5"`
-	TrapBudget  uint8        `cbor:"budget,key=6"`
-	TreasureX   uint8        `cbor:"tx,key=7"`
-	TreasureY   uint8        `cbor:"ty,key=8"`
-	ExitX       uint8        `cbor:"ex,key=9"`
-	ExitY       uint8        `cbor:"ey,key=10"`
-	Over        bool         `cbor:"over,key=11"`
-	Winner      uint8        `cbor:"winner,key=12"`
+	Tick        uint64       `json:"tick"`
+	Walls       []uint8      `json:"walls"`
+	Explored    []uint8      `json:"explored"`
+	Adventurers []Adventurer `json:"advs"`
+	Traps       []Trap       `json:"traps"`
+	TrapBudget  uint8        `json:"budget"`
+	TreasureX   uint8        `json:"tx"`
+	TreasureY   uint8        `json:"ty"`
+	ExitX       uint8        `json:"ex"`
+	ExitY       uint8        `json:"ey"`
+	Over        bool         `json:"over"`
+	Winner      uint8        `json:"winner"`
 }
 
-var _ = cborbind.GenerateWorldDelta[DMView]()
+// The calls below are what ask the generator for each codec: there is no
+// declaration to write any more, and naming an entry point is the ask
+// (requirement:cborbind-migration).
+//
+// Which container a type uses is a contract rather than a preference. An
+// input is an array — positional, no field names on the wire, and both
+// ends rebuilt together — which is concept:cbor-wire-profile. A world
+// state is a map, so a decoder can skip a key it does not know and the two
+// ends may ship apart, which is concept:cbor-world-profile.
+
+
+// AppendActionInput writes one actioninput in the array shape.
+func AppendActionInput(dst []byte, v ActionInput) []byte { return cborbind.AppendCBORInArrayTo(dst, v) }
+
+// DecodeActionInput reads one actioninput.
+func DecodeActionInput(data []byte) (ActionInput, error) { return cborbind.DecodeCBORInArrayFrom[ActionInput](data) }
+
+
+// AppendDungeonState writes one dungeonstate in the map shape.
+func AppendDungeonState(dst []byte, v DungeonState) []byte { return cborbind.AppendCBORInMapTo(dst, v) }
+
+// DecodeDungeonState reads one dungeonstate.
+func DecodeDungeonState(data []byte) (DungeonState, error) { return cborbind.DecodeCBORInMapFrom[DungeonState](data) }
+
+
+// AppendAdventurerView writes one adventurerview in the map shape.
+func AppendAdventurerView(dst []byte, v AdventurerView) []byte { return cborbind.AppendCBORInMapTo(dst, v) }
+
+// DecodeAdventurerView reads one adventurerview.
+func DecodeAdventurerView(data []byte) (AdventurerView, error) { return cborbind.DecodeCBORInMapFrom[AdventurerView](data) }
+
+
+// AppendDMView writes one dmview in the map shape.
+func AppendDMView(dst []byte, v DMView) []byte { return cborbind.AppendCBORInMapTo(dst, v) }
+
+// DecodeDMView reads one dmview.
+func DecodeDMView(data []byte) (DMView, error) { return cborbind.DecodeCBORInMapFrom[DMView](data) }

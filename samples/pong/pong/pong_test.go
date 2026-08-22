@@ -71,7 +71,7 @@ func record(t *testing.T, src func(session.Tick, session.SlotID) (pong.Input, bo
 	w := episode.NewWriter[pong.State, pong.Input, pong.Observation](
 		episode.Streams{Decisions: &l.decisions, Events: &l.events, Outcomes: &l.outcomes, World: &l.world},
 		episode.ReplayComplete,
-		episode.Meta{EpisodeID: "pong-ep", ProtocolVersion: msg.CBORProtocolVersion},
+		episode.Meta{EpisodeID: "pong-ep", ProtocolVersion: msg.SchemaVersion},
 	)
 	s := newSession(t, func(c *session.Config[pong.State, pong.Input, pong.Observation]) {
 		c.Seed = 7
@@ -103,7 +103,12 @@ func TestScriptedMatchDigestPinned(t *testing.T) {
 		t.Fatal("no checkpoints recorded")
 	}
 	last := cps[len(cps)-1]
-	const wantTick, wantWorld, wantAction = 585, "3fa3d99db6a58444", "a221fc1c8243618d"
+// The world digests moved once, when concept:cbor-world-profile became the
+// map shape of tinybind v0.5.23: the profile's integer labels are gone and
+// members carry their names. The action digests did not move, because the
+// array shape encodes byte for byte what the wire profile did — which is
+// what shows the encoding changed and the simulation did not.
+	const wantTick, wantWorld, wantAction = 585, "8624bd12c52f8afa", "a221fc1c8243618d"
 	if session.Tick(last.Tick) != wantTick || last.WorldHash != wantWorld || last.ActionHash != wantAction {
 		t.Fatalf("final checkpoint tick %d (of %d ticks): world %s action %s (pinned tick %d / %s / %s)",
 			last.Tick, ticks, last.WorldHash, last.ActionHash, wantTick, wantWorld, wantAction)

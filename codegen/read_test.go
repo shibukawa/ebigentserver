@@ -65,30 +65,45 @@ func TestReadResolvesEveryFieldShapeTheSamplesUse(t *testing.T) {
 	}
 }
 
-// TestReadRefusesWhatADeltaCannotCarry covers the gate that used to be
-// the encoder's. The removed CBOR profile refused floats outright; with
-// no profile left, generation is the only place rule:no-float-in-simulation
-// can still be enforced.
+// TestReadRefusesWhatADeltaCannotCarry covers the gate that used to be the
+// generator's, in tinybind. Its CBOR profile refused floats at the encoder
+// and its analysis refused the rest; both are gone
+// (requirement:cborbind-migration), so this is the only place
+// rule:codegen-rejects-nondeterministic-types is still enforced. v0.5.23
+// accepts every one of these as an ordinary field type.
 func TestReadRefusesWhatADeltaCannotCarry(t *testing.T) {
-	dir := t.TempDir()
-	write(t, dir, "go.mod", "module probe\n\ngo 1.24\n")
-	write(t, dir, "types.go", `package probe
+	cases := []struct {
+		name, field, want string
+	}{
+		// A real cannot be compared or reproduced bit for bit across two
+		// machines, which rule:no-float-in-simulation exists for.
+		{"a float", "Speed float64", "Speed"},
+		// A bare int is 64-bit on the host and 32-bit on wasm, so the two
+		// ends would disagree about what fits.
+		{"a host-width int", "Count int", "Count"},
+		{"a host-width uint", "Total uint", "Total"},
+		// Go randomizes map iteration, so traversal and diff output would
+		// vary per run.
+		{"a map", "Scores map[uint32]int32", "Scores"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			dir := t.TempDir()
+			write(t, dir, "go.mod", "module probe\n\ngo 1.24\n")
+			write(t, dir, "types.go", "package probe\n\ntype Drifting struct {\n\tTick uint64\n\t"+tc.field+"\n}\n")
 
-type Drifting struct {
-	Tick  uint64
-	Speed float64
-}
-`)
-	_, _, err := codegen.Read(dir, []string{"Drifting"})
-	if err == nil {
-		t.Fatal("a float field was accepted into a delta")
-	}
-	var unsupported *codegen.ErrUnsupported
-	if !as(err, &unsupported) {
-		t.Fatalf("err = %v, want it to name the field", err)
-	}
-	if unsupported.Field != "Speed" {
-		t.Errorf("refused %q, want Speed", unsupported.Field)
+			_, _, err := codegen.Read(dir, []string{"Drifting"})
+			if err == nil {
+				t.Fatalf("%s was accepted into a delta", tc.name)
+			}
+			var unsupported *codegen.ErrUnsupported
+			if !as(err, &unsupported) {
+				t.Fatalf("err = %v, want it to name the field", err)
+			}
+			if unsupported.Field != tc.want {
+				t.Errorf("refused %q, want %s", unsupported.Field, tc.want)
+			}
+		})
 	}
 }
 

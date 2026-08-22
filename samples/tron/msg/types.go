@@ -29,38 +29,58 @@ type TurnInput struct {
 	Buttons uint8
 }
 
-var _ = cborbind.GenerateWireCodec[TurnInput]()
-
 // Player is one light cycle.
 type Player struct {
-	ID    uint16 `cbor:"id,key=1,identity"`
-	X     uint8  `cbor:"x,key=2"`
-	Y     uint8  `cbor:"y,key=3"`
-	Dir   uint8  `cbor:"dir,key=4"`
-	Alive bool   `cbor:"alive,key=5"`
+	ID    uint16 `json:"id"`
+	X     uint8  `json:"x"`
+	Y     uint8  `json:"y"`
+	Dir   uint8  `json:"dir"`
+	Alive bool   `json:"alive"`
 	// DeathTick records when the cycle crashed; survival time is the
 	// evaluation signal's score.
-	DeathTick uint32 `cbor:"death,key=6"`
+	DeathTick uint32 `json:"death"`
 }
 
 // TrailCell is one cell of wall left behind a cycle.
 type TrailCell struct {
-	ID    uint32 `cbor:"id,key=1,identity"`
-	X     uint8  `cbor:"x,key=2"`
-	Y     uint8  `cbor:"y,key=3"`
-	Owner uint16 `cbor:"owner,key=4"`
+	ID    uint32 `json:"id"`
+	X     uint8  `json:"x"`
+	Y     uint8  `json:"y"`
+	Owner uint16 `json:"owner"`
 }
 
 // TronState is the authoritative world on the world profile.
 type TronState struct {
-	Tick      uint64      `cbor:"tick,key=1"`
-	Players   []Player    `cbor:"players,key=2"`
-	Trail     []TrailCell `cbor:"trail,key=3"`
-	NextTrail uint32      `cbor:"next_trail,key=4"`
-	Alive     uint8       `cbor:"alive,key=5"`
-	Over      bool        `cbor:"over,key=6"`
+	Tick      uint64      `json:"tick"`
+	Players   []Player    `json:"players"`
+	Trail     []TrailCell `json:"trail"`
+	NextTrail uint32      `json:"next_trail"`
+	Alive     uint8       `json:"alive"`
+	Over      bool        `json:"over"`
 	// Winner is the surviving slot, 0 on a mutual crash or timeout.
-	Winner uint16 `cbor:"winner,key=7"`
+	Winner uint16 `json:"winner"`
 }
 
-var _ = cborbind.GenerateWorldDelta[TronState]()
+// The calls below are what ask the generator for each codec: there is no
+// declaration to write any more, and naming an entry point is the ask
+// (requirement:cborbind-migration).
+//
+// Which container a type uses is a contract rather than a preference. An
+// input is an array — positional, no field names on the wire, and both
+// ends rebuilt together — which is concept:cbor-wire-profile. A world
+// state is a map, so a decoder can skip a key it does not know and the two
+// ends may ship apart, which is concept:cbor-world-profile.
+
+
+// AppendTurnInput writes one turninput in the array shape.
+func AppendTurnInput(dst []byte, v TurnInput) []byte { return cborbind.AppendCBORInArrayTo(dst, v) }
+
+// DecodeTurnInput reads one turninput.
+func DecodeTurnInput(data []byte) (TurnInput, error) { return cborbind.DecodeCBORInArrayFrom[TurnInput](data) }
+
+
+// AppendTronState writes one tronstate in the map shape.
+func AppendTronState(dst []byte, v TronState) []byte { return cborbind.AppendCBORInMapTo(dst, v) }
+
+// DecodeTronState reads one tronstate.
+func DecodeTronState(data []byte) (TronState, error) { return cborbind.DecodeCBORInMapFrom[TronState](data) }

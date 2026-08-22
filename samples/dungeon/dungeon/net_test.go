@@ -98,7 +98,7 @@ func newDungeonNet(t *testing.T, adventurers int, tickLimit uint32, d time.Durat
 
 	var s *session.Session[dungeon.State, dungeon.Input, Observation]
 	server, err := netplay.NewServer(ctx, netplay.ServerConfig[dungeon.State, dungeon.Input]{
-		SessionID: "dungeon-1", Protocol: msg.CBORProtocolVersion,
+		SessionID: "dungeon-1", Protocol: msg.SchemaVersion,
 		Verifier: &admission.Verifier{Keys: map[string]ed25519.PublicKey{"k1": pub}, Audience: dgAudience, Leeway: time.Minute},
 		Seed:     77, Tuning: dgTuning, Budget: dgBudget,
 		MakeSender: dungeon.MakeSender(dgTuning),
@@ -165,7 +165,7 @@ func (n *dungeonNet) serveSide(conn transport.Conn) {
 // sides of the asymmetry.
 func dmClientCfg() netplay.ClientConfig[msg.DMView, dungeon.Input, msg.DMViewDelta, Observation] {
 	return netplay.ClientConfig[msg.DMView, dungeon.Input, msg.DMViewDelta, Observation]{
-		Protocol: msg.CBORProtocolVersion, Tuning: dgTuning, Codec: dungeon.DMCodec(),
+		Protocol: msg.SchemaVersion, Tuning: dgTuning, Codec: dungeon.DMCodec(),
 		EncodeInput: func(dst []byte, a dungeon.Input) []byte { return a.AppendCBORTo(dst) },
 		Project: func(v *msg.DMView, slot session.SlotID) Observation {
 			return Observation{You: slot, Role: msg.RoleDM, DM: v, Annotation: dungeon.DMAnnotation(v)}
@@ -175,7 +175,7 @@ func dmClientCfg() netplay.ClientConfig[msg.DMView, dungeon.Input, msg.DMViewDel
 
 func advClientCfg() netplay.ClientConfig[msg.AdventurerView, dungeon.Input, msg.AdventurerViewDelta, Observation] {
 	return netplay.ClientConfig[msg.AdventurerView, dungeon.Input, msg.AdventurerViewDelta, Observation]{
-		Protocol: msg.CBORProtocolVersion, Tuning: dgTuning, Codec: dungeon.AdventurerCodec(),
+		Protocol: msg.SchemaVersion, Tuning: dgTuning, Codec: dungeon.AdventurerCodec(),
 		EncodeInput: func(dst []byte, a dungeon.Input) []byte { return a.AppendCBORTo(dst) },
 		Project: func(v *msg.AdventurerView, slot session.SlotID) Observation {
 			return Observation{You: slot, Role: v.Role, Adventurer: v, Annotation: dungeon.AdventurerAnnotation(v)}

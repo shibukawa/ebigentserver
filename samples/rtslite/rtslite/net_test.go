@@ -38,7 +38,7 @@ func TestHybridExchangeOverTheWire(t *testing.T) {
 
 	var s *session.Session[rtslite.State, rtslite.Input, rtslite.Observation]
 	server, err := netplay.NewServer(ctx, netplay.ServerConfig[rtslite.State, rtslite.Input]{
-		SessionID: "rts-1", Protocol: msg.CBORProtocolVersion,
+		SessionID: "rts-1", Protocol: msg.SchemaVersion,
 		Verifier: &admission.Verifier{Keys: map[string]ed25519.PublicKey{"k1": pub}, Audience: aud, Leeway: time.Minute},
 		Seed:     9, Tuning: tuning, Budget: bud,
 		MakeSender: rtslite.MakeSender(tuning),
@@ -100,7 +100,7 @@ func TestHybridExchangeOverTheWire(t *testing.T) {
 			defer wg.Done()
 			defer clientConn.Close()
 			c, err := netplay.Connect(ctx, clientConn, tok, netplay.ClientConfig[msg.PlayerView, rtslite.Input, msg.PlayerViewDelta, rtslite.Observation]{
-				Protocol: msg.CBORProtocolVersion, Tuning: tuning, Codec: rtslite.ViewCodec(),
+				Protocol: msg.SchemaVersion, Tuning: tuning, Codec: rtslite.ViewCodec(),
 				EncodeInput: func(dst []byte, a rtslite.Input) []byte { return a.AppendCBORTo(dst) },
 				Project: func(v *msg.PlayerView, sl session.SlotID) rtslite.Observation {
 					return rtslite.Observation{You: sl, View: v, Annotation: rtslite.Annotation(v)}

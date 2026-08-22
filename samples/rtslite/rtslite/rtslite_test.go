@@ -162,7 +162,7 @@ func record(t *testing.T, src func(session.Tick, session.SlotID) (rtslite.Input,
 	w := episode.NewWriter[rtslite.State, rtslite.Input, rtslite.Observation](
 		episode.Streams{Decisions: &l.decisions, Events: &l.events, Outcomes: &l.outcomes, World: &l.world},
 		episode.ReplayComplete,
-		episode.Meta{EpisodeID: "rts-ep", ProtocolVersion: msg.CBORProtocolVersion},
+		episode.Meta{EpisodeID: "rts-ep", ProtocolVersion: msg.SchemaVersion},
 	)
 	g := rtslite.RuleSet{Players: 2, TickLimit: 400}
 	tuning := testTuning
@@ -248,7 +248,12 @@ func TestScriptedBattleDigestPinned(t *testing.T) {
 		t.Fatalf("checkpoints: %v (%d)", err, len(cps))
 	}
 	last := cps[len(cps)-1]
-	const wantTick, wantWorld, wantAction = 101, "1c1e1094352a9b41", "d8cd69f005b7cc42"
+// The world digests moved once, when concept:cbor-world-profile became the
+// map shape of tinybind v0.5.23: the profile's integer labels are gone and
+// members carry their names. The action digests did not move, because the
+// array shape encodes byte for byte what the wire profile did — which is
+// what shows the encoding changed and the simulation did not.
+	const wantTick, wantWorld, wantAction = 101, "959a52fe141be21f", "d8cd69f005b7cc42"
 	if last.Tick != wantTick || last.WorldHash != wantWorld || last.ActionHash != wantAction {
 		t.Fatalf("final checkpoint tick %d (of %d) world %s action %s (pinned %d / %s / %s)",
 			last.Tick, ticks, last.WorldHash, last.ActionHash, wantTick, wantWorld, wantAction)

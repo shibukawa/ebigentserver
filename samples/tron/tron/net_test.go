@@ -37,7 +37,7 @@ func netTicket(t *testing.T, priv ed25519.PrivateKey, jti, role string, seat ses
 
 func clientConfig(tuning session.TuningProfile) netplay.ClientConfig[tron.State, tron.Input, msg.TronStateDelta, tron.Observation] {
 	return netplay.ClientConfig[tron.State, tron.Input, msg.TronStateDelta, tron.Observation]{
-		Protocol:    msg.CBORProtocolVersion,
+		Protocol:    msg.SchemaVersion,
 		Tuning:      tuning,
 		Codec:       tron.Codec(),
 		EncodeInput: func(dst []byte, a tron.Input) []byte { return a.AppendCBORTo(dst) },
@@ -95,7 +95,7 @@ func TestEightPlayersSpectatorsAndInjectedFailures(t *testing.T) {
 
 	takeover := make(chan session.SlotID, 8)
 	server, err := netplay.NewServer(ctx, netplay.ServerConfig[tron.State, tron.Input]{
-		SessionID: "tron-1", Protocol: msg.CBORProtocolVersion,
+		SessionID: "tron-1", Protocol: msg.SchemaVersion,
 		Verifier: verifier, Seed: 9, Tuning: tuning, Budget: bud,
 		MakeSender: func(session.SlotID, string) (statesync.ViewSender[tron.State], error) {
 			return statesync.NewSender(tron.Codec(), tuning)
@@ -203,7 +203,7 @@ func TestEightPlayersSpectatorsAndInjectedFailures(t *testing.T) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		if _, err := admission.Join(ctx, abuserConn, msg.CBORProtocolVersion, netTicket(t, priv, "p7", "player", 7)); err != nil {
+		if _, err := admission.Join(ctx, abuserConn, msg.SchemaVersion, netTicket(t, priv, "p7", "player", 7)); err != nil {
 			t.Errorf("abuser join: %v", err)
 			return
 		}
@@ -231,7 +231,7 @@ func TestEightPlayersSpectatorsAndInjectedFailures(t *testing.T) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		if _, err := admission.Join(ctx, cheatConn, msg.CBORProtocolVersion, netTicket(t, priv, "spec2", netplay.RoleSpectator, 0)); err != nil {
+		if _, err := admission.Join(ctx, cheatConn, msg.SchemaVersion, netTicket(t, priv, "spec2", netplay.RoleSpectator, 0)); err != nil {
 			return
 		}
 		layer := seqack.New(cheatConn, seqack.Options{Policy: seqack.PiggybackOnly})
@@ -372,7 +372,7 @@ func TestAdmissionCapacityFailsClosed(t *testing.T) {
 	}
 	ctx := context.Background()
 	server, err := netplay.NewServer(ctx, netplay.ServerConfig[tron.State, tron.Input]{
-		SessionID: "cap", Protocol: msg.CBORProtocolVersion,
+		SessionID: "cap", Protocol: msg.SchemaVersion,
 		Verifier: &admission.Verifier{Keys: map[string]ed25519.PublicKey{"k1": pub}, Audience: netAudience},
 		Tuning:   testTuning, Budget: bud,
 		MakeSender: func(session.SlotID, string) (statesync.ViewSender[tron.State], error) {

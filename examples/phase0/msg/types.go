@@ -82,25 +82,45 @@ type PlayerInput struct {
 	Buttons uint16
 }
 
-var _ = cborbind.GenerateWireCodec[PlayerInput]()
-
 // Entity is one identified world object; the identity lets the generated
 // delta diff a collection element by element.
 type Entity struct {
-	ID   uint32     `cbor:"id,key=1,identity"`
-	PosX Fixed1024  `cbor:"x,key=2"`
-	PosY Fixed1024  `cbor:"y,key=3"`
-	Vel  Fixed65536 `cbor:"vel,key=4"`
-	HP   int32      `cbor:"hp,key=5"`
+	ID   uint32     `json:"id"`
+	PosX Fixed1024  `json:"x"`
+	PosY Fixed1024  `json:"y"`
+	Vel  Fixed65536 `json:"vel"`
+	HP   int32      `json:"hp"`
 }
 
 // WorldState is the world-profile root (concept:world-state,
 // decision:go-struct-world-state): an evolvable map encoding that a snapshot
 // can outlive the version that wrote it.
 type WorldState struct {
-	Tick     uint64   `cbor:"tick,key=1"`
-	Entities []Entity `cbor:"entities,key=2"`
-	Phase    uint8    `cbor:"phase,key=3"`
+	Tick     uint64   `json:"tick"`
+	Entities []Entity `json:"entities"`
+	Phase    uint8    `json:"phase"`
 }
 
-var _ = cborbind.GenerateWorldDelta[WorldState]()
+// The calls below are what ask the generator for each codec: there is no
+// declaration to write any more, and naming an entry point is the ask
+// (requirement:cborbind-migration).
+//
+// Which container a type uses is a contract rather than a preference. An
+// input is an array — positional, no field names on the wire, and both
+// ends rebuilt together — which is concept:cbor-wire-profile. A world
+// state is a map, so a decoder can skip a key it does not know and the two
+// ends may ship apart, which is concept:cbor-world-profile.
+
+
+// AppendPlayerInput writes one playerinput in the array shape.
+func AppendPlayerInput(dst []byte, v PlayerInput) []byte { return cborbind.AppendCBORInArrayTo(dst, v) }
+
+// DecodePlayerInput reads one playerinput.
+func DecodePlayerInput(data []byte) (PlayerInput, error) { return cborbind.DecodeCBORInArrayFrom[PlayerInput](data) }
+
+
+// AppendWorldState writes one worldstate in the map shape.
+func AppendWorldState(dst []byte, v WorldState) []byte { return cborbind.AppendCBORInMapTo(dst, v) }
+
+// DecodeWorldState reads one worldstate.
+func DecodeWorldState(data []byte) (WorldState, error) { return cborbind.DecodeCBORInMapFrom[WorldState](data) }

@@ -157,6 +157,13 @@ func readStruct(name string, st *types.Struct) (Struct, error) {
 func classify(t types.Type) (Kind, string, error) {
 	switch u := t.Underlying().(type) {
 	case *types.Basic:
+		// A bare int or uint is 64-bit on the host and 32-bit on wasm, so
+		// the two ends of one connection would disagree about what fits.
+		// The width has to be spelled (rule:codegen-rejects-nondeterministic-types).
+		switch u.Kind() {
+		case types.Int, types.Uint, types.Uintptr:
+			return 0, "", fmt.Errorf("%s is host-width; spell the width", u)
+		}
 		info := u.Info()
 		switch {
 		case info&types.IsBoolean != 0:

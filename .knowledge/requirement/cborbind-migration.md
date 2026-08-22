@@ -6,6 +6,7 @@ title: Cborbind Migration
 Move to tinybind-go v0.5.23, whose cborbind is a different API from the pinned v0.5.17 one, and take over what it no longer generates.
 
 ```yaml
+status: done — v0.5.23 is pinned, all six msg packages regenerated, and the full suite passes
 upstream_state:
   gone_then_back: cborbind is absent in v0.5.21 and present again in v0.5.23 as one file with a new API
   no_declaration: >
@@ -25,15 +26,25 @@ framework_must_now_own:
     stops being a choice and becomes work: statesync.Codec's Diff, AppendDelta,
     DecodeDelta, and ApplyDelta have no upstream source.
   clone: the one statesync.Codec field always hand-written, and the one whose hand-written form aliases a slice; generating it removes that defect class
-  float_refusal: >
-    no profile means no float rejection at the encoder. rule:no-float-in-simulation
-    and decision:fixed-point-numeric-representation now need a generation-time
-    check of their own, since v0.5.23 accepts float64 as an ordinary field type.
-  size_limits: the bounds the old profile carried belong to data:runtime-resource-budget, which already holds their kind
+  determinism_gate: >
+    no profile means no float rejection at the encoder, and v0.5.23's own
+    analysis refuses nothing either — it lists float64, int, and uint among
+    the field types it accepts. So codegen.Read is the only place
+    rule:codegen-rejects-nondeterministic-types still holds: it refuses
+    floats, host-width int and uint, and maps, naming the field rather than
+    skipping it.
+  size_limits: the bounds the old profile carried are cbor.DecoderOptions now, emitted as a variable a deployment can lower
+  schema_version: v0.5.23 derives none, so codegen does — a fingerprint over type names, field names, order, and how each field is carried
 migration_in_this_repository:
   tag_change: member names come from the json tag; six msg packages carry cbor tags with explicit keys today
   call_sites: fifteen GenerateWireCodec and GenerateWorldDelta declarations across examples, samples, and the tutorial
   driver: cborbind itself imports nothing; only generated code names the driver, so a package calling no entry point links no CBOR
   tinygo: the generated codecs build for wasm and wasip1, which concept:build-target still requires
-verified_by: every msg package regenerating under v0.5.23 with byte-identical wire output for unchanged types, and a float field in a simulation type failing generation
+wire_moved_once: >
+  the array shape encodes byte for byte what concept:cbor-wire-profile did, so
+  every pinned action digest survived the migration untouched. The map shape
+  does not: the profile's integer labels are gone and members carry their
+  names, so every world digest moved exactly once. The action digests holding
+  still is what shows the encoding changed and no simulation did.
+verified_by: the full suite, including the two-instance LAN match of the step2 tutorial, which exchanges generated deltas end to end
 ```

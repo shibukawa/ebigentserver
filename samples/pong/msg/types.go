@@ -77,24 +77,44 @@ type PaddleInput struct {
 	Buttons uint8
 }
 
-var _ = cborbind.GenerateWireCodec[PaddleInput]()
-
 // PongState is the authoritative world (concept:world-state) on the world
 // profile, diffed by the generated delta for data:state-delta.
 type PongState struct {
-	Tick   uint64     `cbor:"tick,key=1"`
-	BallX  Fixed1024  `cbor:"bx,key=2"`
-	BallY  Fixed1024  `cbor:"by,key=3"`
-	VelX   Fixed65536 `cbor:"vx,key=4"`
-	VelY   Fixed65536 `cbor:"vy,key=5"`
-	LeftY  Fixed1024  `cbor:"ly,key=6"`
-	RightY Fixed1024  `cbor:"ry,key=7"`
+	Tick   uint64     `json:"tick"`
+	BallX  Fixed1024  `json:"bx"`
+	BallY  Fixed1024  `json:"by"`
+	VelX   Fixed65536 `json:"vx"`
+	VelY   Fixed65536 `json:"vy"`
+	LeftY  Fixed1024  `json:"ly"`
+	RightY Fixed1024  `json:"ry"`
 	// ScoreL and ScoreR count points; first to WinScore ends the game.
-	ScoreL uint8 `cbor:"sl,key=8"`
-	ScoreR uint8 `cbor:"sr,key=9"`
+	ScoreL uint8 `json:"sl"`
+	ScoreR uint8 `json:"sr"`
 	// Winner is the winning slot, 0 while playing.
-	Winner uint16 `cbor:"win,key=10"`
-	Over   bool   `cbor:"over,key=11"`
+	Winner uint16 `json:"win"`
+	Over   bool   `json:"over"`
 }
 
-var _ = cborbind.GenerateWorldDelta[PongState]()
+// The calls below are what ask the generator for each codec: there is no
+// declaration to write any more, and naming an entry point is the ask
+// (requirement:cborbind-migration).
+//
+// Which container a type uses is a contract rather than a preference. An
+// input is an array — positional, no field names on the wire, and both
+// ends rebuilt together — which is concept:cbor-wire-profile. A world
+// state is a map, so a decoder can skip a key it does not know and the two
+// ends may ship apart, which is concept:cbor-world-profile.
+
+
+// AppendPaddleInput writes one paddleinput in the array shape.
+func AppendPaddleInput(dst []byte, v PaddleInput) []byte { return cborbind.AppendCBORInArrayTo(dst, v) }
+
+// DecodePaddleInput reads one paddleinput.
+func DecodePaddleInput(data []byte) (PaddleInput, error) { return cborbind.DecodeCBORInArrayFrom[PaddleInput](data) }
+
+
+// AppendPongState writes one pongstate in the map shape.
+func AppendPongState(dst []byte, v PongState) []byte { return cborbind.AppendCBORInMapTo(dst, v) }
+
+// DecodePongState reads one pongstate.
+func DecodePongState(data []byte) (PongState, error) { return cborbind.DecodeCBORInMapFrom[PongState](data) }

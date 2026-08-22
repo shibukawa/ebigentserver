@@ -59,17 +59,18 @@ func TestWorldStateRoundTripsOnWorldProfile(t *testing.T) {
 	assertWorldEqual(t, in, out)
 }
 
-// data:protocol-version — the generated schema digest exists, and re-encoding
-// under it is stable. The constant is asserted non-empty rather than pinned:
-// the schema text beside it is what a mismatch is diagnosed with.
-func TestProtocolVersionIsDerivedFromSchema(t *testing.T) {
-	if CBORProtocolVersion == "" {
-		t.Fatal("CBORProtocolVersion is empty")
+// data:game-version — the schema fingerprint exists and is the whole of
+// what the handshake compares. tinybind derived one until v0.5.21; the
+// framework derives it now (requirement:cborbind-migration), so what is
+// asserted here is only that the constant reached this package.
+func TestSchemaVersionIsDerived(t *testing.T) {
+	if SchemaVersion == "" {
+		t.Fatal("SchemaVersion is empty")
 	}
-	if CBORSchema == "" {
-		t.Fatal("CBORSchema is empty")
+	if len(SchemaVersion) != 16 {
+		t.Errorf("SchemaVersion %q is %d hex characters, want 16", SchemaVersion, len(SchemaVersion))
 	}
-	t.Logf("protocol version %s over schema:\n%s", CBORProtocolVersion, CBORSchema)
+	t.Logf("schema version %s", SchemaVersion)
 }
 
 // decision:framework-side-delta-generation — the generated diff carries only

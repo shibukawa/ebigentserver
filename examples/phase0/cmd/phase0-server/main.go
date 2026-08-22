@@ -11,7 +11,7 @@ import (
 
 func main() {
 	fmt.Println("phase0 dedicated server (headless)")
-	fmt.Println("protocol version:", msg.CBORProtocolVersion)
+	fmt.Println("protocol version:", msg.SchemaVersion)
 
 	in := msg.PlayerInput{Tick: 1, MoveX: 1024, MoveY: -512, Buttons: 1}
 	encoded := in.AppendCBORTo(nil)

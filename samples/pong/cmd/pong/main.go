@@ -58,7 +58,7 @@ func main() {
 		defer closeAll()
 		w := episode.NewWriter[pong.State, pong.Input, pong.Observation](
 			streams, episode.ReplayComplete,
-			episode.Meta{ProtocolVersion: msg.CBORProtocolVersion,
+			episode.Meta{ProtocolVersion: msg.SchemaVersion,
 				AgentKinds: map[session.SlotID]string{pong.SlotLeft: "bot", pong.SlotRight: "bot"}},
 		)
 		cfg.Recorder = w
