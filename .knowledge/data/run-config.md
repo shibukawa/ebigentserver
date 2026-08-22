@@ -17,7 +17,7 @@ run_fields:
   - transport selection by concept:transport-capability
   - synchronization mode, baseline mode, ack mode
   - time_scale of concept:game-time-control, including step and accelerated
-  - agent roster: which controller fills each concept:player-slot
+  - agent roster: which controller fills each concept:player-slot, which seeds api:roster and may fill it completely so a run never gathers
   - episode logging destination and sampling rate
   - evaluation_version of data:evaluation-signal
   - api:dev-debug-endpoint address, honored only by a development build

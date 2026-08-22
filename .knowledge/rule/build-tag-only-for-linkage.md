@@ -19,6 +19,8 @@ not_justified:
 default: runtime configuration through data:run-config
 renderer_linkage_is_justified:
   claim: whether an artifact links system:ebitengine is a build fact, not a run value, so the playing and headless forms of one entry point are a tag rather than two directories
+  applies_at: tier a of concept:engine-coupling-tier only; a tier b or tier c project has no untagged and tagged pair because every one of its artifacts links the engine
+  what_the_tag_now_buys: not the ability to host, since api:run-wrapper branches on data:run-config topology at run time and an untagged artifact hosts perfectly well on a developer machine, but deployment without a display, per decision:xvfb-for-coupled-game-servers
   why_it_passes_the_test: they cannot share a process — a headless server must not link the engine at all under rule:engine-import-confined-to-client-entry — and the engine is exactly the "optional heavy dependency" case above
   why_it_is_not_the_rejected_alternative: decision:entry-points-over-build-tags rejects a tag threaded through library packages; this one never leaves the entry point directory, so a missing tag still fails there rather than somewhere distant
   bound: two files in one cmd directory, each supplying the same small set of functions; a third variant means the split was wrong

@@ -1,0 +1,24 @@
+---
+id: api:roster
+type: api
+title: Roster
+---
+Mutable list of who will play, filled before a concept:session exists and frozen into one when play starts.
+
+```yaml
+holds: one entry per prospective concept:player-slot, carrying seat id, controller kind, and identity
+controller_kinds: local human, remote human, local bot, remote bot, matching concept:participant-shape
+local_operations:
+  - join a local seat from a device press, bounded by the accepted devices of api:run-wrapper
+  - add a bot seat
+  - leave
+  - mark ready
+remote_operations:
+  - admit a remote seat, driven by flow:session-admission rather than by any screen
+  - report departure before play, distinct from concept:agent-departure-policy which governs departure during play
+observation: a change callback, which ui:lobby-scene renders and a custom scene may use instead
+seeding: the slot table of data:run-config pre fills entries, so a run may skip gathering entirely and start headless
+finalize: builds concept:session, admits every entry through api:agent-interface, and wires transports, producing the running match of concept:match-lifecycle
+raw_api_is_the_contract: ui:lobby-scene is only a default caller, so a game may replace the screen without losing admission, discovery, or bot seating
+identity: seat identity comes from data:session-ticket where one exists; rule:identity-token-not-accepted-by-session still holds
+```

@@ -9,9 +9,15 @@ How many agents share one concept:session and how they reach it — the first qu
 shapes:
   - name: solo
     agents: one, plus any local bots
-    seats: fixed at one
+    seats: one for the person, plus one for every non player the game wants recorded
     link: none, in process only
     targets: one rendering entry and a simulation entry
+    enemies_are_seats: >
+      a solo game's opponents belong on concept:player-slot rather than in
+      an update function, because a seat decides through
+      api:agent-interface and therefore leaves data:episode-log behind.
+      That is what puts a solo game on the same distillation loop as every
+      other shape; see sample:solo-pursuit.
   - name: duo
     agents: two, and latency is what decides the game
     seats: fixed at two

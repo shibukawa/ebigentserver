@@ -14,8 +14,11 @@
 {"category": "interface", "id": "api:lan-discovery", "path": ".knowledge/api/lan-discovery.md", "role": "primary", "title": "LAN Discovery", "type": "api"}
 {"category": "interface", "id": "api:manual-signaling-token", "path": ".knowledge/api/manual-signaling-token.md", "role": "primary", "title": "Manual Signaling Token", "type": "api"}
 {"category": "interface", "id": "api:message-framing", "path": ".knowledge/api/message-framing.md", "role": "primary", "title": "Message Framing", "type": "api"}
+{"category": "interface", "id": "api:roster", "path": ".knowledge/api/roster.md", "role": "primary", "title": "Roster", "type": "api"}
+{"category": "interface", "id": "api:run-wrapper", "path": ".knowledge/api/run-wrapper.md", "role": "primary", "title": "Run Wrapper", "type": "api"}
 {"category": "interface", "id": "api:runtime-observability", "path": ".knowledge/api/runtime-observability.md", "role": "primary", "title": "Runtime Observability", "type": "api"}
 {"category": "interface", "id": "api:sequence-ack-layer", "path": ".knowledge/api/sequence-ack-layer.md", "role": "primary", "title": "Sequence And Ack Layer", "type": "api"}
+{"category": "interface", "id": "api:tick-hooks", "path": ".knowledge/api/tick-hooks.md", "role": "primary", "title": "Tick Hooks", "type": "api"}
 {"category": "interface", "id": "api:transport-interface", "path": ".knowledge/api/transport-interface.md", "role": "primary", "title": "Transport Interface", "type": "api"}
 {"category": "concept", "id": "concept:ack-transmission-policy", "path": ".knowledge/concept/ack-transmission-policy.md", "role": "supporting", "title": "Ack Transmission Policy", "type": "concept"}
 {"category": "concept", "id": "concept:action", "path": ".knowledge/concept/action.md", "role": "supporting", "title": "Action", "type": "concept"}
@@ -36,6 +39,7 @@
 {"category": "concept", "id": "concept:dedicated-server-mode", "path": ".knowledge/concept/dedicated-server-mode.md", "role": "supporting", "title": "Dedicated Server Mode", "type": "concept"}
 {"category": "concept", "id": "concept:delta-baseline-policy", "path": ".knowledge/concept/delta-baseline-policy.md", "role": "supporting", "title": "Delta Baseline Policy", "type": "concept"}
 {"category": "concept", "id": "concept:deployment-combination", "path": ".knowledge/concept/deployment-combination.md", "role": "supporting", "title": "Deployment Combination", "type": "concept"}
+{"category": "concept", "id": "concept:engine-coupling-tier", "path": ".knowledge/concept/engine-coupling-tier.md", "role": "supporting", "title": "Engine Coupling Tier", "type": "concept"}
 {"category": "concept", "id": "concept:episode-recording-mode", "path": ".knowledge/concept/episode-recording-mode.md", "role": "supporting", "title": "Episode Recording Mode", "type": "concept"}
 {"category": "concept", "id": "concept:episode", "path": ".knowledge/concept/episode.md", "role": "supporting", "title": "Episode", "type": "concept"}
 {"category": "concept", "id": "concept:execution-topology", "path": ".knowledge/concept/execution-topology.md", "role": "supporting", "title": "Execution Topology", "type": "concept"}
@@ -44,6 +48,7 @@
 {"category": "concept", "id": "concept:input-synchronization", "path": ".knowledge/concept/input-synchronization.md", "role": "supporting", "title": "Input Synchronization", "type": "concept"}
 {"category": "concept", "id": "concept:lag-compensation", "path": ".knowledge/concept/lag-compensation.md", "role": "supporting", "title": "Lag Compensation", "type": "concept"}
 {"category": "concept", "id": "concept:listen-server-mode", "path": ".knowledge/concept/listen-server-mode.md", "role": "supporting", "title": "Listen Server Mode", "type": "concept"}
+{"category": "concept", "id": "concept:match-lifecycle", "path": ".knowledge/concept/match-lifecycle.md", "role": "supporting", "title": "Match Lifecycle", "type": "concept"}
 {"category": "concept", "id": "concept:observation", "path": ".knowledge/concept/observation.md", "role": "supporting", "title": "Observation", "type": "concept"}
 {"category": "concept", "id": "concept:participant-shape", "path": ".knowledge/concept/participant-shape.md", "role": "supporting", "title": "Participant Shape", "type": "concept"}
 {"category": "concept", "id": "concept:player-slot", "path": ".knowledge/concept/player-slot.md", "role": "supporting", "title": "Player Slot", "type": "concept"}
@@ -122,8 +127,10 @@
 {"category": "constraint", "id": "decision:shared-tree-with-level-gates", "path": ".knowledge/decision/shared-tree-with-level-gates.md", "role": "supporting", "title": "Shared Tree With Level Gates", "type": "decision"}
 {"category": "constraint", "id": "decision:single-dev-console-ui", "path": ".knowledge/decision/single-dev-console-ui.md", "role": "supporting", "title": "Single Dev Console UI", "type": "decision"}
 {"category": "constraint", "id": "decision:split-realtime-and-control-plane-processes", "path": ".knowledge/decision/split-realtime-and-control-plane-processes.md", "role": "supporting", "title": "Split Realtime And Control Plane Processes", "type": "decision"}
+{"category": "constraint", "id": "decision:vm-host-not-for-servers", "path": ".knowledge/decision/vm-host-not-for-servers.md", "role": "supporting", "title": "Engine Virtual Machine Host Not Used For Servers", "type": "decision"}
 {"category": "constraint", "id": "decision:webtransport-primary-for-wasm", "path": ".knowledge/decision/webtransport-primary-for-wasm.md", "role": "supporting", "title": "WebTransport Primary For WASM Dedicated Server", "type": "decision"}
 {"category": "constraint", "id": "decision:world-persistence-is-game-scope", "path": ".knowledge/decision/world-persistence-is-game-scope.md", "role": "supporting", "title": "World Persistence Is Game Scope", "type": "decision"}
+{"category": "constraint", "id": "decision:xvfb-for-coupled-game-servers", "path": ".knowledge/decision/xvfb-for-coupled-game-servers.md", "role": "supporting", "title": "Virtual Display For Coupled Game Servers", "type": "decision"}
 {"category": "behavior", "id": "flow:agent-decision-loop", "path": ".knowledge/flow/agent-decision-loop.md", "role": "primary", "title": "Agent Decision Loop", "type": "flow"}
 {"category": "behavior", "id": "flow:automated-playtest", "path": ".knowledge/flow/automated-playtest.md", "role": "primary", "title": "Automated Playtest", "type": "flow"}
 {"category": "behavior", "id": "flow:behavior-profile-derivation", "path": ".knowledge/flow/behavior-profile-derivation.md", "role": "primary", "title": "Behavior Profile Derivation", "type": "flow"}
@@ -197,6 +204,7 @@
 {"category": "constraint", "id": "rule:protocol-version-must-match", "path": ".knowledge/rule/protocol-version-must-match.md", "role": "supporting", "title": "Protocol Version Must Match Exactly", "type": "rule"}
 {"category": "constraint", "id": "rule:regeneration-preserves-approved-nodes", "path": ".knowledge/rule/regeneration-preserves-approved-nodes.md", "role": "supporting", "title": "Regeneration Preserves Approved Nodes", "type": "rule"}
 {"category": "constraint", "id": "rule:sample-adds-one-capability", "path": ".knowledge/rule/sample-adds-one-capability.md", "role": "supporting", "title": "Sample Adds One Capability", "type": "rule"}
+{"category": "constraint", "id": "rule:server-hooks-avoid-rendering-work", "path": ".knowledge/rule/server-hooks-avoid-rendering-work.md", "role": "supporting", "title": "Server Hooks Avoid Rendering Work", "type": "rule"}
 {"category": "constraint", "id": "rule:session-independent-of-transport-and-agent-kind", "path": ".knowledge/rule/session-independent-of-transport-and-agent-kind.md", "role": "supporting", "title": "Session Independent Of Transport And Agent Kind", "type": "rule"}
 {"category": "constraint", "id": "rule:shared-rng-seed", "path": ".knowledge/rule/shared-rng-seed.md", "role": "supporting", "title": "Shared RNG Seed", "type": "rule"}
 {"category": "constraint", "id": "rule:ticket-bound-to-connection", "path": ".knowledge/rule/ticket-bound-to-connection.md", "role": "supporting", "title": "Ticket Bound To Connection", "type": "rule"}
@@ -207,6 +215,7 @@
 {"category": "objective", "id": "sample:pong", "path": ".knowledge/sample/pong.md", "role": "primary", "title": "Pong", "type": "sample"}
 {"category": "objective", "id": "sample:reversi", "path": ".knowledge/sample/reversi.md", "role": "primary", "title": "Reversi", "type": "sample"}
 {"category": "objective", "id": "sample:rts-lite", "path": ".knowledge/sample/rts-lite.md", "role": "primary", "title": "RTS Lite", "type": "sample"}
+{"category": "objective", "id": "sample:solo-pursuit", "path": ".knowledge/sample/solo-pursuit.md", "role": "primary", "title": "Solo Pursuit", "type": "sample"}
 {"category": "objective", "id": "sample:tic-tac-toe", "path": ".knowledge/sample/tic-tac-toe.md", "role": "primary", "title": "Tic-Tac-Toe", "type": "sample"}
 {"category": "objective", "id": "sample:tron", "path": ".knowledge/sample/tron.md", "role": "primary", "title": "Tron Light Cycle", "type": "sample"}
 {"category": "external", "id": "system:duckdb", "path": ".knowledge/system/duckdb.md", "role": "supporting", "title": "DuckDB", "type": "system"}
@@ -228,4 +237,5 @@
 {"category": "interface", "id": "ui:behavior-tree-editor", "path": ".knowledge/ui/behavior-tree-editor.md", "role": "primary", "title": "Behavior Tree Editor", "type": "ui"}
 {"category": "interface", "id": "ui:chip-benchmark", "path": ".knowledge/ui/chip-benchmark.md", "role": "primary", "title": "Chip Benchmark", "type": "ui"}
 {"category": "interface", "id": "ui:dev-console", "path": ".knowledge/ui/dev-console.md", "role": "primary", "title": "Dev Console", "type": "ui"}
+{"category": "interface", "id": "ui:lobby-scene", "path": ".knowledge/ui/lobby-scene.md", "role": "primary", "title": "Lobby Scene", "type": "ui"}
 {"category": "objective", "id": "vision:agent-session-runtime", "path": ".knowledge/vision/agent-session-runtime.md", "role": "primary", "title": "Agent Session Runtime", "type": "vision"}
