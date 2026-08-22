@@ -18,15 +18,22 @@ go run ./tutorial/step2-lobby
 
 <Steps>
 
-1. 各インスタンスが1.5秒だけネットワークを探す
+1. どちらもまずネットワークに「誰かいますか」と聞く
 
-2. 最初に起動した方は誰も応えないので、**自分がホストになる**
+2. 最初に起動した方は誰も応えないので、**自分がホストになって着席し、待つ**
 
-3. 次の方はそれを見つけて、空いている席のチケットをもらう
+3. 次の方には**見つかったゲームの一覧が出る**。クリックで選んで参加する
 
-4. どちらもクリックで着席し、**二人目が来た時点で対局が始まる**
+4. 二人目が着席した瞬間に対局が始まる
 
 </Steps>
+
+ホスト側で押す操作がないのは意図的だ。**選択肢が1つしかない問いを出しても仕方がない**——
+そこには他に誰もおらず、空いているのは自分の席だけになる。押す操作は、二択がある方の判断、
+つまり「この人のゲームに入るか」に取ってある。
+
+対局が終わったら**最終盤面がそのまま残る**。クリックするとロビーに戻る。終わった瞬間に
+画面を取り上げると、どう終わったのかを見る機会がなくなるからだ。
 
 ## `Update` が何も決めなくなる
 
@@ -123,9 +130,13 @@ func Binding() run.Binding[State, Action, Observation] {
 ```go
 // tutorial/step2-lobby/main.go — ウィンドウの隣
 func network() run.Networking[game.State, game.Action, game.Observation] {
-	return lan.Auto(lan.Options[...]{ /* codec と入出力 */ }, 1500*time.Millisecond)
+	return lan.Preset(lan.Options[...]{ /* codec と入出力 */ })
 }
 ```
+
+`Networking` が `Discover` / `Host` / `Join` の3つに分かれているのは、**プレイヤーには
+誰がいるかを見て決める権利がある**からだ。1つの呼び出しで済ませると、最初に応えた相手の
+試合に放り込むことになる。
 
 ネットワークの宣言が**ルールの隣ではなくエントリポイントにある**のは意図的だ。どのトランスポートで
 相手に届くかは、そのビルドがどこで走るかの性質であって、ゲームが何であるかの性質ではない。
@@ -170,6 +181,8 @@ admission が席に束ねた接続になる。
 ウィンドウなしで全体が通ることをテストが固定している。
 
 - `TestTwoInstancesPlayOneBoard` — ホストが集め、ゲストが実 WebSocket で空席に着き、**両方の席が実際に指し**、ゲストはルールを一度も走らせずに同じ最終盤面に到達する
+- `TestPresetDiscoversThenJoins` — 誰もいなければ発見は空で、ホストが立った後は1件だけ見え、参加は人が選んでから起きる
+- `TestRebindMovesTheOfferToTheNextMatch` — roster は1試合のもの。次の試合の roster に付け替えないと、到着した人がどこにも座らない
 - `TestCodecRoundTripsTheBoard` — snapshot と delta の両方が盤面を復元する
 - `TestObservationCarriesTheLegalMoves` — 手番でない席の合法手は空
 
