@@ -33,10 +33,10 @@ func (v *view) Intake(seating run.Seating[game.Action]) {
 
 ```
 step2-lobby/
-├── main.go          ウィンドウ・マウス・描画（engine を import する唯一の場所）
+├── main.go          ウィンドウ・マウス・描画・ネットワークの宣言
 ├── game/
 │   ├── game.go      ルール。session.Simulation の実装
-│   ├── bind.go      Options / Binding / Network の宣言
+│   ├── bind.go      Options / Binding の宣言（engine もトランスポートも知らない）
 │   ├── game_test.go ルールとコーデックのテスト
 │   └── net_test.go  2インスタンスがウィンドウなしで1局を通すテスト
 └── msg/
@@ -71,3 +71,9 @@ go generate ./tutorial/step2-lobby/msg/
 
 記録もまだ取っていません。`eb.Options.Record` に出力先を書けば、この対局がそのまま
 コーパスになります。それが step 3 の入口です。
+
+## ブラウザでは動きません
+
+LAN プリセットは待ち受けソケットと UDP ブロードキャストを要りますが、ブラウザにはどちらも
+ありません。`game/` と `msg/` は全ターゲットでビルドできますが、この `main.go` はネイティブ限定です。
+ブラウザから他のプレイヤーに届く経路は WebRTC + 手動トークンで、それは別のステップになります。

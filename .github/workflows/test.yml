@@ -25,6 +25,8 @@ jobs:
       # directly by importcheck, not by a build matrix. The toolchain (cli,
       # cmd/ebigent) is a host tool and never a concept:build-target: it runs
       # on a developer machine, so its terminal UI has no reason to compile
-      # for a browser.
+      # for a browser. A tutorial step that offers LAN play is native too:
+      # api:lan-preset needs a listening socket and udp broadcast, and a
+      # browser has neither — its rules packages still build here.
       - name: Build js/wasm
-        run: GOOS=js GOARCH=wasm go build $(go list ./... | grep -v -e '/cli$' -e '/cmd/ebigent$' -e '^github.com/shibukawa/ebigentserver$')
+        run: GOOS=js GOARCH=wasm go build $(go list ./... | grep -v -e '/tutorial/step2-lobby$' -e '/cli$' -e '/cmd/ebigent$' -e '^github.com/shibukawa/ebigentserver$')

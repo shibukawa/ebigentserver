@@ -21,6 +21,7 @@ import (
 	"os"
 	"os/signal"
 	"sync"
+	"time"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
@@ -29,8 +30,10 @@ import (
 
 	"github.com/shibukawa/ebigentserver/run"
 	"github.com/shibukawa/ebigentserver/run/eb"
+	"github.com/shibukawa/ebigentserver/run/lan"
 	"github.com/shibukawa/ebigentserver/session"
 	"github.com/shibukawa/ebigentserver/tutorial/step2-lobby/game"
+	"github.com/shibukawa/ebigentserver/tutorial/step2-lobby/msg"
 )
 
 // Board geometry in logical pixels, unchanged from step 1.
@@ -53,7 +56,7 @@ func main() {
 		Options: game.Options(),
 		Binding: game.Binding(),
 		Client:  &view{hover: noCell},
-		Network: game.Network(),
+		Network: network(),
 		Lobby: eb.LobbyOptions{
 			// The other seat belongs to a person, so leave it empty
 			// and let their arrival be what starts the match.
@@ -70,6 +73,25 @@ func main() {
 		fmt.Fprintln(os.Stderr, "step2-lobby:", err)
 		os.Exit(1)
 	}
+}
+
+// network is the LAN preset: look for a game on this network for a
+// moment, join it if one answers, and offer one if none does.
+//
+// That is the whole configuration, and it lives here rather than beside
+// the rules because which transport reaches the other player is a
+// property of where this build runs. A browser build of the same rules
+// would name a different one.
+func network() run.Networking[game.State, game.Action, game.Observation] {
+	return lan.Auto(lan.Options[game.State, game.Action, msg.TTTStateDelta, game.Observation]{
+		Name:        "tictactoe",
+		Protocol:    game.Protocol,
+		Codec:       game.Codec(),
+		Tuning:      game.Tuning(),
+		EncodeInput: game.EncodeAction,
+		DecodeInput: game.DecodeAction,
+		Project:     game.Simulation{}.Project,
+	}, 1500*time.Millisecond)
 }
 
 // view is the play scene. It holds the last board it was given and no

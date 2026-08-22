@@ -66,6 +66,20 @@ func (p *player) board() (game.State, bool) {
 	return p.world, p.got
 }
 
+// lanOptions is what main.go declares at the entry point, repeated here
+// because a test is another entry point: it chooses a transport too.
+func lanOptions() lan.Options[game.State, game.Action, msg.TTTStateDelta, game.Observation] {
+	return lan.Options[game.State, game.Action, msg.TTTStateDelta, game.Observation]{
+		Name:        "tictactoe",
+		Protocol:    game.Protocol,
+		Codec:       game.Codec(),
+		Tuning:      game.Tuning(),
+		EncodeInput: game.EncodeAction,
+		DecodeInput: game.DecodeAction,
+		Project:     game.Simulation{}.Project,
+	}
+}
+
 // TestTwoInstancesPlayOneBoard is step 2 end to end without a window:
 // one instance hosts and one joins, each holds one seat, and the board
 // they see is the same board because only one of them is running the
@@ -74,7 +88,7 @@ func TestTwoInstancesPlayOneBoard(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	opts := game.LANOptions()
+	opts := lanOptions()
 	roster, err := run.NewRoster[game.State, game.Action, game.Observation](
 		game.Options(), game.Slots())
 	if err != nil {

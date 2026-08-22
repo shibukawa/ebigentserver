@@ -1,3 +1,5 @@
+//go:build !js && !wasip1
+
 // Package lan is the LAN preset: two instances of one binary find each
 // other on the same network and play, with no server to run and no
 // address to type.
