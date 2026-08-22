@@ -55,7 +55,7 @@ func (l *local[S, A, D, O]) Observe(O) {
 	if sink == nil {
 		return
 	}
-	if world, tick, ok := l.g.client.State(); ok {
+	if world, tick, ok := l.g.State(); ok {
 		sink(tick, world)
 	}
 }
@@ -64,14 +64,16 @@ func (l *local[S, A, D, O]) Decide(context.Context) (A, bool) { return l.g.box.t
 
 func (l *local[S, A, D, O]) Ended(session.Result) {}
 
-// LocalSeats reports the one seat this machine plays.
+// LocalSeats reports the one seat this machine plays. It is known from
+// the seat grant, so a guest can draw and take input while the handshake
+// is still waiting on the host.
 func (g *Guest[S, A, D, O]) LocalSeats() []run.Seat {
-	return []run.Seat{{Slot: g.client.Slot, Kind: run.LocalHuman, ID: "you", Ready: true}}
+	return []run.Seat{{Slot: g.seat, Kind: run.LocalHuman, ID: "you", Ready: true}}
 }
 
 // Submit hands this frame's action to the link.
 func (g *Guest[S, A, D, O]) Submit(slot session.SlotID, action A) error {
-	if slot != g.client.Slot {
+	if slot != g.seat {
 		return run.ErrUnknownSlot
 	}
 	g.box.put(action)

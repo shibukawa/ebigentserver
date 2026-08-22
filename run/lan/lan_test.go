@@ -233,6 +233,23 @@ func TestTwoInstancesPlayOverTheLink(t *testing.T) {
 		joined <- g
 	}()
 
+	var guest *lan.Guest[State, Action, Delta, Observation]
+	select {
+	case guest = <-joined:
+	case err := <-joinErr:
+		t.Fatalf("join: %v", err)
+	case <-time.After(5 * time.Second):
+		t.Fatal("the seat grant never came back")
+	}
+	defer guest.Close()
+	if guest.Slot() != slotGuest {
+		t.Fatalf("guest seated at %d, want %d", guest.Slot(), slotGuest)
+	}
+	// The guest waits inside the handshake from here; the host is still
+	// gathering.
+	guestDone := make(chan error, 1)
+	go func() { guestDone <- guest.Run(ctx, guestAgent) }()
+
 	// The lobby sees the arrival as an ordinary seat change.
 	deadline := time.Now().Add(5 * time.Second)
 	for !roster.Complete() {
@@ -270,25 +287,14 @@ func TestTwoInstancesPlayOverTheLink(t *testing.T) {
 	}
 	match.Start(ctx, session.Paced)
 
-	var guest *lan.Guest[State, Action, Delta, Observation]
 	select {
-	case guest = <-joined:
-	case err := <-joinErr:
-		t.Fatalf("join: %v", err)
+	case <-guest.Ready():
 	case <-time.After(10 * time.Second):
 		t.Fatal("guest was never admitted")
-	}
-	defer guest.Close()
-
-	if guest.Slot() != slotGuest {
-		t.Fatalf("guest seated at %d, want %d", guest.Slot(), slotGuest)
 	}
 	if guest.Seed() != 7 {
 		t.Fatalf("guest seed = %d, want 7 (the handshake carries it)", guest.Seed())
 	}
-
-	guestDone := make(chan error, 1)
-	go func() { guestDone <- guest.Run(ctx, guestAgent) }()
 
 	// The host's own seat is driven from here, exactly as a window
 	// would drive it: submissions into the slot inbox.
@@ -446,5 +452,71 @@ func TestProtocolMismatchIsRefusedAtTheSeat(t *testing.T) {
 		if seat.Filled() {
 			t.Fatalf("a refused guest still took seat %d", seat.Slot)
 		}
+	}
+}
+
+// TestAutoHostsFirstThenJoins is the whole of the tutorial's
+// configuration: launch the same binary twice and the parts sort
+// themselves out. The first instance finds nobody and offers its match;
+// the second finds it and takes a seat.
+func TestAutoHostsFirstThenJoins(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	addr := freeUDPPort(t)
+	opts := options()
+	opts.BeaconAddr, opts.DiscoveryAddr = addr, addr
+
+	newRoster := func() *run.Roster[State, Action, Observation] {
+		r, err := run.NewRoster[State, Action, Observation](
+			run.Options{Name: "lan-test", Devices: run.Keyboard, MaxLocalSeats: 1},
+			[]session.SlotID{slotHost, slotGuest})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return r
+	}
+
+	// First instance: nobody answers, so it becomes the one to answer.
+	first := newRoster()
+	hosting, joined, err := lan.Auto(opts, 300*time.Millisecond).Begin(ctx, first, 3)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if hosting == nil || joined != nil {
+		t.Fatalf("first instance became hosting=%v joined=%v, want a host", hosting != nil, joined != nil)
+	}
+	defer hosting.Close()
+	if _, err := first.JoinLocal("host-player"); err != nil {
+		t.Fatal(err)
+	}
+
+	// Second instance: finds the first and takes the seat it left.
+	second := newRoster()
+	hosting2, joined2, err := lan.Auto(opts, 3*time.Second).Begin(ctx, second, 3)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if joined2 == nil || hosting2 != nil {
+		t.Fatalf("second instance became hosting=%v joined=%v, want a guest", hosting2 != nil, joined2 != nil)
+	}
+	defer joined2.Close()
+
+	// The seat it took is in the *first* instance's roster — the guest's
+	// own roster stays empty, because it has nothing to gather.
+	deadline := time.Now().Add(5 * time.Second)
+	for !first.Complete() {
+		if time.Now().After(deadline) {
+			t.Fatalf("the host's roster never completed: %v", first.Seats())
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	for _, seat := range second.Seats() {
+		if seat.Filled() {
+			t.Fatalf("the guest filled its own roster at seat %d", seat.Slot)
+		}
+	}
+	if got := joined2.LocalSeats(); len(got) != 1 || got[0].Slot != slotGuest {
+		t.Fatalf("guest plays %v, want one seat at %d", got, slotGuest)
 	}
 }

@@ -141,9 +141,10 @@ type Host[S, A, D, O any] struct {
 	http     *http.Server
 	upgrader *ws.Upgrader
 
-	mu     sync.Mutex
-	parked []transport.Conn
-	closed bool
+	mu        sync.Mutex
+	parked    []transport.Conn
+	closed    bool
+	reportErr func(error)
 
 	server atomic.Pointer[netplay.Server[S, A]]
 
@@ -357,9 +358,7 @@ func (h *Host[S, A, D, O]) Serve(ctx context.Context, m *run.Match[S, A, O]) err
 	h.parked = nil
 	h.mu.Unlock()
 	for _, conn := range waiting {
-		if err := h.admit(ctx, sv, conn); err != nil {
-			return fmt.Errorf("lan: admitting a waiting guest: %w", err)
-		}
+		go h.admit(ctx, sv, conn)
 	}
 	return nil
 }
@@ -367,15 +366,38 @@ func (h *Host[S, A, D, O]) Serve(ctx context.Context, m *run.Match[S, A, O]) err
 // admit completes one handshake and starts the peer's own loop, which is
 // what carries data:player-input the other way. Without it a guest is
 // seen and sent to, and never heard.
-func (h *Host[S, A, D, O]) admit(ctx context.Context, sv *netplay.Server[S, A], conn transport.Conn) error {
+//
+// It runs on its own goroutine because the handshake waits on the other
+// end, and the match must not: a guest that never says hello is a seat
+// that stays silent, not a match that never starts.
+func (h *Host[S, A, D, O]) admit(ctx context.Context, sv *netplay.Server[S, A], conn transport.Conn) {
 	peer, err := sv.Admit(ctx, conn)
 	if err != nil {
 		_ = conn.Close()
-		return err
+		if f := h.onError(); f != nil {
+			f(err)
+		}
+		return
 	}
 	h.peers.Add(1)
 	go peer.Run(ctx, &h.peers)
-	return nil
+}
+
+// onError reports the sink for admission failures, if the game set one.
+func (h *Host[S, A, D, O]) onError() func(error) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	return h.reportErr
+}
+
+// OnError registers a sink for admission failures — a guest whose
+// protocol drifted, or one that went away between taking a seat and
+// saying hello. Without it they are silent, which is the right default
+// for a game: one guest failing is not the match failing.
+func (h *Host[S, A, D, O]) OnError(f func(error)) {
+	h.mu.Lock()
+	h.reportErr = f
+	h.mu.Unlock()
 }
 
 // Close stops announcing and listening. Connections already admitted
@@ -431,17 +453,24 @@ func Browse[S, A, D, O any](ctx context.Context, opts Options[S, A, D, O], windo
 // session: the world arrives already committed, and the only thing sent
 // back is data:player-input.
 type Guest[S, A, D, O any] struct {
-	client *netplay.Client[S, A, D, O]
+	opts   Options[S, A, D, O]
+	conn   transport.Conn
+	ticket string
+	seat   session.SlotID
 	box    mailbox[A]
 
+	ready chan struct{}
+
 	mu      sync.Mutex
+	client  *netplay.Client[S, A, D, O]
 	onWorld func(session.Tick, *S)
 	over    bool
 }
 
-// Join takes a seat on a host and waits to be admitted. The wait is
-// normal: the host admits when its lobby starts the match, which is why
-// this call blocks until then or until ctx ends.
+// Join takes a seat on a host. It returns as soon as the seat is
+// granted and the link is open — before the host has started anything,
+// because the host is still gathering and a guest with nothing on screen
+// until then would look broken. The handshake happens in Play.
 func Join[S, A, D, O any](ctx context.Context, opts Options[S, A, D, O], endpoint string) (*Guest[S, A, D, O], error) {
 	if err := opts.validate(); err != nil {
 		return nil, err
@@ -454,18 +483,13 @@ func Join[S, A, D, O any](ctx context.Context, opts Options[S, A, D, O], endpoin
 	if err != nil {
 		return nil, fmt.Errorf("lan: dialling %s: %w", endpoint, err)
 	}
-	client, err := netplay.Connect(ctx, conn, g.Ticket, netplay.ClientConfig[S, A, D, O]{
-		Protocol:    opts.Protocol,
-		Tuning:      opts.Tuning,
-		Codec:       opts.Codec,
-		EncodeInput: opts.EncodeInput,
-		Project:     opts.Project,
-	})
-	if err != nil {
-		_ = conn.Close()
-		return nil, err
-	}
-	return &Guest[S, A, D, O]{client: client}, nil
+	return &Guest[S, A, D, O]{
+		opts:   opts,
+		conn:   conn,
+		ticket: g.Ticket,
+		seat:   session.SlotID(g.Seat),
+		ready:  make(chan struct{}),
+	}, nil
 }
 
 // requestSeat asks the host's own control plane for a seat.
@@ -490,25 +514,72 @@ func requestSeat(ctx context.Context, endpoint, protocol string) (grant, error) 
 	return g, nil
 }
 
-// Slot is the seat this guest was admitted to.
-func (g *Guest[S, A, D, O]) Slot() session.SlotID { return g.client.Slot }
+// Slot is the seat the host granted. It is known before the handshake,
+// which is what lets a guest draw its own side of the board while it is
+// still waiting.
+func (g *Guest[S, A, D, O]) Slot() session.SlotID { return g.seat }
 
-// Seed is the match's shared RNG seed, delivered by the handshake.
-func (g *Guest[S, A, D, O]) Seed() uint64 { return g.client.Seed }
+// Ready closes once the handshake completes and state starts arriving.
+func (g *Guest[S, A, D, O]) Ready() <-chan struct{} { return g.ready }
 
-// State is the newest world this guest has reconstructed.
-func (g *Guest[S, A, D, O]) State() (*S, session.Tick, bool) { return g.client.State() }
-
-// Run drives the agent until the link ends. The agent is an ordinary
-// one: on this side of the link the person at the keyboard and a bot are
-// the same kind of object, which is what makes replacing one with the
-// other a seating decision rather than a rewrite.
-func (g *Guest[S, A, D, O]) Run(ctx context.Context, agent session.Agent[O, A]) error {
-	return g.client.Run(ctx, agent)
+// Seed is the match's shared RNG seed, delivered by the handshake. It is
+// meaningful only after Ready closes.
+func (g *Guest[S, A, D, O]) Seed() uint64 {
+	if c := g.live(); c != nil {
+		return c.Seed
+	}
+	return 0
 }
 
-// Close ends the link.
-func (g *Guest[S, A, D, O]) Close() error { return g.client.Close() }
+// State is the newest world this guest has reconstructed.
+func (g *Guest[S, A, D, O]) State() (*S, session.Tick, bool) {
+	c := g.live()
+	if c == nil {
+		var zero *S
+		return zero, 0, false
+	}
+	return c.State()
+}
+
+// Run completes the handshake, then drives the agent until the link
+// ends. The wait inside the handshake is the host's lobby: it admits
+// when its match begins.
+//
+// The agent is an ordinary one: on this side of the link the person at
+// the keyboard and a bot are the same kind of object, which is what
+// makes replacing one with the other a seating decision rather than a
+// rewrite.
+func (g *Guest[S, A, D, O]) Run(ctx context.Context, agent session.Agent[O, A]) error {
+	client, err := netplay.Connect(ctx, g.conn, g.ticket, netplay.ClientConfig[S, A, D, O]{
+		Protocol:    g.opts.Protocol,
+		Tuning:      g.opts.Tuning,
+		Codec:       g.opts.Codec,
+		EncodeInput: g.opts.EncodeInput,
+		Project:     g.opts.Project,
+	})
+	if err != nil {
+		return err
+	}
+	g.mu.Lock()
+	g.client = client
+	g.mu.Unlock()
+	close(g.ready)
+	return client.Run(ctx, agent)
+}
+
+func (g *Guest[S, A, D, O]) live() *netplay.Client[S, A, D, O] {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	return g.client
+}
+
+// Close ends the link, whether or not the handshake ever completed.
+func (g *Guest[S, A, D, O]) Close() error {
+	if c := g.live(); c != nil {
+		return c.Close()
+	}
+	return g.conn.Close()
+}
 
 // advertisedHost picks the address a peer on the same segment can reach.
 // It opens no connection: a udp socket only needs a route to name a
