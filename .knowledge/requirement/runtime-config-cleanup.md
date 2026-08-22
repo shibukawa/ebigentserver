@@ -13,6 +13,7 @@ keep:
   - time.mode and time.scale_permille, concept:game-time-control, which concept:training-mode varies per run
   - debug.listen, api:dev-debug-endpoint
 add:
+  status: done — the run sections now hold topology, listen, server, transport.enable, time, tuning, and debug, and nothing else
   dial_address: >
     a client reaching a dedicated server has no key for its URL. Listen binds,
     and nothing dials — the one run value the file is missing.
@@ -26,8 +27,10 @@ add:
   tuning_must_agree: >
     every peer of one match must bind the same profile; netplay's client config
     already states it must declare the profile the server runs. This is a
-    deployment-wide value, not a per-machine one, and the load should refuse a
-    mismatch rather than desynchronize.
+    deployment-wide value, not a per-machine one. Startup checks the profile is
+    internally consistent — send rate at most tick rate and a whole divisor of
+    it, speculation depth below history depth — but two peers disagreeing is
+    still caught at the handshake rather than at the load.
 remove: the keys requirement:config-file-shape moves to the protocol level or deletes outright
 make_it_read: >
   config/runconf is bound by cli alone; neither run nor run/eb imports it, so no

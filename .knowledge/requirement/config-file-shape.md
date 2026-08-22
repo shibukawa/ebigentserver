@@ -7,7 +7,8 @@ What flow:project-init writes must match the four levels of concept:configuratio
 
 ```yaml
 add_protocol_section:
-  why: the protocol level of concept:configuration-scope has no home in the file today
+  status: done — [protocol] holds package, title, shape, realtime, view, devices, sync, and the seat composition
+  why: the protocol level of concept:configuration-scope had no home in the file
   keys:
     - package path with its subpath, per decision:module-path-is-game-identity
     - participant shape, concept:participant-shape
@@ -23,7 +24,9 @@ delete:
   - run.slot: the match level takes no configuration file; api:roster fills what protocol declared
   - run.episode: recording destination is internal and settled at build
   - run.evaluation_version: derived from the rule set that produced the signal
-  - behavior.corpus: same reason as run.episode
+  - behavior.corpus: dropped from what the scaffold writes; the key stays
+    bound with its default, since analyze and doctor read it and it is a
+    build-tier path rather than the run-tier destination run.episode was
 review:
   build_target_array: >
     flow:project-init already derives the entry point set from the shape and

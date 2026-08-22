@@ -29,15 +29,18 @@ entry = "./cmd/server"
 [dev]
 console = "127.0.0.1:9000"
 
+[protocol]
+shape = "duo"
+devices = ["keyboard"]
+
+[protocol.seats]
+count = 2
+
 [run]
 topology = "dedicated"
 listen = "0.0.0.0:4433"
-sync.baseline = "confirmed_only"
-
-[[run.slot]]
-index = 0
-kind = "behavior_tree"
-source = "behavior/chips.json"
+tuning.baseline = "confirmed_only"
+tuning.tick_rate = 30
 `
 
 func writeProject(t *testing.T, body string) string {
@@ -75,15 +78,15 @@ func TestArtifactReadsRunSectionsAndIgnoresToolchainOnes(t *testing.T) {
 	if run.Listen != "0.0.0.0:4433" {
 		t.Errorf("listen = %q", run.Listen)
 	}
-	if run.Sync.Baseline != "confirmed_only" {
-		t.Errorf("sync.baseline = %q", run.Sync.Baseline)
+	if run.Tuning.Baseline != "confirmed_only" {
+		t.Errorf("tuning.baseline = %q", run.Tuning.Baseline)
 	}
-	if len(run.Slot) != 1 || run.Slot[0].Kind != "behavior_tree" {
-		t.Errorf("slot roster = %+v", run.Slot)
+	if run.Tuning.TickRate != 30 {
+		t.Errorf("tuning.tick_rate = %d", run.Tuning.TickRate)
 	}
 	// Defaults still apply to keys the file never mentions.
-	if run.Sync.Ack != "piggyback_only" {
-		t.Errorf("sync.ack = %q, want the default", run.Sync.Ack)
+	if run.Tuning.Ack != "piggyback_only" {
+		t.Errorf("tuning.ack = %q, want the default", run.Tuning.Ack)
 	}
 }
 
@@ -128,8 +131,8 @@ func TestPrecedenceCLIOverEnvOverFileOverDefault(t *testing.T) {
 	if run.Topology != "listen" {
 		t.Errorf("topology = %q, want the file value where nothing outranks it", run.Topology)
 	}
-	if run.Sync.Mode != "server_authoritative" {
-		t.Errorf("sync.mode = %q, want the default", run.Sync.Mode)
+	if run.Tuning.Ack != "piggyback_only" {
+		t.Errorf("tuning.ack = %q, want the default", run.Tuning.Ack)
 	}
 }
 
@@ -292,11 +295,11 @@ func TestDeclaredKeysCoverNestedAndElementFields(t *testing.T) {
 	}
 	for _, key := range []string{
 		"run.topology",
-		"run.sync.baseline",   // nested struct, dotted under its table
-		"run.slot",            // the array itself
-		"run.slot[].kind",     // an element field
-		"build.target[].goos", // a key tag renaming an element field
-		"project.go",          // a key tag renaming a scalar
+		"run.tuning.baseline",      // nested struct, dotted under its table
+		"protocol.team",            // the array itself
+		"protocol.team[].occupant", // an element field
+		"build.target[].goos",      // a key tag renaming an element field
+		"project.go",               // a key tag renaming a scalar
 		"behavior.library",
 	} {
 		if !declared[key] {
@@ -329,7 +332,7 @@ func TestProvenanceReportsTheWinningLayer(t *testing.T) {
 	for _, want := range []string{
 		"run.topology = listen (env)",
 		"run.listen = from-file:1 (file_toml)",
-		"run.sync.ack = piggyback_only (default)",
+		"run.tuning.ack = piggyback_only (default)",
 	} {
 		if !strings.Contains(out, want) {
 			t.Errorf("provenance is missing %q; got:\n%s", want, out)

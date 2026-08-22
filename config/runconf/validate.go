@@ -8,19 +8,16 @@ import (
 
 // Accepted values, mirroring the enum tags on the structs above.
 //
-// They are duplicated here on purpose. In tinybind-go v0.5.17 the enum
-// tag reaches neither the generated code nor the loader — generation
-// consults it only when checking a dependon condition's values — so a
-// value outside the list loads without complaint and only this check
-// catches it. Keep the two in step when either moves.
+// They are duplicated here on purpose. In tinybind-go the enum tag
+// reaches neither the generated code nor the loader — generation consults
+// it only when checking a dependon condition's values — so a value
+// outside the list loads without complaint and only this check catches
+// it. Keep the two in step when either moves.
 var (
 	topologies    = []string{"standalone", "listen", "dedicated", "p2p"}
-	syncModes     = []string{"delay", "rollback", "server_authoritative", "hybrid"}
 	baselineModes = []string{"speculative", "confirmed_only", "bounded_speculation"}
 	ackModes      = []string{"piggyback_only", "dedicated", "delayed_piggyback"}
 	timeModes     = []string{"realtime", "scaled", "step", "unlimited"}
-	episodeModes  = []string{"replay_complete", "analysis_sampled"}
-	slotKinds     = []string{"human", "script", "behavior_tree", "llm", "replay", "remote"}
 )
 
 // oneOf records an error when value is outside allowed.
@@ -41,13 +38,7 @@ func (r Run) Validate() error {
 	var errs []error
 
 	errs = oneOf(errs, "run.topology", r.Topology, topologies)
-	errs = oneOf(errs, "run.sync.mode", r.Sync.Mode, syncModes)
-	errs = oneOf(errs, "run.sync.baseline", r.Sync.Baseline, baselineModes)
-	errs = oneOf(errs, "run.sync.ack", r.Sync.Ack, ackModes)
 	errs = oneOf(errs, "run.time.mode", r.Time.Mode, timeModes)
-	if r.Episode.Dir != "" {
-		errs = oneOf(errs, "run.episode.mode", r.Episode.Mode, episodeModes)
-	}
 
 	switch r.Topology {
 	case "listen", "dedicated":
@@ -58,58 +49,69 @@ func (r Run) Validate() error {
 		if r.Listen != "" {
 			errs = append(errs, errors.New("standalone opens no listener, so run.listen must stay empty"))
 		}
+		if r.Server != "" {
+			errs = append(errs, errors.New("standalone joins nobody, so run.server must stay empty"))
+		}
 	}
-
-	if r.Sync.Baseline == "bounded_speculation" && r.Sync.SpeculationDepth < 1 {
-		errs = append(errs, errors.New("baseline bounded_speculation needs run.sync.speculation_depth of at least 1"))
-	}
-	if r.Sync.Baseline != "bounded_speculation" && r.Sync.SpeculationDepth != 0 {
-		errs = append(errs, fmt.Errorf("run.sync.speculation_depth applies only to bounded_speculation, not %q", r.Sync.Baseline))
+	// Binding and dialing are the two halves of one question, and a
+	// process that does both is either talking to itself or has been
+	// handed two answers by mistake.
+	if r.Listen != "" && r.Server != "" {
+		errs = append(errs, errors.New("run.listen and run.server are the two sides of one link; set the one this process takes"))
 	}
 
 	if r.Time.Mode == "scaled" && r.Time.ScalePermille <= 0 {
 		errs = append(errs, errors.New("time mode scaled needs a positive run.time.scale_permille"))
 	}
 
-	seen := map[int]bool{}
-	for i, s := range r.Slot {
-		if !slices.Contains(slotKinds, s.Kind) {
-			errs = append(errs, fmt.Errorf("run.slot[%d].kind %q is not one of %v", i, s.Kind, slotKinds))
-		}
-		if s.Index < 0 {
-			errs = append(errs, fmt.Errorf("run.slot[%d].index must not be negative", i))
-		}
-		if seen[s.Index] {
-			errs = append(errs, fmt.Errorf("run.slot[%d] repeats index %d; one controller fills one slot", i, s.Index))
-		}
-		seen[s.Index] = true
-		switch s.Kind {
-		case "behavior_tree", "replay", "script":
-			if s.Source == "" {
-				errs = append(errs, fmt.Errorf("run.slot[%d] kind %q needs a source", i, s.Kind))
-			}
-		}
-	}
-
-	if r.Episode.Dir != "" {
-		if r.Episode.SamplePercent < 1 || r.Episode.SamplePercent > 100 {
-			errs = append(errs, fmt.Errorf("run.episode.sample_percent is %d, outside 1..100", r.Episode.SamplePercent))
-		}
-		if r.Episode.Mode == "replay_complete" && r.Episode.SamplePercent != 100 {
-			// Sampling selects sessions, never ticks, so a sampled
-			// replay_complete corpus is still lossless per selected
-			// session. Saying so out loud is cheaper than the reader
-			// assuming the opposite.
-			errs = append(errs, errors.New("replay_complete with sample_percent below 100 records complete episodes for only some sessions; set sample_percent to 100 or use analysis_sampled"))
-		}
-	}
-
-	if r.EvaluationVersion < 1 {
-		errs = append(errs, errors.New("run.evaluation_version must be at least 1"))
-	}
+	errs = append(errs, r.Tuning.validate()...)
 
 	if len(errs) > 0 {
 		return fmt.Errorf("runconf: invalid run configuration: %w", errors.Join(errs...))
 	}
 	return nil
+}
+
+// validate checks data:session-tuning-profile for the agreement between
+// fields that no one of them can express. The framework declares no
+// defaults for the rates themselves (decision:no-framework-tuning-defaults),
+// but it does insist the numbers are consistent with each other.
+func (t Tuning) validate() []error {
+	var errs []error
+
+	errs = oneOf(errs, "run.tuning.baseline", t.Baseline, baselineModes)
+	errs = oneOf(errs, "run.tuning.ack", t.Ack, ackModes)
+
+	switch {
+	case t.TickRate < 1:
+		errs = append(errs, fmt.Errorf("run.tuning.tick_rate is %d, and a session has to step", t.TickRate))
+	case t.SendRate < 1:
+		errs = append(errs, fmt.Errorf("run.tuning.send_rate is %d, and a peer has to hear something", t.SendRate))
+	case t.SendRate > t.TickRate:
+		errs = append(errs, fmt.Errorf("run.tuning.send_rate %d is above tick_rate %d; a session cannot send a state it has not stepped", t.SendRate, t.TickRate))
+	case t.TickRate%t.SendRate != 0:
+		// A fractional cadence would put a send between two ticks,
+		// which is a state nothing committed.
+		errs = append(errs, fmt.Errorf("run.tuning.tick_rate %d is not a whole multiple of send_rate %d", t.TickRate, t.SendRate))
+	}
+
+	if t.SnapshotEvery < 0 {
+		errs = append(errs, fmt.Errorf("run.tuning.snapshot_every is %d, which is not a cadence", t.SnapshotEvery))
+	}
+	if t.HistoryDepth < 1 {
+		errs = append(errs, fmt.Errorf("run.tuning.history_depth is %d, and a delta needs a baseline to be computed against", t.HistoryDepth))
+	}
+
+	switch {
+	case t.Baseline == "bounded_speculation" && t.SpeculationDepth < 1:
+		errs = append(errs, errors.New("baseline bounded_speculation needs run.tuning.speculation_depth of at least 1"))
+	case t.Baseline != "bounded_speculation" && t.SpeculationDepth != 0:
+		errs = append(errs, fmt.Errorf("run.tuning.speculation_depth applies only to bounded_speculation, not %q", t.Baseline))
+	case t.Baseline == "bounded_speculation" && t.HistoryDepth > 0 && t.SpeculationDepth >= t.HistoryDepth:
+		// Speculating past what is retained leaves the baseline
+		// unavailable when the delta is finally computed.
+		errs = append(errs, fmt.Errorf("run.tuning.speculation_depth %d must stay below history_depth %d", t.SpeculationDepth, t.HistoryDepth))
+	}
+
+	return errs
 }

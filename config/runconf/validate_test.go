@@ -9,12 +9,13 @@ import (
 // force. Each case below breaks exactly one thing.
 func valid() Run {
 	return Run{
-		Topology:          "standalone",
-		Sync:              Sync{Mode: "server_authoritative", Baseline: "speculative", Ack: "piggyback_only"},
-		Time:              Time{Mode: "realtime", ScalePermille: 1000},
-		Episode:           Episode{Mode: "analysis_sampled", SamplePercent: 100},
-		Debug:             Debug{Listen: "127.0.0.1:8932"},
-		EvaluationVersion: 1,
+		Topology: "standalone",
+		Time:     Time{Mode: "realtime", ScalePermille: 1000},
+		Tuning: Tuning{
+			TickRate: 60, SendRate: 30, SnapshotEvery: 120, HistoryDepth: 12,
+			Baseline: "speculative", Ack: "piggyback_only",
+		},
+		Debug: Debug{Listen: "127.0.0.1:8932"},
 	}
 }
 
@@ -31,39 +32,38 @@ func TestValidateRejects(t *testing.T) {
 		want string
 	}{
 		{"unlisted topology", func(r *Run) { r.Topology = "peer2peer" }, "run.topology"},
-		{"unlisted sync mode", func(r *Run) { r.Sync.Mode = "lockstep" }, "run.sync.mode"},
-		{"unlisted ack mode", func(r *Run) { r.Sync.Ack = "always" }, "run.sync.ack"},
+		{"unlisted ack mode", func(r *Run) { r.Tuning.Ack = "always" }, "run.tuning.ack"},
+		{"unlisted baseline", func(r *Run) { r.Tuning.Baseline = "hopeful" }, "run.tuning.baseline"},
 		{"listen topology without an address", func(r *Run) { r.Topology = "listen" }, "run.listen"},
 		{"standalone with an address", func(r *Run) { r.Listen = "0.0.0.0:1" }, "run.listen"},
+		{"standalone dialing somebody", func(r *Run) { r.Server = "host:4433" }, "run.server"},
+		{"binding and dialing at once", func(r *Run) {
+			r.Topology = "listen"
+			r.Listen, r.Server = "0.0.0.0:1", "host:4433"
+		}, "two sides of one link"},
 		{"bounded speculation without a depth", func(r *Run) {
-			r.Sync.Baseline = "bounded_speculation"
+			r.Tuning.Baseline = "bounded_speculation"
 		}, "speculation_depth"},
 		{"speculation depth on another baseline", func(r *Run) {
-			r.Sync.SpeculationDepth = 3
+			r.Tuning.SpeculationDepth = 3
 		}, "speculation_depth"},
+		{"speculating past what is retained", func(r *Run) {
+			r.Tuning.Baseline = "bounded_speculation"
+			r.Tuning.SpeculationDepth, r.Tuning.HistoryDepth = 12, 12
+		}, "below history_depth"},
 		{"scaled clock without a scale", func(r *Run) {
 			r.Time.Mode = "scaled"
 			r.Time.ScalePermille = 0
 		}, "scale_permille"},
-		{"unknown controller kind", func(r *Run) {
-			r.Slot = []Slot{{Index: 0, Kind: "oracle"}}
-		}, "kind"},
-		{"controller without its source", func(r *Run) {
-			r.Slot = []Slot{{Index: 0, Kind: "replay"}}
-		}, "needs a source"},
-		{"two controllers on one slot", func(r *Run) {
-			r.Slot = []Slot{{Index: 1, Kind: "human"}, {Index: 1, Kind: "remote"}}
-		}, "repeats index"},
-		{"sampling out of range", func(r *Run) {
-			r.Episode.Dir = "corpus"
-			r.Episode.SamplePercent = 0
-		}, "sample_percent"},
-		{"sampled replay corpus", func(r *Run) {
-			r.Episode.Dir = "corpus"
-			r.Episode.Mode = "replay_complete"
-			r.Episode.SamplePercent = 10
-		}, "replay_complete"},
-		{"evaluation version zero", func(r *Run) { r.EvaluationVersion = 0 }, "evaluation_version"},
+		{"a session that never steps", func(r *Run) { r.Tuning.TickRate = 0 }, "tick_rate"},
+		{"a session nobody hears", func(r *Run) { r.Tuning.SendRate = 0 }, "send_rate"},
+		{"sending faster than it steps", func(r *Run) {
+			r.Tuning.TickRate, r.Tuning.SendRate = 30, 60
+		}, "above tick_rate"},
+		{"a cadence that lands between ticks", func(r *Run) {
+			r.Tuning.TickRate, r.Tuning.SendRate = 60, 45
+		}, "whole multiple"},
+		{"no retained baseline", func(r *Run) { r.Tuning.HistoryDepth = 0 }, "history_depth"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -80,38 +80,34 @@ func TestValidateRejects(t *testing.T) {
 	}
 }
 
-// Episode settings are inert while nothing is recorded, so an unset block
-// must not fail a run that records nothing.
-func TestEpisodeBlockIgnoredWhenRecordingIsOff(t *testing.T) {
-	r := valid()
-	r.Episode = Episode{Mode: "", SamplePercent: 0}
-	if err := r.Validate(); err != nil {
-		t.Fatalf("recording off should not validate the block: %v", err)
-	}
-}
-
 // A player can hold a session of any size: four rows of
 // concept:deployment-combination carry a playing host at "2 or many"
 // seats, and a browser hosting a party over WebRTC with no backend is
 // concept:static-host-mode. Nothing here may tie the host to the seat
-// count.
-func TestAnyTopologyRunsAtAnySeatCount(t *testing.T) {
+// count — which is now structural, since the seat composition is the
+// protocol level of concept:configuration-scope and this table cannot
+// see it at all.
+func TestEveryTopologyValidates(t *testing.T) {
 	for _, topology := range topologies {
 		r := valid()
 		r.Topology = topology
-		if topology != "standalone" {
+		if topology == "listen" || topology == "dedicated" {
 			r.Listen = "0.0.0.0:4433"
 		}
-		r.Slot = []Slot{
-			{Index: 0, Kind: "human"},
-			{Index: 1, Kind: "remote"},
-			{Index: 2, Kind: "remote"},
-			{Index: 3, Kind: "remote"},
-			{Index: 4, Kind: "remote"},
-			{Index: 5, Kind: "remote"},
-		}
 		if err := r.Validate(); err != nil {
-			t.Errorf("topology %q with six seats: %v", topology, err)
+			t.Errorf("topology %q: %v", topology, err)
 		}
+	}
+}
+
+// A client reaching a dedicated server is the case the table could not
+// express before: Listen binds and Server dials, and a deployment that
+// moves its server changes the one key.
+func TestAClientDialsWithoutBinding(t *testing.T) {
+	r := valid()
+	r.Topology = "p2p"
+	r.Server = "game.example.com:4433"
+	if err := r.Validate(); err != nil {
+		t.Fatalf("dialing a host: %v", err)
 	}
 }

@@ -271,11 +271,14 @@ func runDoctor(c *context) error {
 		line(false, "project configuration:\n%v", err)
 	} else {
 		line(true, "project configuration: %d target(s) declared", len(c.build.Build.Target))
+		line(true, "protocol: %s, %s, %d seat(s), sync %s",
+			c.build.GamePackage(), c.build.Protocol.Shape, c.build.Protocol.Seats.Count, c.build.Protocol.Sync)
 	}
 	if err := c.run.Validate(); err != nil {
 		line(false, "run configuration:\n%v", err)
 	} else {
-		line(true, "run configuration: topology %s, sync %s", c.run.Topology, c.run.Sync.Mode)
+		line(true, "run configuration: topology %s, %d/%d tick/send",
+			c.run.Topology, c.run.Tuning.TickRate, c.run.Tuning.SendRate)
 	}
 
 	corpus := c.path(c.build.Behavior.Corpus)
