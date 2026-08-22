@@ -28,6 +28,11 @@ func TestModuleImportBoundary(t *testing.T) {
 		// hole in it — package run, which every headless build links, is
 		// checked by this same pass and must stay clean.
 		"run/eb",
+		// Each tutorial step is one main package that renders; the
+		// packages beneath it are rules and must still stay clean,
+		// which is why this pattern is one level deep and not a
+		// prefix.
+		"tutorial/*",
 	}
 	cfg.Rules[0].AllowedEntries = append(cfg.Rules[0].AllowedEntries, exampleEntries...)
 	cfg.AllowedCgoEntries = append(cfg.AllowedCgoEntries, exampleEntries...)
