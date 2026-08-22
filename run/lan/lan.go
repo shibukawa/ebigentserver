@@ -158,6 +158,7 @@ type Host[S, A, D, O any] struct {
 
 	mu        sync.Mutex
 	parked    []transport.Conn
+	admitted  []transport.Conn
 	closed    bool
 	reportErr func(error)
 
@@ -242,6 +243,7 @@ func (h *Host[S, A, D, O]) Rebind(r *run.Roster[S, A, O]) {
 	h.roster = r
 	h.mu.Unlock()
 	h.server.Store(nil)
+	h.dropAdmitted()
 }
 
 // currentRoster reads the roster the offer is filling.
@@ -394,6 +396,7 @@ func (h *Host[S, A, D, O]) Serve(ctx context.Context, m *run.Match[S, A, O]) err
 	for _, conn := range waiting {
 		go h.admit(ctx, sv, conn)
 	}
+	go h.endWith(m)
 	return nil
 }
 
@@ -413,8 +416,35 @@ func (h *Host[S, A, D, O]) admit(ctx context.Context, sv *netplay.Server[S, A], 
 		}
 		return
 	}
+	h.mu.Lock()
+	h.admitted = append(h.admitted, conn)
+	h.mu.Unlock()
 	h.peers.Add(1)
 	go peer.Run(ctx, &h.peers)
+}
+
+// endWith closes every admitted link once the match is over.
+//
+// Without this a guest waits forever on a link that will never speak
+// again: the session stopped broadcasting, but nothing told the other
+// end, so its receive loop sits on a socket that is still open. The
+// match ending is the host's news to deliver, and closing the link is
+// how it is delivered (decision:host-loss-ends-session — the far side
+// reports and returns rather than trying to carry on).
+func (h *Host[S, A, D, O]) endWith(m *run.Match[S, A, O]) {
+	<-m.Done()
+	h.dropAdmitted()
+}
+
+// dropAdmitted closes and forgets the links of a finished match.
+func (h *Host[S, A, D, O]) dropAdmitted() {
+	h.mu.Lock()
+	conns := h.admitted
+	h.admitted = nil
+	h.mu.Unlock()
+	for _, c := range conns {
+		_ = c.Close()
+	}
 }
 
 // onError reports the sink for admission failures, if the game set one.
@@ -443,8 +473,8 @@ func (h *Host[S, A, D, O]) Close() error {
 		return nil
 	}
 	h.closed = true
-	waiting := h.parked
-	h.parked = nil
+	waiting := append(h.parked, h.admitted...)
+	h.parked, h.admitted = nil, nil
 	h.mu.Unlock()
 	for _, c := range waiting {
 		_ = c.Close()

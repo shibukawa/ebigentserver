@@ -1,9 +1,12 @@
 package eb
 
 import (
+	"image/color"
+
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
+	"github.com/hajimehoshi/ebiten/v2/vector"
 
 	"github.com/shibukawa/ebigentserver/run"
 )
@@ -44,10 +47,33 @@ func (r *result[S, A, O]) Update() error {
 }
 
 // Draw keeps the final board on screen and writes the outcome over it.
+//
+// The board is dimmed rather than replaced, because the point of this
+// screen is to let somebody look at it. The wrapper does not know where
+// a game keeps its own text, so the overlay claims the middle and the
+// scrim makes it legible over whatever is underneath.
 func (r *result[S, A, O]) Draw(screen *ebiten.Image) {
 	r.client.Draw(screen)
-	ebitenutil.DebugPrintAt(screen, r.line, 8, 8)
-	ebitenutil.DebugPrintAt(screen, dismissVerb(r.devices), 8, 22)
+
+	b := screen.Bounds()
+	w, h := float32(b.Dx()), float32(b.Dy())
+	vector.DrawFilledRect(screen, 0, 0, w, h, color.RGBA{0, 0, 0, 0xb0}, false)
+
+	verb := dismissVerb(r.devices)
+	ebitenutil.DebugPrintAt(screen, r.line, centred(b.Dx(), r.line), b.Dy()/2-10)
+	ebitenutil.DebugPrintAt(screen, verb, centred(b.Dx(), verb), b.Dy()/2+8)
+}
+
+// centred is where a line of the debug font starts so that it sits in
+// the middle. The font is fixed width, which is the only reason this can
+// be arithmetic rather than measurement.
+func centred(width int, line string) int {
+	const glyph = 6
+	x := (width - len(line)*glyph) / 2
+	if x < 4 {
+		return 4
+	}
+	return x
 }
 
 // dismissed reports a press on any accepted device.

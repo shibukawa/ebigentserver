@@ -586,3 +586,96 @@ func TestRebindMovesTheOfferToTheNextMatch(t *testing.T) {
 		}
 	}
 }
+
+// TestGuestLearnsTheMatchEnded is the freeze a real game found: the
+// session stops broadcasting when the match is over, but nothing told
+// the far end, so its receive loop sat on a socket that was still open
+// and the guest's window stayed on the final board forever.
+//
+// The match ending is the host's news to deliver.
+func TestGuestLearnsTheMatchEnded(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	opts := options()
+	roster, err := run.NewRoster[State, Action, Observation](
+		run.Options{Name: "lan-test", Devices: run.Keyboard, MaxLocalSeats: 1},
+		[]session.SlotID{slotHost, slotGuest})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := roster.JoinLocal("host-player"); err != nil {
+		t.Fatal(err)
+	}
+	host, err := lan.Open(ctx, opts, roster, 7)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer host.Close()
+
+	guest, err := lan.JoinAt(ctx, opts, host.Endpoint())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer guest.Close()
+
+	played := make(chan error, 1)
+	go func() { played <- guest.Play(ctx) }()
+
+	tune := tuning()
+	cfg := session.Config[State, Action, Observation]{
+		ID: "lan-end", Slots: []session.SlotID{slotHost, slotGuest},
+		Simulation: rules{}, Tuning: &tune, Seed: 7,
+	}
+	host.Attach(&cfg)
+	match, err := roster.Finalize(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := host.Serve(ctx, match); err != nil {
+		t.Fatal(err)
+	}
+	match.Start(ctx, session.Paced)
+
+	select {
+	case <-guest.Ready():
+	case <-time.After(10 * time.Second):
+		t.Fatal("the guest was never admitted")
+	}
+	if guest.Over() {
+		t.Fatal("the guest reported the match over before it started")
+	}
+
+	// Drive the host's seat to a win on its own.
+	go func() {
+		tick := time.NewTicker(5 * time.Millisecond)
+		defer tick.Stop()
+		for {
+			select {
+			case <-match.Done():
+				return
+			case <-ctx.Done():
+				return
+			case <-tick.C:
+				_ = match.Submit(slotHost, Action{Raise: 2})
+			}
+		}
+	}()
+
+	select {
+	case <-match.Done():
+	case <-ctx.Done():
+		t.Fatal("the match never finished")
+	}
+
+	// The guest's loop must return on its own, without anybody closing
+	// it from this side.
+	select {
+	case <-played:
+	case <-time.After(5 * time.Second):
+		t.Fatal("the guest never noticed the match ended; its window would sit on the final board forever")
+	}
+	if !guest.Over() {
+		t.Fatal("Over() is false after Play returned")
+	}
+}
