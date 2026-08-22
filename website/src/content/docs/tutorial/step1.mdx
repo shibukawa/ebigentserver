@@ -1,0 +1,173 @@
+---
+title: step 1 — マウス1つで交互に指す
+description: ebigentserver を1行も使わない Ebitengine の三目並べ。あとで効いてくる2つの継ぎ目が、この時点ですでに入っている。
+---
+
+import { Aside, FileTree, LinkCard } from '@astrojs/starlight/components';
+
+フレームワークの解説から始まるチュートリアルは、たいてい一番大事なことを飛ばしている。
+**それを使わないとどうなるか**を見せないからだ。
+
+なのでこのステップでは何も使わない。ebigentserver の import は1行もなく、あるのは
+Ebitengine と `[9]Mark` の配列だけ。1台のマシンで2人が同じマウスを使って交互にクリックする。
+
+```bash
+go run ./tutorial/step1-hotseat
+```
+
+## 動くもの
+
+<div class="diagram diagram-sm">
+<svg viewBox="0 0 340 400" role="img" aria-label="三目並べの盤面。上段に X が3つ並び、黄色い線で勝ち筋が引かれ、中段に O が2つ置かれている">
+	<title>step 1 の盤面</title>
+	<rect x="0" y="0" width="340" height="400" rx="6" fill="#1c2026" />
+
+	<g stroke="#3c4550" stroke-width="2">
+		<line x1="20" y1="130" x2="320" y2="130" />
+		<line x1="20" y1="230" x2="320" y2="230" />
+		<line x1="120" y1="30" x2="120" y2="330" />
+		<line x1="220" y1="30" x2="220" y2="330" />
+	</g>
+
+	<g stroke="#6fb1f0" stroke-width="6" stroke-linecap="round">
+		<line x1="42" y1="52" x2="98" y2="108" /><line x1="98" y1="52" x2="42" y2="108" />
+		<line x1="142" y1="52" x2="198" y2="108" /><line x1="198" y1="52" x2="142" y2="108" />
+		<line x1="242" y1="52" x2="298" y2="108" /><line x1="298" y1="52" x2="242" y2="108" />
+	</g>
+
+	<g stroke="#f0a86f" stroke-width="6" fill="none">
+		<circle cx="70" cy="180" r="28" />
+		<circle cx="170" cy="180" r="28" />
+	</g>
+
+	<line x1="70" y1="80" x2="270" y2="80" stroke="#f2e68a" stroke-width="5" stroke-linecap="round" />
+
+	<text x="20" y="368" style="fill:#d6dce4" font-family="ui-monospace, monospace" font-size="14">X wins - click to play again</text>
+</svg>
+</div>
+
+カーソルの下のセルは、**次に指す側の色**でうっすら塗られる。勝敗が決まると勝ち筋に線が引かれ、
+どこかをクリックすると次の一局が始まる（`R` キーでも）。
+
+## 構成
+
+<FileTree>
+- tutorial/step1-hotseat/
+  - main.go engine を import する唯一の場所
+  - game/
+    - game.go ルール。engine を知らない
+    - game_test.go ウィンドウを開かずに走る
+</FileTree>
+
+2パッケージに割ったのは作法のためではない。engine を import しないパッケージは
+**ウィンドウなしでテストできる**からだ。`main.go` の側にテストを置くと、ディスプレイのない
+Linux では ebiten の初期化で落ちる——CI で走らないテストになる。
+
+## ルールの側
+
+```go
+// Place takes cell for the side to move and reports whether it happened.
+// An illegal cell leaves the state untouched, so a caller may hand it
+// any click without checking first.
+func (s *State) Place(cell int) bool {
+	if !s.Legal(cell) {
+		return false
+	}
+	mark := s.Turn
+	s.Board[cell] = mark
+	s.Moves++
+	if line, won := s.Board.lineFor(mark); won {
+		s.Winner, s.Line, s.Over, s.Turn = mark, line, true, Empty
+		return true
+	}
+	if s.Moves == len(s.Board) {
+		s.Over, s.Turn = true, Empty
+		return true
+	}
+	s.Turn = mark.Other()
+	return true
+}
+```
+
+不正な手を `Place` 自身が拒み、拒んだときは状態を1バイトも変えない。だから呼ぶ側は、
+盤上のどこをクリックされても素通しでよくなる。テストがそれを固定している。
+
+```go
+func TestOccupiedCellIsRefusedAndChangesNothing(t *testing.T) {
+	s := play(t, 4)
+	before := s
+	if s.Place(4) {
+		t.Fatal("Place on an occupied cell reported success")
+	}
+	if s != before {
+		t.Fatalf("refused move mutated the state:\n got %+v\nwant %+v", s, before)
+	}
+}
+```
+
+## ピクセルがセルになる場所
+
+```go
+// cellAt maps a cursor position to a board cell — the one place a pixel
+// turns into a move.
+func cellAt(x, y int) (int, bool) {
+	x, y = x-margin, y-margin
+	if x < 0 || y < 0 || x >= boardPx || y >= boardPx {
+		return noCell, false
+	}
+	return (y/cellPx)*3 + x/cellPx, true
+}
+```
+
+この関数より下は、マウスというものを知らない。`Update` がやるのはその出口を `Place` に渡す
+ことだけだ。
+
+```go
+func (a *app) Update() error {
+	mx, my := ebiten.CursorPosition()
+
+	a.hover = noCell
+	if cell, ok := cellAt(mx, my); ok && a.state.Legal(cell) {
+		a.hover = cell
+	}
+
+	if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
+		if a.state.Over {
+			a.state = game.New() // any click starts the next game
+		} else if cell, ok := cellAt(mx, my); ok {
+			a.state.Place(cell)
+		}
+	}
+	if inpututil.IsKeyJustPressed(ebiten.KeyR) {
+		a.state = game.New()
+	}
+	return nil
+}
+```
+
+<Aside type="note" title="入力は Update、描画は Draw">
+Ebitengine は `Update` を固定レートで呼び、`Draw` は画面のリフレッシュに合わせて呼ぶ。
+回数が一致しないので、`Draw` で `IsMouseButtonJustPressed` を読むと入力が抜ける。
+[Ebitengine への統合](/integration/ebitengine/)で改めて出てくる話が、ここでもう出ている。
+</Aside>
+
+## あとで効く2つの継ぎ目
+
+いま入っている構造のうち、2つだけが後のステップで意味を持つ。
+
+**`cellAt` の出口** — ピクセルがセル番号になったこの地点が、step 2 で `Agent` を差し込む場所に
+なる。人間の手も、ボットの手も、リプレイの手も、ここから先は同じ「セル番号」として流れる。
+
+**`game` パッケージが engine を知らないこと** — step 2 では `Simulation[S, A, O]` を実装するが、
+ルールを移す必要はない。`Project` と `Evaluate` を**足す**だけで済む。
+
+## まだないもの
+
+ボットも、記録も、ネットワークも、シードもない。それどころか `Update` が世界を直接書き換えて
+いて、tick という概念すらない。2人が同じマシンにいる限り、それで何も困らない。
+
+困りはじめるのは、3つ目の操作者——CPU——を足そうとした瞬間だ。`Update` の中に
+「いま O の番ならボットに考えさせる」と書くこともできるが、その1行が
+[最初に禁じた分岐](/overview/#一つの抽象で足りるのか)そのものになる。
+
+<LinkCard title="Ebitengine への統合" href="/integration/ebitengine/" description="step 2 の行き先。session を別 goroutine に置き、席を Detached にする配線。" />

@@ -1,0 +1,165 @@
+---
+title: 語彙とチップ
+description: 座標の算術を判断語に変える派生述語と、条件→行動の最小単位であるチップ。1つのライブラリを共有することの意味。
+---
+
+import { Aside, LinkCard } from '@astrojs/starlight/components';
+
+観測には敵の位置と自分の位置が入っている。だが役に立つ条件は `in_weapon_range` の方であって、
+そんなフィールドはどこにもない。
+
+この差を埋めるのが**派生述語**だ。生のフィールドを、条件が使える判断に変換する名前付きの関数。
+
+## 派生述語
+
+```go
+type Feature struct {
+	Name   string // 開発者が読む語彙の項目。"cell_4_empty"
+	GoExpr string // 生成コードでの Go 式。"obs.Board[4] == ttt.Empty"
+	Doc    string // 外部の分析役に渡す散文の説明
+	Eval   func(obs json.RawMessage) (bool, error) // 記録済み観測の判定
+}
+```
+
+**評価器と Go 式が対になっている**のがこの型の要点だ。`Eval` は記録された JSON の観測を
+採掘するときに使い、`GoExpr` は生成されたコードが本物の観測型に対して使う。同じ判断を
+2つの経路で表現しているので、採掘した条件がそのまま実行時のコードになる。
+
+語彙の例を挙げると、`in_weapon_range`、`outnumbered_locally`、`escape_route_exists`、
+`objective_contested`、`ally_needs_support`。どれも座標ではなく**判断**の名前になっている。
+
+### 述語を先に作る理由
+
+条件を座標の算術で書くと、レビューのたびに同じ算術を読み直すことになる。1つの述語が多くの
+ノードに使い回されるなら、**1回レビューする方が安い**。
+
+代わりに代償もある。述語を変えると、それを読んでいる全ノードが無効になる。だから
+`Parameters`（しきい値）は、再生成せずに開発者が調整できる場所として分けてある。
+
+<Aside type="caution" title="観測の外は書けない">
+述語が読めるのは記録された観測だけだ。これは規約ではなく構造で担保されている——`Eval` に
+渡ってくるのが観測の JSON しかないので、世界状態を参照する述語は**書きようがない**。
+</Aside>
+
+## 行動の語彙
+
+```go
+type ActionDef struct {
+	Name   string // "play_4"
+	GoExpr string // "ttt.Move{Cell: 4}"
+	Doc    string
+	Match  func(action json.RawMessage) (bool, error)
+}
+```
+
+述語と対称な形をしている。`Match` は記録された行動がこれかを判定し、`GoExpr` は生成コードで
+その行動を構築する。
+
+語彙にない行動を取っている決定点は、採掘から除外される。
+
+## 決定点への切り出し
+
+```go
+records, err := behavior.Segment(vocab, "ep-001", decisionsFile, keep)
+```
+
+decisions ストリームを読み、語彙が受け付けた行を特徴量化する。観測だけの行（行動が null）と、
+語彙の外の行動はスキップされる。
+
+出てくるのはこれだ。
+
+```go
+type Record struct {
+	Episode string
+	Tick    uint64
+	Slot    uint16
+	Obs     json.RawMessage
+	Action  string // マッチした ActionDef の名前
+	Bits    []bool // Bits[i] は Features[i] を Obs で評価した結果
+}
+```
+
+`Bits` が「その局面で成立していた可視の事実」の全体で、分析役に渡るのもこれになる。
+
+## チップ
+
+承認された候補は**チップ**に昇格する。状況を1つに絞った、条件と行動の最小単位。
+
+```go
+type Chip struct {
+	Condition       string     // 派生述語の名前だけで書かれた条件
+	Action          string     // 行動、または小さなサブツリー
+	Priority        int        // 兄弟間の既定の順序
+	Coverage        int        // このルールが再現する観測済み決定の数
+	Counterexamples int        // 条件は成立したが別の行動が取られた数
+	Evidence        []Evidence // 蒸留時に保持した証拠（episode + tick）
+	Rationale       string     // なぜこの条件がこの行動を選ぶのか
+	Approved        bool
+	Rejected        bool
+	RejectReason    string     // 却下の理由。再提案されたときに再提示される
+	Tags            []string   // level / style / tactic は全部同じ仕組み
+}
+```
+
+粒度の基準は「単独で名前を付けられ、レビューでき、ベンチマークできる大きさ」。
+格闘ゲームなら、相手が引きこもっているときの `pressure_rush`、飛び道具が飛んでくるときの
+`patient_approach`、といった具合になる。
+
+### 反例は雑音ではない
+
+被覆数が大きくて反例も多いルールは、「良いルールに雑音が乗っている」のではなく**悪いルール**だ。
+むしろ反例の方が興味深いデータになる。その決定を見て「何の述語があればこれを分離できるか」を
+問うと、たいてい最良の述語提案が出てくる。
+
+## ライブラリは1つ
+
+チップはゲームごとに**1つの共有ライブラリ**に置かれ、agent の中に複製されることはない。
+
+```json
+{
+  "game": "tictactoe",
+  "chips": [
+    {"condition": "cell_4_empty", "action": "play_4",
+     "coverage": 52, "counterexamples": 0, "approved": true,
+     "tags": ["level:intermediate", "style:center-first"],
+     "evidence": [{"episode": "ep-007", "tick": 3}]}
+  ]
+}
+```
+
+複製しないことが効くのは修正のときだ。**チップを1つ直すと、それを選んでいる全ての loadout が
+直る**。これがドリフト防止の要点になっている。
+
+## 個性は選択で作る
+
+同じライブラリから別の人格を組み立てる。
+
+```go
+loadout := behavior.Loadout{
+	Name: "CenterFirst",
+	Tactics: []behavior.Tactic{
+		{
+			Name:      "opening",
+			Condition: "board_is_empty", // 語彙の述語で作戦を切り替える
+			ChipKeys:  []string{"cell_4_empty→play_4"},
+		},
+		{
+			Name:     "default", // 条件なしのフォールバックは最後にしか置けない
+			ChipKeys: []string{"cell_0_empty→play_0" /* ... */},
+		},
+	},
+}
+```
+
+作戦セレクタの条件も観測の述語なので、切り替えは決定的で、再生でも完全に同じ順序をたどる。
+そして条件が観測の一部である以上、**プレイヤーが味方 agent に出した指示**が観測に載っていれば、
+それがそのまま作戦を切り替える。
+
+`Validate` は、全てのキーが承認済みチップに解決すること、条件なしの作戦が最後にしかないことを
+確かめる。三目並べでは、同一のライブラリから center-first という別個性を組んで見せている。
+チップは共有され、選び方と順序だけが違う。
+
+タグの次元は開いている。スキルレベルによるゲート（初級ボットには効かせない）も、
+スタイルも、作戦セレクタも、**全部同じタグの仕組み**で表現される。
+
+<LinkCard title="分析ステップと LLM" href="/ai/analysis/" description="候補を提案する役は差し替えられる。LLM に任せるときの入出力と検証。" />

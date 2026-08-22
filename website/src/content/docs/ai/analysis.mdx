@@ -1,0 +1,161 @@
+---
+title: 分析ステップと LLM
+description: 候補を提案する役は差し替えられる。決定的なベースライン、LLM に任せるときの入出力、そして提案を権威にしないための二重検証。
+---
+
+import { Aside, Steps, LinkCard } from '@astrojs/starlight/components';
+
+パイプラインの中で唯一「賢さ」が要る段がここだ。記録された決定点を眺めて、繰り返し現れる
+「状況 → 行動」を見つけ、条件として述べる。
+
+概念としてはこの役は LLM のものだが、実装は**インターフェース**になっている。
+
+```go
+type Analyzer interface {
+	Propose(v *Vocabulary, records []Record) (
+		candidates []Candidate, uncovered []Record, err error)
+}
+```
+
+返り値に `uncovered` があることに意味がある。**どの決定点をどのルールも説明できなかったか**が
+そのまま出てくるので、次に何を掘るべきかが分かる。
+
+`SequentialCovering` が決定的なベースライン実装で、決定リストの貪欲採掘をやる。毎ラウンド、
+残っているレコードを最も多く正しく被覆する (特徴量, 行動) の組を選び——反例ゼロのものを
+優先し——追加して、そのルールが実行時に処理する分を取り除く。同点は語彙の順で割るので、
+完全に決定的だ。これがあるので、LLM を持ち出さずにパイプライン全体をテストできる。**成果物の形は同一**なので、分析役を
+入れ替えてもレビュー・マージ・コード生成の段は一行も変わらない。
+
+## LLM に任せる場合
+
+導入するものは2つしかない。[`skills/behavior-analyze/`](https://github.com/shibukawa/ebigentserver/tree/main/skills/behavior-analyze)
+のフォルダと、深く掘るなら `duckdb` の CLI。スクリプトは Python の stdlib のみで、
+パッケージのインストールは要らない。
+
+LLM は API 越しに呼ばれるのではなく、**開発者自身の agentic 環境**（Claude Code など）の中で
+skill として走る。ファイルを介した契約になっている。
+
+<Steps>
+
+1. **エクスポート** — パイプラインが `analysis-request.json` を書き出す。
+
+2. **分析** — LLM が読み、`proposals.json` を書く。
+
+3. **検証** — Python 側と Go 側で二重に検証する。
+
+4. **マージ** — 差分としてライブラリに畳み込む。
+
+5. **承認** — エディタで人間が諾否を決める。
+
+</Steps>
+
+### 分析役に渡るもの
+
+```json
+{
+  "game": "tictactoe",
+  "features": [
+    {"name": "cell_4_empty", "doc": "中央が空いている",
+     "go_expr": "obs.Board[4] == ttt.Empty"}
+  ],
+  "actions": [
+    {"name": "play_4", "doc": "中央に打つ", "go_expr": "ttt.Move{Cell: 4}"}
+  ],
+  "records": [
+    {"episode": "ep-001", "tick": 3, "slot": 1,
+     "action": "play_4", "bits": "010110001"}
+  ],
+  "library": { "chips": [] },
+  "corpus_root": "episodes/"
+}
+```
+
+`bits` は特徴量の順に `0` / `1` を並べた文字列だ。コーパスの規模でもファイルが読めて diff が
+取れるように、この形にしてある。
+
+そして重要な制約が1つ。**条件は `features` の名前でしか書けない**。それ以外はランタイムの
+agent から見えないので、拒否される。
+
+### 既存ライブラリを渡す意味
+
+`library` を渡すのは、承認済みのルールを再発見させないためだけではない。却下されたチップには
+`reject_reason` が付いているので、**却下理由に向き合わないまま同じ提案を蘇らせる**ことを
+防げる。
+
+### 分析役が返すもの
+
+```json
+{
+  "game": "tictactoe",
+  "candidates": [
+    {"condition": "cell_4_empty", "action": "play_4",
+     "rationale": "中央が空いているときは一貫して中央が選ばれている",
+     "evidence": [{"episode": "ep-001", "tick": 3}]}
+  ],
+  "predicates": [
+    {"name": "fork_available",
+     "doc": "2方向のリーチを同時に作れる手があるか",
+     "go_draft": "func ForkAvailable(obs ttt.Observation) bool { ... }",
+     "rationale": "現在の語彙では、中央を取る手と分岐を作る手を区別できない"}
+  ],
+  "notes": "レビュー向けの要約"
+}
+```
+
+候補は**決定リスト**として読まれる。順序が意味を持ち、先のルールが優先されるので、後ろの条件に
+前の条件の否定を書き足す必要はない。被覆数を自分で計算する必要もない——どうせ検証側が
+再計算して、主張された数値は捨てられる。
+
+`predicates` は語彙そのものへの提案だ。「今の語彙ではこの2つの決定を区別できない」と
+分かったときに出す。`go_draft` は開発者にとっての出発点であって、そのまま動くコードとしては
+扱われない。
+
+## 提案は権威ではない
+
+<Aside type="caution" title="信頼境界はここにある">
+`ValidateProposals` が信頼境界だ。語彙に含まれるかは機械的に照合され、分析役が主張した数値は
+**特徴量化されたレコードから全部計算し直される**。引用された証拠が実在するかも照合される。
+</Aside>
+
+検証は2箇所で走る。
+
+```bash
+python3 skills/behavior-analyze/scripts/validate_proposals.py --request analysis-request.json --proposals proposals.json --out validated-proposals.json
+```
+
+分析役が自分で回して直すための、手元のチェック。終了コード 0 なら clean、1 なら落とした主張と
+訂正した主張が全部並ぶ。
+
+そして `ebigent merge` の側が、上流で何が検証されていようと**独立にもう一度**検証する。
+validated ファイルは便宜であって、迂回路ではない。
+
+## 判断の指針
+
+skill が分析役に渡している指針のうち、人間が自分で分析するときにもそのまま効くものがある。
+
+- 被覆数が大きくて反例も多いルールは、雑音が乗った良いルールではなく**悪いルール**だ。
+  反例を見て、それを分離する述語を考える方が実りがある。
+- 少なくて綺麗で順序の付いたルールが、重なり合った多数のルールに勝つ。生成されるのは
+  **人間が読む決定リスト**だから。
+- **コーパスが仕様**だ。コーパスに現れない状況については、ルールを推測せずに「現れなかった」と
+  書く。
+
+## 掘るための道具
+
+```bash
+python3 skills/behavior-analyze/scripts/corpus_stats.py --request analysis-request.json --cooccurrence
+```
+
+特徴量 × 行動の純度表が出る。マッチが1つの行動に集中している特徴量はチップの材料で、
+純度が低い特徴量は**より鋭い述語が要る**という信号になる。後者は「汚いチップ」ではなく
+`predicates` の提案として出すべきものだ。
+
+```bash
+python3 skills/behavior-analyze/scripts/corpus_stats.py --corpus episodes/ --sql "SELECT ..."
+```
+
+`decisions` / `events` / `outcomes` のビューが作られた状態で SQL を投げられる（ヘッダ行は
+除外済み）。outcomes を見て勝ちに相関するルールを重み付けし、events の拒否を見て混乱した
+プレイを見つける。
+
+<LinkCard title="承認・生成・再生成" href="/ai/codegen/" description="承認ゲート、Go コードへの落とし方、そして再生成が承認済みノードを壊さない仕組み。" />

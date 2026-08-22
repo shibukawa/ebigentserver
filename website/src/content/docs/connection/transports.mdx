@@ -1,0 +1,148 @@
+---
+title: トランスポート
+description: Conn インターフェースと capability による選択。pipe / WebSocket / WebTransport / WebRTC の差と、その上に載る framing と seqack。
+---
+
+import { Aside, LinkCard, Tabs, TabItem } from '@astrojs/starlight/components';
+
+上位のコードに「WebSocket なら〜」という分岐が入りはじめると、ブラウザビルドとネイティブ
+ビルドで選択ロジックが二重になる。そこで選択の基準をプロトコル名ではなく**能力**にしてある。
+
+```go
+type Capability struct {
+	ReliableStream     bool // 順序保証つきの確実な配送
+	UnreliableDatagram bool // 落ちるし並べ替わる
+	PeerToPeer         bool // 間にサーバを置かずにつながる
+	Browser            bool // ブラウザビルドから届く
+}
+```
+
+datagram が要るコードは `UnreliableDatagram` を見る。WebSocket が来たら `false` なので、
+確実チャネルへのフォールバックを自分で選ぶ。「WebSocket かどうか」は一度も聞かない。
+
+## Conn
+
+```go
+type Conn interface {
+	SendReliable(ctx context.Context, payload []byte) error
+	SendUnreliable(ctx context.Context, payload []byte) error
+	Receive(ctx context.Context) (Message, error)
+	Close() error
+	Capability() Capability
+}
+```
+
+同時送信は許され、順序が保たれるのは1本の確実チャネルの中だけ。受信は一度に1メッセージで、
+渡されたペイロードはトランスポート側が二度と触らない。`Close` は冪等で、`Receive` を解く。
+
+エラーは実装をまたいで同じ4つに畳まれる。`ErrClosed` / `ErrTooLarge` / `ErrBackpressure` /
+`ErrUnsupported`。
+
+<Aside type="caution" title="再送はしない">
+framework は一度受理した行動を `Conn` 越しに再送しない。つながり直すというのは、
+新しいチケットでの[着席のやり直し](/connection/signaling/)であって、セッションの継続ではない。
+</Aside>
+
+## 4つの実装
+
+<Tabs>
+<TabItem label="pipe">
+
+プロセス内の `Conn` ペア。ローカル構成ではそのまま使い、**障害注入**を宣言すると
+悪い回線の試験装置になる。
+
+```go
+faults := pipe.Faults{
+	LossPercent:    20,
+	Latency:        25 * time.Millisecond,
+	Jitter:         8 * time.Millisecond,
+	ReorderPercent: 10,
+	Seed:           1234, // 障害 PRNG のシード
+}
+a, b := pipe.Pair(faults, faults) // 方向ごとに違う宣言もできる
+```
+
+確実チャネルは遅延とジッタだけを受ける——遅くはなるが、落ちることはない。非確実チャネルは
+全部受ける。ドロップと並べ替えのパターンはシード付き PRNG なので再現するが、配送は実時間の
+タイマーに乗るので到着タイミングは再現しない。装置としてはそれが正しい。
+
+</TabItem>
+<TabItem label="WebSocket">
+
+確実・順序保証のみ。ブラウザから届く。datagram は持たない。
+
+`SendUnreliable` は確実ストリームの上を通る。呼び出し側が要求していない順序保証と到達保証が
+勝手に付いてくることになるが、[seqack](#seqack) は設計上それを許容する。1本のストリームの中で
+2つの論理チャネルを区別するのは、先頭1バイトのプレフィックスだけ。
+
+datagram トランスポートが使えないときのフォールバック先。
+
+</TabItem>
+<TabItem label="WebTransport">
+
+ブラウザ向けリアルタイムの主経路。制御用に確実な双方向ストリームを1本、状態ストリーム用に
+本物の非確実 datagram を持つ。
+
+確実チャネルは接続時にクライアントが開く1本の双方向ストリームで、長さプレフィックス付きの
+メッセージが流れる。datagram はそのまま QUIC datagram に対応する。
+
+quic-go を使うサーバとネイティブクライアントは js/wasm をターゲットにできないので、この
+ファイルはネイティブ限定のリンケージになっている。ブラウザ側では、ブラウザ自身の
+WebTransport API が同じインターフェースの裏でこの役を引き受ける。
+
+</TabItem>
+<TabItem label="WebRTC">
+
+ピア間の唯一の経路。チャネルは2本を**事前交渉**してある。
+
+- `reliable`（ordered, reliable）— snapshot、制御メッセージ、着席
+- `state`（unordered, maxRetransmits 0）— 入力と状態差分
+
+ストリーム ID を固定して事前に決めてあるので、どちらの側も相手のチャネル告知を待たない。
+待つのは SCTP アソシエーションが開くことだけ。
+
+ICE は non-trickle 限定で、候補収集が終わって（有界の待ち時間で）から SDP を作る。手動
+シグナリングには候補を trickle する経路が存在しないからだ。同じ理由で mDNS の候補難読化も
+切ってある——手動でシグナリングされたピアには、`.local` 名を解決する rendezvous がない。
+
+シグナリングは呼び出し側の問題として外に出してある。`NewOffer` / `Accept` / `Complete` が
+SDP をそのまま露出するので、それを control plane に載せるのか
+[手動トークン](/connection/signaling/#手動トークン)に載せるのかは、上のレイヤが決める。
+
+</TabItem>
+</Tabs>
+
+## framing
+
+WebRTC のデータチャネルにはメッセージサイズの上限があり、snapshot は簡単にそれを超える。
+そこで確実チャネルの上に分割・再構成の層が挟まる。
+
+```
+byte 0     : 0xEB マーカー
+byte 1     : バージョン (1)
+bytes 2-5  : メッセージ ID
+bytes 6-7  : チャンク番号
+bytes 8-9  : チャンク総数
+bytes 10.. : ペイロード
+```
+
+壊れたフレーム、範囲外の番号、重複、大きすぎるセットは**ここで捨てる**。セッション層は
+それらを一度も見ない。tick ごとの入力はこの層を通らない。
+
+## seqack
+
+非確実な状態ストリームの前段。両端が同じ層を走らせる。
+
+```
+0xEA, version(1), flags, seq uint32, ackSeq uint32, ackBits uint32, payload
+```
+
+上に向かって渡すものが4つある。ピアが確認済みの最新タグ（statesync が
+[confirmed baseline](/connection/sync/) に使う tick）、RTT サンプル、損失推定、そして最終受信時刻。
+沈黙の判定そのものは呼び出し側が「何 tick 落としたか」で測る。
+
+古い datagram——すでに配送した番号以下のもの——は **ack はするが配送しない**。状態ストリームは
+last-writer-wins なので、順序が入れ替わって届いたものは受信側がもう欲しくない情報しか
+運んでいない。
+
+<LinkCard title="シグナリングと着席" href="/connection/signaling/" description="相手の接続情報をどう知るか、そしてチケットでどう席に着くか。" />

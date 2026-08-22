@@ -1,0 +1,131 @@
+---
+title: シグナリングと着席
+description: トランスポートが存在する前に相手をどう見つけるか。そしてチケットでどう席に着き、認証しない構成で何が守られるか。
+---
+
+import { Aside, Steps, LinkCard } from '@astrojs/starlight/components';
+
+[トランスポート](/connection/transports/)の話は、接続が可能であることを前提にしていた。
+その前段——**相手の接続情報をどうやって知るか**——は、トポロジとも Conn とも別の問題として
+切り離してある。
+
+## 4つのシグナリング方法
+
+| 方法 | 使う場面 | ブラウザ |
+|---|---|---|
+| none | standalone。プロセス内トランスポート | — |
+| control plane | dedicated server。エンドポイントはチケットの中に入って届く | 可 |
+| LAN ディスカバリ | 同じネットワーク上のネイティブビルド | **不可** |
+| 手動トークン | 静的ホスト構成。offer と answer をプレイヤーが帯域外で運ぶ | 可 |
+
+選択を決めるのはビルドターゲットとデプロイであって、ゲームのジャンルではない。
+
+### LAN ディスカバリ
+
+UDP ブロードキャストのビーコンと、受動的なリスナ。プロトコルバージョンでフィルタし、
+TTL で失効する。ブラウザは UDP ブロードキャストを送れないので、ネイティブ限定。
+
+### 手動トークン
+
+シグナリングサーバが存在しないときの経路。WebRTC の offer / answer を、テキストとして
+安全な形に畳んでチャットや wiki やメールで運ぶ。
+
+base64 にする前のレイアウトはこうなっている。
+
+```
+version byte | type byte (invitation / answer) | expiry (unix秒)
+| 宣言ペイロード長 | ペイロード
+```
+
+ペイロードは `{session_id, sdp}` の JSON を、よくある SDP 部分文字列の固定辞書に通してから
+flate にかけたもの。全体を `base64.RawURLEncoding` で包む。
+
+**宣言長がここで効く**。チャットソフトや wiki は末尾に何かを付け足す。宣言した長さより先は
+読まないので、付け足されたゴミは無視される。
+
+運搬にも作法がある。トークンは URL のフラグメントに載る——フラグメントは HTTP サーバに
+送信されない——ので、起動時にメモリへ読み込んでから見える URL からは消す。そして
+**TURN の資格情報を決して含まない**。あれはページのメモリにだけ置く。
+
+<Aside type="caution" title="トークンは bearer データ">
+持っている人が使えてしまう以上、安全性は「短命であること」と「一度しか使えないこと」で
+担保するしかない。`Decode` が期限を強制し、受け入れ側が `Redeemer` で単回償還を強制する。
+</Aside>
+
+## 着席（admission）
+
+接続が張れたあと、最初の往復で席が決まる。
+
+<Steps>
+
+1. **バージョン照合** — 最初にやる。交渉はしない。不一致は双方のバージョンを名指しした
+   明示的なエラーで拒否する。
+
+2. **ローカル検証** — チケットの署名とクレームをその場で検証する。接続経路上に
+   control plane はいない。
+
+3. **jti の償還** — 一度きり。同じチケットの再提示は、席が元の持ち主に埋まっているので拒否。
+
+4. **接続への束縛** — 身元をこの接続に結びつける。
+
+5. **席とロールの適用** — player / spectator / observer。
+
+6. **シード配布** — 最初の snapshot が共有 RNG シードを運ぶ。
+
+</Steps>
+
+ハンドシェイクの封筒は JSON で、**意図的にバージョン非依存**にしてある。生成された CBOR
+スキーマがすでに食い違っている相手同士でも、プロトコルバージョンの比較だけは表現できて
+いなければならないからだ。
+
+```go
+type Hello struct {
+	Protocol string `json:"protocol"` // data:protocol-version
+	Ticket   string `json:"ticket"`   // compact JWT
+}
+```
+
+### チケット
+
+Ed25519 で署名した JWT。共有の対称鍵は使わない。listen server や p2p では**検証する側が
+プレイヤーのマシン**なので、対称鍵はそのまま全セッションの偽造鍵になってしまう。
+
+```go
+type Claims struct {
+	Subject   string `json:"sub"`        // プレイヤー ID
+	Audience  string `json:"aud"`        // 受理してよいエンドポイント
+	ExpiresAt int64  `json:"exp"`        // 秒〜数分
+	ID        string `json:"jti"`        // セッションごとに1回だけ償還
+	SessionID string `json:"session_id"`
+	Seat      uint16 `json:"seat"`
+	Role      string `json:"role"`
+}
+```
+
+`kid` で鍵を名指しするので、鍵をローテーションしても発行済みチケットは生き残る。
+
+## 認証しない構成をどう守るか
+
+身内で遊ぶのにチケット発行サーバを立てるのは筋が悪い。だからチケットなしの着席は許されて
+いるが、条件が付く。**ネットワークの到達範囲そのものが制御になっている場所でしか
+listen できない**。
+
+```go
+if err := admission.GuardUnauthenticated(listenAddr); err != nil {
+	return err // 起動を止める
+}
+```
+
+通るのは loopback、RFC1918 のプライベート範囲、リンクローカルだけ。それ以外は fail closed で、
+`0.0.0.0` と `::` も——全インターフェースを晒すので——落ちる。名前が解決できないホストも落ちる。
+
+WebRTC の側にこのガードは要らない。手動トークンで着席する WebRTC セッションには
+**listening port が存在しない**ので、スキャンも列挙もされようがない。あちら側の制御は
+「招待が単回で期限付きであること」が引き受けている。
+
+<Aside type="note" title="呼ぶ場所">
+設定の読み込み時だけでなく、セッション起動時と着席時にも呼ぶ。上書きはオペレータの明示的な
+opt-in であって、既定にはならない。
+</Aside>
+
+<LinkCard title="同期モードと状態配信" href="/connection/sync/" description="tuning profile が宣言する tick、送信レート、baseline の選び方。" />

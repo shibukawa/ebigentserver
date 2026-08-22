@@ -1,0 +1,333 @@
+---
+title: Ebitengine への統合
+description: Update は何も決めず、Draw は何も持たない。契約の名前が engine と衝突しない理由と、1つのディレクトリから描画クライアントとヘッドレスサーバの両方を出す配線。
+---
+
+import { Aside, Steps, Tabs, TabItem, LinkCard } from '@astrojs/starlight/components';
+
+クライアントのエントリでは、世界を進める契約と画面を描く契約が同じファイルに並ぶ。
+Ebitengine 側は `Game`——`Update` / `Draw` / `Layout` の3つ。ebigentserver 側は
+[`Simulation`](/integration/simulation/)——`Start` / `ActingSlots` / `Apply` / `Project` /
+`Evaluate` の5つ。
+
+この framework の側が `Game` **ではない**のは、まさにこの並びのためだ。同じ名前の無関係な
+インターフェースが1ファイルに2つあると、どちらが世界を進めるのかが名前から消える。
+どちらに何を書くかを間違えると、あとからボットもリプレイもヘッドレスサーバも作れなくなる——
+しかも、間違えた直後は普通に動いてしまう。
+
+線の引き方は一つしかない。**`Update` は何も決めない**。キーを行動に変えて inbox に入れるだけだ。
+**`Draw` は何も持たない**。渡された世界を描くだけ。シミュレーションは別の goroutine で回る。
+
+## 2つの goroutine
+
+<div class="diagram">
+<svg viewBox="0 0 660 296" role="img" aria-label="Ebitengine の main goroutine と session の goroutine が、上りの行動と下りの世界で結ばれている図">
+	<title>Ebitengine と session の関係</title>
+
+	<defs>
+		<marker id="ah-ebi" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+			<path class="arrowhead" d="M0 0 L10 5 L0 10 z" />
+		</marker>
+	</defs>
+
+	<text class="lbl" x="16" y="30">Ebitengine（main goroutine）</text>
+	<rect class="box" x="16" y="44" width="240" height="200" rx="8" />
+
+	<rect class="box-accent" x="32" y="64" width="208" height="56" rx="6" />
+	<text class="lbl" x="44" y="86">Update()</text>
+	<text class="sub" x="44" y="104">キー → Action → Inbox</text>
+
+	<rect class="box-accent" x="32" y="160" width="208" height="56" rx="6" />
+	<text class="lbl" x="44" y="182">Draw()</text>
+	<text class="sub" x="44" y="200">受け取った世界を描く</text>
+
+	<text class="lbl" x="404" y="30">session（別 goroutine）</text>
+	<rect class="box" x="404" y="44" width="240" height="200" rx="8" />
+
+	<rect class="box" x="420" y="64" width="208" height="56" rx="6" />
+	<text class="lbl" x="432" y="86">RunRealtime</text>
+	<text class="sub" x="432" y="104">検証 → Apply → 投影</text>
+
+	<rect class="box" x="420" y="160" width="208" height="56" rx="6" />
+	<text class="lbl" x="432" y="182">Broadcast</text>
+	<text class="sub" x="432" y="200">確定した世界を渡す</text>
+
+	<path class="link-accent" d="M256 92 L398 92" marker-end="url(#ah-ebi)" />
+	<text class="sub" x="327" y="84" text-anchor="middle">Inbox：行動</text>
+
+	<path class="link" d="M398 188 L262 188" marker-end="url(#ah-ebi)" />
+	<text class="sub" x="330" y="206" text-anchor="middle">世界のコピー</text>
+
+	<text class="sub" x="330" y="272" text-anchor="middle">game/ パッケージは、この2つの goroutine のことも engine のことも知らない</text>
+</svg>
+</div>
+
+Ebitengine は main goroutine を明け渡せと言ってくる。だから session は別の goroutine に置き、
+main は `ebiten.RunGame` に渡す。
+
+```go
+func serve(ctx context.Context, h *host) error {
+	go func() {
+		if err := h.session.RunRealtime(ctx, session.Paced); err != nil {
+			fatal(err)
+		}
+	}()
+	ebiten.SetWindowSize(game.FieldW*scale, game.FieldH*scale)
+	ebiten.SetWindowTitle("flappy")
+	return ebiten.RunGame(&app{inboxes: h.local})
+}
+```
+
+## キーボードが行動になる場所
+
+生のデバイス入力がゲームの行動に変わるのは、**このファイルの中だけ**だ。
+
+```go
+// 座席ごとに1キー。この規模ではこれが api:input-adapter の全部
+var flapKeys = []ebiten.Key{
+	ebiten.KeySpace, ebiten.KeyS, ebiten.KeyK, ebiten.KeyV,
+	ebiten.KeyN, ebiten.KeyComma, ebiten.KeyQ, ebiten.KeyZ,
+}
+
+func (a *app) Update() error {
+	for i, inbox := range a.inboxes {
+		if i >= len(flapKeys) {
+			break
+		}
+		if inpututil.IsKeyJustPressed(flapKeys[i]) {
+			inbox.Submit(game.Action{Flap: true})
+		}
+	}
+	return nil
+}
+```
+
+`Update` がやっているのは変換と投函だけで、判断が1つもない。だから同じ `game.Action` を、
+ボットも、リプレイストリームも、ネットワークの向こうのピアも、engine なしで作れる。
+
+<Aside type="caution" title="Draw で入力を読まない">
+Ebitengine は `Update` を毎秒 TPS 回（既定60）呼び、`Draw` は画面のリフレッシュに合わせて
+呼ぶ——**回数が一致しない**。`Draw` で `IsKeyJustPressed` を読むと、入力が抜けたり二重に
+入ったりする。入力は `Update`、描画は `Draw`。
+</Aside>
+
+## 人間の席は Detached
+
+ここは直感に反するかもしれない。**窓が担当している席は、session から見ると `Detached`** に
+なっている。
+
+```go
+local := localSeats()
+for i, slot := range game.Slots() {
+	if i < local {
+		// この席の観測は、描画のために持っている world がすでに担っている
+		s.Admit(slot, session.Detached[game.Observation, game.Action]{})
+		inbox, _ := s.Inbox(slot)
+		h.local = append(h.local, inbox)
+		continue
+	}
+	// ボットの席は直接着席する。最終観測と Ended を受け取りたいので
+	bot := &game.Bot{}
+	s.Admit(slot, bot)
+	inbox, _ := s.Inbox(slot)
+	drivers = append(drivers, &game.Driver{Slot: slot, Agent: bot, Inbox: inbox})
+}
+```
+
+理由は二重配送を避けることにある。窓は broadcast された世界をすでに持っているので、
+session が同じ観測をコールバックでも渡すと、**同じ情報が2経路で届いて競合する**。
+
+そしてこの形は、そのままネットワーク越しのプレイヤーの形でもある。リモートのピアが着席する
+ときも席は `Detached` で、観測は下りの状態ストリームで届き、行動は `Inbox` に入る。
+だから `netplay` を前に置く作業は、この `cmd/` ディレクトリだけの話になり、`game/` の下は
+一行も動かない。
+
+<Aside type="note" title="ボットだけは直接 Admit">
+ローカルのボットは最終観測と `Ended` を受け取りたいので、`Detached` ではなく本体を着席させる。
+そのうえで `Driver` が broadcast された世界を投影して `Observe` / `Decide` に流す。
+</Aside>
+
+## 描画は世界を借りない
+
+`Broadcast` は session の goroutine で走り、`Draw` は Ebitengine の goroutine で走る。
+session は渡したあとも同じメモリを書き続けるので、ポインタを持ち回ると壊れる。
+
+```go
+func (v *view) store(w *gameState) {
+	v.mu.Lock()
+	defer v.mu.Unlock()
+	v.world = *w
+	v.world.Pipes = append([]game.Pipe(nil), w.Pipes...) // スライスは別途コピー
+	v.got = true
+}
+```
+
+構造体の代入だけではスライスの背後の配列が共有されたままになる。`append` で切り離すのは
+そのためだ。
+
+そして描画では浮動小数点を使ってよい。というより、使うしかない。
+
+```go
+// wire のスケールは 1/1024。表示の計算が float なのは、ここでだけ合法
+px := func(v msg.Fixed1024) float32 { return float32(v) / 1024 }
+```
+
+固定小数点はシミュレーションの決定性のためにあるのであって、ピクセルを置くためではない。
+**float が出てきた値をシミュレーションに戻さない**限り、この一方通行は安全だ。
+
+## 1つのディレクトリ、2つのリンク形態
+
+同じ `cmd/` から、描画するビルドとヘッドレスのビルドが出る。切り替えはビルドタグ1つ。
+
+<Tabs>
+<TabItem label="描画するビルド">
+
+```go
+//go:build !dedicated
+
+package main
+
+import (
+	"github.com/hajimehoshi/ebiten/v2"
+	// ...
+)
+
+func localSeats() int { return game.Seats } // 1台で全員が遊ぶ場合
+
+func onWorld(w *gameState) { shown.store(w) }
+
+func serve(ctx context.Context, h *host) error {
+	go func() {
+		if err := h.session.RunRealtime(ctx, session.Paced); err != nil {
+			fatal(err)
+		}
+	}()
+	return ebiten.RunGame(&app{inboxes: h.local})
+}
+```
+
+</TabItem>
+<TabItem label="ヘッドレスビルド">
+
+```go
+//go:build dedicated
+
+package main
+
+// renderer の import が1つもない。この「なさ」が全部だ
+
+func localSeats() int { return 0 } // 席は全部ボットかリモート
+
+func onWorld(*gameState) {} // 誰も見ていない
+
+func serve(ctx context.Context, h *host) error {
+	return h.session.RunRealtime(ctx, session.Paced)
+}
+```
+
+</TabItem>
+</Tabs>
+
+変種ファイルが供給するのは `localSeats()` と `serve()` の**2つだけ**だ。3つ目が必要になったら、
+それは分割線を引く場所を間違えている。
+
+```bash
+go build ./cmd/flappy
+```
+
+```bash
+go build -tags dedicated ./cmd/flappy
+```
+
+タグが**レンダラを外す**方向に効いていることに注目してほしい。足す方向ではない。開発者が
+一日中走らせるのは素のビルドで、出荷するサーバの方が意図的な変種になる。
+
+<Aside type="tip" title="なぜここだけタグを使うのか">
+2つの形は1プロセスを共有できない——ヘッドレスサーバは engine を**リンクすらしてはいけない**。
+そしてタグをこのディレクトリの外に出さないので、付け忘れは遠くではなく入口で失敗する。
+</Aside>
+
+## 境界はテストが守る
+
+```go
+func TestModuleImportBoundary(t *testing.T) {
+	// 素のビルドは描画するので、その入口だけは engine をリンクしてよい
+	playing := importcheck.Default()
+	playing.Rules[0].AllowedEntries = append(playing.Rules[0].AllowedEntries, renderingEntries...)
+	playing.AllowedCgoEntries = append(playing.AllowedCgoEntries, renderingEntries...)
+	importcheck.Enforce(t, ".", playing)
+
+	// 出荷するのはこちら。入口も含め、何一つレンダラに届いてはいけない
+	headless := importcheck.Default()
+	headless.BuildTags = []string{"dedicated"}
+	importcheck.Enforce(t, ".", headless)
+}
+
+var renderingEntries = []string{"cmd/flappy"}
+```
+
+**両方を検査する**のが要点だ。タグなしのグラフは、タグ付きビルドについて何も言わない。
+
+`game/` に描画呼び出しを1つ移してもコンパイルは通る。落ちるのはここで、しかも
+**どの import 連鎖でそうなったか**まで出る。
+
+<Aside type="caution" title="キャッシュに注意">
+この検査は go ツールチェーンを呼び出すが、テストキャッシュはそれを追跡しない。import グラフを
+確かめたいときは `-count=1` を付ける。
+</Aside>
+
+## 動かしてみる
+
+pong の描画クライアントが実物だ。ウィンドウは、ボットたちが使っているのと同じループバック
+リンクのクライアントとして振る舞う——snapshot / delta のストリームから世界を再構成し、
+inbox に入力を出す。
+
+```bash
+go run ./samples/pong/cmd/pong-client
+```
+
+W/S または ↑/↓ で左パドルを操作する。
+
+```bash
+go run ./samples/pong/cmd/pong-client -left=bot
+```
+
+こちらはボット同士の対戦を観戦する。観戦のときウィンドウは受信専用の attach になり、
+inbox を持たない。
+
+## ゼロから作る
+
+```bash
+ebigent init
+```
+
+ウィザードの[3問](/connection/#ウィザードが聞く3つのこと)に答えると、Ebitengine の
+Flappy Bird 風のプロジェクトが出てくる。2羽が同じパイプ列を飛び、操作は flap だけ。
+リアルタイム session、固定小数点物理、シード付き RNG、engine をクライアントエントリに
+閉じ込める構成が、最初から動く状態で入っている。
+
+<Steps>
+
+1. **プレイスタイル** — 1人 / 2人 / マルチ
+
+2. **最大人数** — マルチのときだけ
+
+3. **1台で複数人が遊べるようにするか** — 1人以外
+
+</Steps>
+
+3問目の答えがそのまま `localSeats()` に出る。1台を共有するなら全席がローカルで、キーが
+1人1つ割り当てられる。共有しないなら `return 1` で、残りの席は別プロセスから来る。
+
+## 踏み外しやすいところ
+
+| やってしまうこと | 何が起きるか |
+|---|---|
+| `Draw` で入力を読む | `Update` と呼ばれる回数が違うので、入力が抜けるか二重になる |
+| `Update` で世界を進める | session の tick と二重に進む。`Update` は投函するだけ |
+| `game/` で `ebiten.IsKeyPressed` を呼ぶ | 境界テストが落ち、ヘッドレスビルドがコンパイルできなくなる |
+| broadcast された `*State` をそのまま保持する | session が同じメモリを書き続けるので、`Draw` が壊れた世界を読む |
+| 描画で作った float をシミュレーションに戻す | 再生がビット一致しなくなる。[ログが証拠でなくなる](/integration/boundaries/) |
+| 人間の席に本体の agent を着席させる | broadcast とコールバックの二重配送になる。`Detached` を使う |
+
+<LinkCard title="ログが AI になるまで" href="/ai/" description="窓から遊んだ記録が、そのまま蒸留のコーパスになる。" />

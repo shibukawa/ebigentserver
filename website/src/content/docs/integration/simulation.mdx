@@ -1,0 +1,119 @@
+---
+title: Simulation インターフェース
+description: 5つのメソッドと、それぞれが守らなければならない約束。ActingSlots が空になる意味、Apply が失敗してはいけない理由。
+---
+
+import { Aside, LinkCard } from '@astrojs/starlight/components';
+
+```go
+type Simulation[S, A, O any] interface {
+	Start(seed uint64) S
+	ActingSlots(state *S) []SlotID
+	Apply(state *S, slot SlotID, action A)
+	Project(state *S, slot SlotID) O
+	Evaluate(state *S, slot SlotID) EvaluationSignal
+}
+```
+
+5つだけ、というのは字面としては魅力的だが、それぞれに約束が付いている。約束の方が本体だ。
+
+## Start
+
+初期の世界状態を返す。引数の `seed` はセッションの共有 RNG シード。
+
+乱数が要るゲームは**ここから導く**。典型的には `fixmath.Rand` を状態に埋め込む——そうすると
+乱数列はシミュレーションステップを通ってのみ進み、チェックポイントと一緒に移動する。
+壁時計や、シードされていない生成器から引いてはいけない。決定的なゲームは無視してよい。
+
+```go
+func (Simulation) Start(seed uint64) State {
+	return State{Rand: fixmath.NewRand(seed), Next: SlotX}
+}
+```
+
+## ActingSlots
+
+このステップで判断しなければならない席を返す。順序は問わない——セッションが `SlotID` 順に
+コミットする。
+
+**空を返すことには意味がある**。「ゲームにこれ以上の判断はない」という宣言であり、全席の評価が
+terminal になっているときにだけ合法になる。まだ勝負が付いていないのに空を返せば、それは
+バグとして扱われる。
+
+## Apply
+
+検証済みの行動を1つ適用して状態を進める。合法性は `ActionValidator` がすでに確定させている。
+
+**`Apply` は失敗してはいけない。** エラーを返す口すらない。判定と適用を分けておくと、
+判定の側だけを rollback の全ピアで走らせられる——そして判定が決定的である限り、適用も決定的になる。
+
+<Aside type="caution" title="Apply の中で乱数を引くなら">
+状態に埋めた PRNG から引くこと。`math/rand` のグローバルや `time.Now()` に触れた瞬間、
+再生はビット一致しなくなり、[ログは証拠でなくなる](/ai/episode-log/)。
+</Aside>
+
+## Project
+
+席が見てよい観測を組み立てる。
+
+```go
+// samples/tictactoe/ttt/ttt.go
+func (g Simulation) Project(s *State, slot session.SlotID) Observation {
+	return Observation{
+		You:      slot,
+		Mark:     mark(slot),
+		Board:    s.Board,   // 全員が同じ盤面を見る（global scope）
+		NextTurn: s.Next,
+		Signal:   g.Evaluate(s, slot),
+	}
+}
+```
+
+三目並べは全員に同じものを渡すが、それは**このゲームがそう決めた**からであって、framework が
+そうしているのではない。ダンジョンでは同じ位置に別種の view を返す。ここを書き換えることが、
+fog of war にも、視界距離にも、AI の難易度調整にも、チート対策にもなる。
+
+観測に何を載せるかは全面的にゲームの権限だ。framework は中身を一度も検査しない。
+
+<LinkCard title="観測と可視性" href="/integration/observation/" description="scope、可視性アノテーション、そして隠し情報がワイヤに載らないことの確かめ方。" />
+
+## Evaluate
+
+席の評価シグナルを計算する。呼ぶのはセッションで、**agent が自分を採点することはない**。
+
+```go
+type EvaluationSignal struct {
+	Score       int64        // 点数、資源、体力
+	Progress    fixmath.F64  // 勝利条件までの距離を [0,1] に正規化
+	Evaluation  fixmath.F64  // 局面の評価値。チェスの eval に相当
+	RewardDelta fixmath.F64  // 前の判断点からの変化 ← 学習ではこれが効く
+	Terminal    Terminal     // win / lose / draw / abandoned
+}
+```
+
+三目並べは `Terminal` しか埋めない。それでも構造体の全フィールドは最初から存在している。
+理由は先の話にある——判断ごとの信用割り当てができないと、[蒸留のためのコーパスが
+役に立たなくなる](/ai/episode-log/)。エピソードの最終結果だけをラベルにすると、1エピソードに
+1ラベルしか付かない。良い判断と運の良い判断を分けるには、それでは疎すぎる。
+
+数値は全部固定小数点。浮動小数点はシミュレーションに入れない。
+
+## Config で組み立てる
+
+```go
+cfg := session.Config[State, Move, Observation]{
+	ID:         "match-1",
+	Slots:      ttt.Slots(),
+	Simulation: ttt.Simulation{},
+	Seed:       42,
+	Validator:  ttt.Validator{}, // nil なら全部通る
+	Recorder:   writer,          // nil なら記録しない
+	Canonical:  ttt.Encode,      // nil ならチェックポイントなし
+}
+```
+
+ゼロ値の任意フィールドは安全側の既定を選ぶので、最小構成ではゲームと席だけ名指しすればよい。
+ただし例外が一つある——`RunRealtime` は
+[`Tuning` の宣言を要求](/connection/sync/)し、既定値を持たない。
+
+<LinkCard title="Agent インターフェース" href="/integration/agent/" description="人間もボットもリプレイも同じ4メソッド。2つのペーシングモード。" />

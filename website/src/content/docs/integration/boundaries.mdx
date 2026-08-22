@@ -1,0 +1,102 @@
+---
+title: 越えてはいけない境界
+description: 固定小数点、シード付き RNG、席順コミット、engine の閉じ込め。守られているかを人間の注意力ではなくビルドが検査する。
+---
+
+import { Aside, LinkCard } from '@astrojs/starlight/components';
+
+決定性は「気を付けて書く」で守れるものではない。半年後に誰かが `math.Sin` を1行足すと、
+その瞬間から再生はビット一致しなくなり、しかも**しばらく誰も気付かない**。
+
+だからここでは、境界を破ったらビルドが落ちるようにしてある。
+
+## 浮動小数点を足すとビルドが落ちる
+
+メッセージ構造体に `float64` を足すと、CBOR コーデックの生成が拒否する。同じ扱いを受けるのは
+`float` のほか、素の `int`（幅がプラットフォーム依存）、`map`（順序が不定）、`interface`、
+`time.Time`。
+
+```go
+type Ball struct {
+	X, Y fixmath.F64 // s32.32 固定小数点。OK
+	VX   float64     // ← 生成が落ちる
+}
+```
+
+数値の土台は [fixmath](https://github.com/shibukawa/fixmath)。F64（s32.32）、BAM 角度、Vec2、
+そして宣言スケールの変換を持つ。FixPointCS の移植なので、`Sin` も `Atan2` も `Sqrt` も
+アーキテクチャをまたいで同じビットを返す。
+
+## RNG はシードからしか引けない
+
+```go
+func (Simulation) Start(seed uint64) State {
+	return State{Rand: fixmath.NewRand(seed | 1)}
+}
+```
+
+状態に埋めると、乱数列はシミュレーションステップを通ってのみ進み、チェックポイントと一緒に
+移動する。シードはエピソードログのヘッダに記録されるので、再生時に同じ流れが再現される。
+
+## コミットは席の順番で
+
+判断する席はステップの冒頭でスナップショットを取り、`SlotID` の昇順にコミットする。
+`ActingSlots` が何順で返そうと関係ない。マップのイテレーションやゴルーチンの完了順が
+結果に混ざる余地を消してある。
+
+## engine はクライアントエントリの中だけ
+
+ゲームルールのパッケージから Ebitengine を import すると、テストが落ちる。
+
+```go
+func TestModuleImportBoundary(t *testing.T) {
+	importcheck.Enforce(t, ".", importcheck.Default())
+}
+```
+
+`go list -deps -json` で import グラフを検査し、違反したパッケージと**import の連鎖**を
+名指しして報告する。「どこかで混入した」ではなく「A → B → C で入った」まで出る。
+
+許可されるのはクライアントのエントリポイントだけで、パターンで宣言する。
+
+```go
+cfg.Rules[0].AllowedEntries = append(cfg.Rules[0].AllowedEntries,
+	"samples/*/cmd/*client*",
+	"samples/*/cmd/*listen*",
+	"samples/*/cmd/*static*",
+)
+```
+
+同じパスで cgo も検査される。cgo が入ると wasm ターゲットが死ぬので、理由は違うが対処は同じだ。
+
+<Aside type="note" title="ゲーム側にも1つ置く">
+framework 自身がこのテストを持っているのと同じように、ゲームのモジュールも
+`importcheck.Enforce(t, ".", importcheck.Default())` を1つ持つ。エントリのパターンは
+自分のリポジトリの形に合わせる。
+</Aside>
+
+## 入力デバイスはゲームロジックに入らない
+
+`concept:action` はゲームが定義した**意図**であって、生のデバイス入力ではない。
+「W キーが押された」ではなく「上に加速する」が行動になる。
+
+この線が引かれていると、同じ行動をキーボードからもゲームパッドからもボットからも
+リプレイからも作れる。逆にここを緩めると、`Agent` の抽象が最初の一歩で壊れる。
+
+## 何が保証されるのか
+
+制約を4つ守ると、次のことが成り立つ。
+
+- 記録した対局を再生すると、4つのログストリームが**バイト単位で一致する**
+- arm64 の開発機と amd64 の CI で、最終チェックポイントのダイジェストが一致する
+- ログに記録された局面を、後から実際に復元できる
+
+3つ目が [AI 育成](/ai/)の前提になる。「この局面でこの手を指した」という主張を検証できるから、
+提案されたルールの根拠を人間が目で確かめられる。
+
+<Aside type="caution" title="演出は状態ではない">
+プレゼンスメッセージ（カーソル位置、絵文字、装飾）はシミュレーションにも分析にも入らない。
+記録もされない。混ぜると、再現できないものが状態に紛れ込む。
+</Aside>
+
+<LinkCard title="Ebitengine への統合" href="/integration/ebitengine/" description="ここまでの契約と制約を、実際のウィンドウに配線する。" />

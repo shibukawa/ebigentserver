@@ -1,0 +1,168 @@
+---
+title: ebigentserver とは
+description: agent を中心に据えたセッションランタイムの全体像。ゲームが書く層、framework が持つ層、そして配置と同期が独立した軸である理由。
+---
+
+import { Aside, CardGrid, LinkCard } from '@astrojs/starlight/components';
+
+ゲームサーバーを設計しはじめると、わりと早い段階で「サーバ権威にするか、P2P にするか」を
+決めさせられる。だがこの質問には、実は独立した二つの問いが押し込まれている。
+**プロセスをどこに置くか**と、**どのタイミングで誰の判断を正とするか**だ。前者を変えても後者は
+変わらないし、その逆もない。ebigentserver がこの二つを別々の軸として持っているのは、混ぜたまま
+実装すると片方を変えるたびにもう片方まで書き直すことになるからだ。
+
+もっとも、その話に入る前に片付けておくべき、もっと手前の分岐がある。
+
+## 一つの抽象で足りるのか
+
+観測を受け取って行動を返す。人間もボットもリプレイも、やっていることはそれだけだ——と言い切って
+しまうのは簡単だが、本当に足りるのかは疑わしい。人間には入力デバイスがあり、ボットには探索の時間が
+必要で、リプレイに至っては「判断」すらしていない。
+
+```go
+type Agent[O, A any] interface {
+	Joined(slot SlotID)
+	Observe(obs O)
+	Decide(ctx context.Context) (action A, ok bool)
+	Ended(result Result)
+}
+```
+
+この4つで足りている、という主張には検証条件がある。ゲームのルールを書いたパッケージに、
+操作者の種別で分岐する行が一つもないこと。三目並べのサンプル
+（[`samples/tictactoe/ttt`](https://github.com/shibukawa/ebigentserver/tree/main/samples/tictactoe/ttt)）は
+その検証のために存在していて、agent の実装型を一切参照しない。人間かボットかを選ぶのは
+起動時のフラグだけで、ルールの側は最後まで知らない。
+
+効いてくるのはむしろ後の方だ。プレイヤーが試合中に切断したとき、その席をボットに引き継がせる
+処理は「AI 引き継ぎ機能」ではなく、**新しい agent がその席に着席するだけ**になる。8人対戦に
+切断とAI引き継ぎを注入したテストが通っているのは、そのための機構を足したからではない。
+足すものが何もなかったからだ。
+
+<Aside type="note" title="agent の種類">
+人間クライアント、スクリプトボット、蒸留された行動ツリー、LLM、リモートピア、リプレイストリーム。
+いずれも同じ `Agent` を実装する。違うのは「観測 → 行動」の中身だけで、session からは区別が付かない。
+</Aside>
+
+## 誰がどの層を持つか
+
+ゲームが書く量は、思ったより少ない。世界の型・行動の型・観測の型を決めて、5つのメソッドを
+実装する。tick を刻むのも、受信者ごとに差分を作るのも、パケットを分割して再構成するのも、
+framework の側にある。
+
+<div class="diagram">
+<svg viewBox="0 0 620 392" role="img" aria-label="ゲームのルールを頂点に、session、statesync、seqack、framing、transport が下に積み重なる層構造">
+	<title>ebigentserver の層構造</title>
+
+	<defs>
+		<marker id="ah-layers" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+			<path class="arrowhead" d="M0 0 L10 5 L0 10 z" />
+		</marker>
+		<marker id="ah-layers-a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+			<path class="arrowhead-accent" d="M0 0 L10 5 L0 10 z" />
+		</marker>
+	</defs>
+
+	<rect class="box-accent" x="170" y="24" width="420" height="44" rx="6" />
+	<text class="lbl" x="184" y="43">ゲームのルール</text>
+	<text class="sub" x="184" y="59">Simulation[S, A, O] の5メソッド／Agent 実装／観測の中身</text>
+
+	<rect class="box" x="170" y="82" width="420" height="44" rx="6" />
+	<text class="lbl" x="184" y="101">session</text>
+	<text class="sub" x="184" y="117">tick・slot 順コミット・投影の呼び出し・評価・記録フック</text>
+
+	<rect class="box" x="170" y="140" width="420" height="44" rx="6" />
+	<text class="lbl" x="184" y="159">statesync</text>
+	<text class="sub" x="184" y="175">受信者ごとの snapshot / delta 生成、baseline 保持</text>
+
+	<rect class="box" x="170" y="198" width="420" height="44" rx="6" />
+	<text class="lbl" x="184" y="217">transport/seqack</text>
+	<text class="sub" x="184" y="233">シーケンス番号・ack ビットフィールド・RTT / loss 推定</text>
+
+	<rect class="box" x="170" y="256" width="420" height="44" rx="6" />
+	<text class="lbl" x="184" y="275">transport/framing</text>
+	<text class="sub" x="184" y="291">12KB 分割と再構成、不正フレームの破棄</text>
+
+	<rect class="box" x="170" y="314" width="420" height="44" rx="6" />
+	<text class="lbl" x="184" y="333">transport</text>
+	<text class="sub" x="184" y="349">pipe / WebSocket / WebTransport / WebRTC</text>
+
+	<path class="link" d="M380 68 L380 82" marker-end="url(#ah-layers)" />
+	<path class="link" d="M380 126 L380 140" marker-end="url(#ah-layers)" />
+	<path class="link" d="M380 184 L380 198" marker-end="url(#ah-layers)" />
+	<path class="link" d="M380 242 L380 256" marker-end="url(#ah-layers)" />
+	<path class="link" d="M380 300 L380 314" marker-end="url(#ah-layers)" />
+
+	<text class="lbl" x="150" y="49" text-anchor="end">あなたが書く</text>
+	<path class="link-accent" d="M158 40 L166 40 L166 52 L158 52" />
+
+	<text class="lbl" x="150" y="216" text-anchor="end">framework</text>
+	<path class="link" d="M158 90 L166 90 L166 350 L158 350" />
+</svg>
+</div>
+
+上の一枚だけがゲーム固有で、下の五枚は差し替え可能な部品として並んでいる。この境目が守られて
+いるかは人間の注意力ではなく [`importcheck`](/integration/boundaries/) が検査していて、
+ゲームルールのパッケージから Ebitengine を import すると **ビルドが落ちる**。
+
+<LinkCard title="接点は4つしかない" href="/integration/" description="Simulation / Agent / Validator / Recorder。ゲームが framework に触れる場所をすべて並べる。" />
+
+## 配置と同期は別の質問
+
+冒頭の話に戻る。session と agent を**どこに置くか**（実行トポロジ）と、**どうやって整合を
+保つか**（同期モード）は、直交する。
+
+| 実行トポロジ | 中身 |
+|---|---|
+| standalone | 1プロセスの中に session も agent も全部いる |
+| listen server | プレイしているプロセスの一つが session を持つ |
+| dedicated server | プレイしない専用プロセスが session を持つ |
+| p2p | ピア同士が直接つながる（リンクは star 型） |
+
+| 同期モード | 中身 |
+|---|---|
+| delay | 入力を一定量遅らせて全員のタイミングを揃える |
+| rollback | 予測して進め、入力が届いたら巻き戻して再実行する |
+| server authoritative | 権威プロセスの結果だけが正 |
+| hybrid | 上りは入力、下りは投影された状態差分 |
+
+listen server で rollback を使うこともできるし、dedicated server で hybrid を使うこともできる。
+組み合わせを縛るのはトポロジそのものではなく、**ホップ数**だ。ピアのリンクは star 型なので、
+3人以上ではピア経由でもサーバ経由でも等しく2ホップになる。1ホップが成立するのは、
+相手がホストその人である2人のときだけ。だから rollback や delay が射程に入るのも2人までで、
+3人以上はどちらを選んでもサーバ権威に落ち着く。
+
+<LinkCard title="接続の選び方" href="/connection/" description="席・ホスト・リンクの3軸と、実際に到達できる組み合わせ。" />
+
+## 記録が土台になる
+
+固定小数点で計算し、RNG はシードから引き、行動は slot ID 順にコミットする。この三つを守ると、
+同じ入力からは同じ世界が再現される。地味な制約に見えるが、これが効いてくる場所は二つある。
+
+一つは検証。記録した対局を再生すると、4つのログストリームが**バイト単位で一致**する。
+arm64 の開発機と amd64 の CI で最終チェックポイントのダイジェストが同じになることも、
+定数で固定したテストが確かめている。
+
+もう一つは AI だ。ビット一致で再現できるログは、単なる観測記録ではなく**証拠**になる。
+「この局面でこの手を指した」と言われたとき、その局面を実際に復元して確かめられる。
+ログから条件→行動のルールを提案させ、人間が承認したものだけを Go のコードに落とす、という
+パイプラインが成り立つのは、この再現性が下敷きにあるからだ。
+
+<LinkCard title="ログが AI になるまで" href="/ai/" description="JSONL の4ストリームから、承認済みチップ、そして生成された Go コードまで。" />
+
+## 動かして確かめる
+
+サンプルは飾りではなく、framework の回帰テストそのものになっている。各サンプルが担当する
+能力は一つずつずれていて、前のサンプルにない何かを一つだけ足す。
+
+| サンプル | 足している能力 | 起動 |
+|---|---|---|
+| tictactoe | セッション核、step ペーシング、人間とボットの同居 | `go run ./samples/tictactoe/cmd/ttt` |
+| reversi | 合法手つき観測、エピソード記録と再生 | `go run ./samples/reversi/cmd/reversi` |
+| pong | リアルタイム tick、固定小数点物理、snapshot / delta | `go run ./samples/pong/cmd/pong` |
+| tron | 多人数（2〜8席）、観戦者、離脱と不正入力への耐性 | `go run ./samples/tron/cmd/tron` |
+| dungeon | 役割ごとに種類の違う観測、隠し情報がワイヤに載らない検証 | テストのみ |
+| rtslite | 命令ストリームと fog 投影のハイブリッド同期 | テストのみ |
+
+reversi と pong は `-record=DIR` を付けるとエピソードログを吐く。AI 育成の話は、
+そこで出てきたディレクトリから始まる。

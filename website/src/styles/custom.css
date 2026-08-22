@@ -1,0 +1,112 @@
+/* ebigentserver docs — Starlight のトークンだけを使い、両テーマで成立させる */
+
+:root {
+	--sl-color-accent-low: #1a2a3d;
+	--sl-color-accent: #2f7dd1;
+	--sl-color-accent-high: #b6d5f5;
+	--diagram-line: var(--sl-color-gray-4);
+	--diagram-fill: var(--sl-color-gray-6);
+	--diagram-accent: var(--sl-color-accent-high);
+}
+
+:root[data-theme='light'] {
+	--sl-color-accent-low: #cfe2f7;
+	--sl-color-accent: #1c62ad;
+	--sl-color-accent-high: #10375f;
+	--diagram-line: var(--sl-color-gray-4);
+	--diagram-fill: var(--sl-color-gray-6);
+	--diagram-accent: var(--sl-color-accent);
+}
+
+/* 図は本文の幅を越えることがある。ページ全体を横スクロールさせず、図の中で流す */
+.diagram {
+	overflow-x: auto;
+	margin: 1.5rem 0;
+	padding-bottom: 0.25rem;
+}
+
+.diagram svg {
+	display: block;
+	min-width: 34rem;
+	height: auto;
+	max-width: 100%;
+}
+
+/* 縦長の小さな図。横に引き伸ばさず、中央に置く */
+.diagram-sm svg {
+	min-width: 0;
+	max-width: 17rem;
+	margin-inline: auto;
+}
+
+.diagram text {
+	font-family: var(--sl-font);
+	fill: var(--sl-color-white);
+}
+
+.diagram .lbl {
+	font-size: 14px;
+	font-weight: 600;
+}
+
+.diagram .sub {
+	font-size: 12px;
+	fill: var(--sl-color-gray-3);
+}
+
+.diagram .box {
+	fill: var(--sl-color-black);
+	stroke: var(--diagram-line);
+	stroke-width: 1.5;
+}
+
+.diagram .box-accent {
+	fill: var(--sl-color-accent-low);
+	stroke: var(--sl-color-accent);
+	stroke-width: 1.5;
+}
+
+.diagram .link {
+	stroke: var(--diagram-line);
+	stroke-width: 1.5;
+	fill: none;
+}
+
+.diagram .link-accent {
+	stroke: var(--sl-color-accent);
+	stroke-width: 1.5;
+	fill: none;
+}
+
+.diagram .arrowhead {
+	fill: var(--diagram-line);
+	stroke: none;
+}
+
+.diagram .arrowhead-accent {
+	fill: var(--sl-color-accent);
+	stroke: none;
+}
+
+/* 表は列が多い。ページではなく表を横に流す */
+.sl-markdown-content table {
+	display: block;
+	overflow-x: auto;
+	white-space: normal;
+}
+
+.sl-markdown-content th,
+.sl-markdown-content td {
+	vertical-align: top;
+}
+
+/* 見出しが1文字幅の列で折り返さないように */
+.sl-markdown-content th {
+	white-space: nowrap;
+}
+
+/* 日本語の長文を読みやすく */
+.sl-markdown-content p,
+.sl-markdown-content li {
+	line-height: 1.85;
+}

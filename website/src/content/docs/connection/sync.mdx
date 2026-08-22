@@ -1,0 +1,121 @@
+---
+title: 同期モードと状態配信
+description: tuning profile が宣言する tick と送信レート、3つの baseline モード、ack の運び方、そして入力の取り込み方。
+---
+
+import { Aside, LinkCard } from '@astrojs/starlight/components';
+
+格闘ゲームと FPS と戦略ゲームは、tick レートでも送信レートでも保持深度でも合意しない。
+だから framework は**既定値を一つも持っていない**。リアルタイムセッションは自分の
+プロファイルを宣言しなければならず、宣言は起動前に整合検査を通される。
+
+```go
+tuning := session.TuningProfile{
+	TickRate:     60,
+	SendRate:     20,
+	HistoryDepth: 16,
+	BaselineMode: session.BaselineBounded,
+	SpeculationDepth: 8,
+}
+if err := tuning.Validate(); err != nil {
+	return err
+}
+```
+
+検査に落ちる条件は具体的だ。`SendRate` が `TickRate` を超える、`TickRate` が `SendRate` の
+倍数でない（送信間隔が整数 tick にならない）、`BaselineBounded` なのに `SpeculationDepth` が
+ない、`SpeculationDepth` が `HistoryDepth` 以上（確定 baseline が保持範囲から落ちてしまう）。
+
+## 主な宣言項目
+
+| 項目 | 意味 |
+|---|---|
+| `TickRate` | 毎秒のシミュレーションステップ数。必須 |
+| `SendRate` | 毎秒の下り状態更新数。`TickRate` 以下かつ約数 |
+| `SnapshotEvery` | N 回に1回は完全な snapshot を送る。0 なら join と resync のときだけ |
+| `HistoryDepth` | 受信者ごとに保持する世界のバージョン数。delta の baseline の上限 |
+| `BaselineMode` | どのバージョンとの差分を取るか |
+| `AckMode` | ack をどう運ぶか |
+| `InputIntake` | 1 tick に何件の入力を取り込むか |
+| `RejectionThreshold` | 拒否された行動が何件たまったら疑うか |
+| `SilenceDeadline` | 何 tick 落としたら沈黙とみなすか |
+| `BandwidthBudget` / `MaxSnapshotSize` | 受信者あたりの目標バイト/秒、snapshot 1件の上限 |
+
+## baseline の3モード
+
+差分は「何との差か」を決めないと作れない。選択肢は3つで、これはそのまま帯域と復帰しやすさの
+取引になる。
+
+| モード | 差分の相手 | 性質 |
+|---|---|---|
+| `BaselineSpeculative` | 最後に**送った**バージョン | 最小帯域。1つ落ちると resync まで連鎖が壊れる |
+| `BaselineConfirmedOnly` | 相手が**ack した**最新バージョン | 届いた delta は必ずデコードできる。RTT と損失の分だけ delta が太る |
+| `BaselineBounded` | 確定 baseline から `SpeculationDepth` まで先読み、超えたら確定側に戻る | 中間 |
+
+128ユニットの4人戦に ack 遅延と RTT スパイクを注入して3モードを計測したテストがある
+（[`samples/rtslite`](https://github.com/shibukawa/ebigentserver/tree/main/samples/rtslite)）。
+順序は毎回同じで、**speculative < bounded(16) < confirmed_only** になり、confirmed_only は
+speculative より4割ほど多く払う。テストが固定しているのはこの順序であって、絶対値は
+リンク次第で動く。
+
+損失のないローカルリンクなら speculative が素直に正しい。悪い回線でスパイクが乗るなら、
+confirmed_only が払う分は保険料として理解できる。
+
+<Aside type="note" title="baseline は保持されていなければならない">
+`HistoryDepth` を超えて古い baseline を要求されたら、delta は作れない。そのときは
+snapshot に落ちる。落ちること自体は正常な動作で、頻度が高いなら宣言が合っていない。
+</Aside>
+
+## ack の運び方
+
+| モード | 動作 |
+|---|---|
+| piggyback_only | 送信する datagram に ack を相乗りさせるだけ |
+| dedicated | ack 専用の datagram を出す |
+| delayed_piggyback | 少し待って相乗りを狙い、来なければ出す |
+
+上りトラフィックがほとんどない役——たとえば入力を送らない観戦者——は、相乗りする相手が
+いないので dedicated になる。
+
+## 入力の取り込み方
+
+1 tick に何件の入力を取り込むかは、同期モードが決める。
+
+```go
+session.IntakeNewest // 最新の1件だけ
+session.IntakeAll    // キューを到着順に全部
+```
+
+パドルやスティックのような連続操作では、古い入力は新しい入力に上書きされている。
+だから `IntakeNewest` が正しい。一方 RTS の命令ストリームでは、1 tick に3つの命令が来たなら
+3つとも意味がある。`IntakeAll` は席ごとの FIFO を保つので、決定的コミットが要求する
+「席内の順序」がそのまま満たされる。
+
+## 1 tick の往復
+
+```
+上り  : agent → data:player-input
+     ↓
+権威側 : 検証 → slot ID 順にコミット → Advance
+     ↓
+下り  : data:state-delta ＋ data:game-event
+     ↓
+例外  : join したとき、あるいは同期が壊れたとき → data:snapshot
+```
+
+上りが行動で、下りが**投影された状態の差分**。この非対称がハイブリッド同期の形で、
+RTS のような「1席が多数のユニットを操る」ゲームでもそのまま成立する。コマンドは13バイトの
+固定配列（wire プロファイル）で上り、view の snapshot は600バイト超の map（world プロファイル）で
+下る、といった具合に、2つの CBOR プロファイルが同じセッションの中で併存する。
+
+## 遅い agent、消えた agent
+
+リアルタイムペーシングでは、`Decide` が間に合わなかった agent はその tick に入力がない。
+待たない。これは事故ではなく宣言された挙動で、`InputIntake` と合わせて読むと意味が通る。
+
+沈黙が `SilenceDeadline` を超えるか、トランスポートが閉じたら離脱とみなす。そこから先は
+ゲームの方針で、席を空けたまま続けることも、その席に新しい agent を着席させることもできる。
+後者が「AI 引き継ぎ」と呼ばれているものだが、実装としては
+[ただの新しい着席](/integration/agent/)でしかない。
+
+<LinkCard title="接点は4つしかない" href="/integration/" description="ここまでの機構に、ゲーム側が触る場所は驚くほど少ない。" />

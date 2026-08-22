@@ -1,0 +1,147 @@
+---
+title: ログが AI になるまで
+description: 対局の記録から、述語の語彙、条件→行動の候補、人間の承認、そして生成された Go コードまで。9つのステップとその責任分担。
+---
+
+import { Aside, Steps, LinkCard } from '@astrojs/starlight/components';
+
+強いボットを書くのは、たいてい面白くない作業だ。しかも書いたボットは、ゲームバランスを
+一度いじると全部やり直しになる。
+
+「対局ログから自動生成すればいい」という発想はそこで出てくる。だが、そのまま素直にやると
+**説明できない AI** が出来上がる。なぜこの局面でこの手を選ぶのかを誰も答えられず、直すことも
+できない。ここでの答えは自動化ではなく、**読めるものを生成して、人間が承認する**ことにある。
+
+## 通しの流れ
+
+<div class="diagram">
+<svg viewBox="0 0 660 300" role="img" aria-label="対局記録から蒸留パイプラインを経て、承認済みチップと生成された Go コードに至る流れ">
+	<title>蒸留パイプライン</title>
+
+	<defs>
+		<marker id="ah-pipe" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+			<path class="arrowhead" d="M0 0 L10 5 L0 10 z" />
+		</marker>
+		<marker id="ah-pipe-a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+			<path class="arrowhead-accent" d="M0 0 L10 5 L0 10 z" />
+		</marker>
+	</defs>
+
+	<rect class="box" x="16" y="20" width="150" height="52" rx="6" />
+	<text class="lbl" x="28" y="42">対局の記録</text>
+	<text class="sub" x="28" y="60">JSONL 4ストリーム</text>
+
+	<rect class="box" x="196" y="20" width="150" height="52" rx="6" />
+	<text class="lbl" x="208" y="42">segment</text>
+	<text class="sub" x="208" y="60">決定点へ切り出す</text>
+
+	<rect class="box" x="376" y="20" width="150" height="52" rx="6" />
+	<text class="lbl" x="388" y="42">語彙</text>
+	<text class="sub" x="388" y="60">述語＋行動の名前</text>
+
+	<rect class="box" x="376" y="112" width="150" height="52" rx="6" />
+	<text class="lbl" x="388" y="134">analyze</text>
+	<text class="sub" x="388" y="152">LLM または決定的採掘</text>
+
+	<rect class="box" x="196" y="112" width="150" height="52" rx="6" />
+	<text class="lbl" x="208" y="134">validate</text>
+	<text class="sub" x="208" y="152">語彙外を拒否・数値再計算</text>
+
+	<rect class="box-accent" x="16" y="112" width="150" height="52" rx="6" />
+	<text class="lbl" x="28" y="134">人間の承認</text>
+	<text class="sub" x="28" y="152">証拠を見て諾否を決める</text>
+
+	<rect class="box" x="16" y="204" width="150" height="52" rx="6" />
+	<text class="lbl" x="28" y="226">チップライブラリ</text>
+	<text class="sub" x="28" y="244">ゲームに1つ、共有</text>
+
+	<rect class="box" x="196" y="204" width="150" height="52" rx="6" />
+	<text class="lbl" x="208" y="226">Go コード生成</text>
+	<text class="sub" x="208" y="244">決定リストの switch</text>
+
+	<rect class="box" x="376" y="204" width="150" height="52" rx="6" />
+	<text class="lbl" x="388" y="226">playtest</text>
+	<text class="sub" x="388" y="244">元の打ち手と比較</text>
+
+	<path class="link" d="M166 46 L190 46" marker-end="url(#ah-pipe)" />
+	<path class="link" d="M346 46 L370 46" marker-end="url(#ah-pipe)" />
+	<path class="link" d="M451 72 L451 106" marker-end="url(#ah-pipe)" />
+	<path class="link" d="M370 138 L352 138" marker-end="url(#ah-pipe)" />
+	<path class="link-accent" d="M190 138 L172 138" marker-end="url(#ah-pipe-a)" />
+	<path class="link-accent" d="M91 164 L91 198" marker-end="url(#ah-pipe-a)" />
+	<path class="link" d="M166 230 L190 230" marker-end="url(#ah-pipe)" />
+	<path class="link" d="M346 230 L370 230" marker-end="url(#ah-pipe)" />
+
+	<path class="link" d="M526 230 L560 230 L560 46 L532 46" stroke-dasharray="4 4" marker-end="url(#ah-pipe)" />
+	<text class="sub" x="566" y="140">再生成</text>
+</svg>
+</div>
+
+太い経路——validate から承認、そしてライブラリへ——が**必ず人間を通る**。ここを迂回する道は
+用意されていない。
+
+<Steps>
+
+1. **segment** — エピソードを決定点に割る。1つの決定点は「届いた観測」と「取った行動」の対。
+
+2. **vocabulary** — 生のフィールドが表現していない区別に名前を付ける。座標の算術ではなく、
+   `in_weapon_range` のような判断語にする。
+
+3. **analyze** — 繰り返し現れる「状況 → 行動」のパターンを見つけ、条件として述べる。
+
+4. **propose** — 根拠・被覆数・証拠つきの候補を出す。
+
+5. **rank** — 被覆と報酬差分で並べ、既存ノードとの衝突に印を付ける。
+
+6. **review** — 開発者が受理・編集・却下する。
+
+7. **gate** — レベルのタグを付ける（初級ボットには効かせない、など）。
+
+8. **assemble** — チップを選んで個性（loadout）を組む。
+
+9. **generate** — ツリーと述語の Go ソースを吐き、記録済み局面からテストを生成する。
+
+</Steps>
+
+最後に `flow:automated-playtest` を通し、元になった打ち手とバランス指標を比べる。
+劣化したら前のバージョンを残す。
+
+## なぜランキングを最終結果だけでやらないか
+
+「勝った対局の手はいい手」——これは1エピソードに1ラベルしか付かない。良い判断と、
+運の良い判断を分けるには疎すぎる。
+
+だから[評価シグナル](/integration/simulation/#evaluate)の `RewardDelta` が、判断ごとの信用ラベルとして
+記録されている。三目並べのように `Terminal` しか埋めないゲームでも構造体の全フィールドが
+最初から存在しているのは、ここで効くからだ。
+
+## 分析役は差し替えられる
+
+`Analyzer` はインターフェースになっている。
+
+| 実装 | 性質 |
+|---|---|
+| `SequentialCovering` | 決定リストの貪欲採掘。決定的で、LLM なしでパイプライン全体をテストできる |
+| LLM（[skill](/ai/analysis/)） | 開発者自身の agentic 環境で走る。語彙の追加も提案できる |
+
+**成果物の形は同一**なので、分析役を入れ替えてもレビュー・マージ・コード生成の段は
+一行も変わらない。
+
+<Aside type="caution" title="提案は助言であって権威ではない">
+LLM が出した提案は、Python の検証スクリプトと Go 側の `behavior.ValidateProposals` に
+二重に通される。語彙外の条件は拒否され、主張された被覆数は再計算され、引用された証拠が
+実在するかは照合される。そのうえで、承認するのは人間だ。
+</Aside>
+
+## 実証されていること
+
+三目並べで通しの検証がある。first-empty ボットの200対局（686決定）を蒸留して9チップを承認し、
+生成された agent で50試合の playtest を完走させた。
+
+結果は、**同一シード・同一相手で元のボットと勝敗も所要 tick も完全に一致**した。
+方策として等価だという意味だ。
+
+オセロでは判断語そのものを蒸留している。`best_move_is_k`（argmax の判断）をレビュー可能な
+Go にして、61チップ（到達可能な最大）を得た。生成されたコードは GreedyBot とビット一致する。
+
+<LinkCard title="エピソードログの収集" href="/ai/episode-log/" description="4つの JSONL ストリーム、2つの記録モード、そして観測そのものを記録することの意味。" />

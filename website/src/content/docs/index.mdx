@@ -1,0 +1,59 @@
+---
+title: ebigentserver
+description: 人間・ボット・リプレイを同じ agent として着席させるゲームセッションランタイム。接続方法、ゲームとの接点、ログからの AI 育成を解説する。
+template: splash
+hero:
+  tagline: 人間もボットもリプレイも、同じ席に座らせる。Go で書くゲームセッションランタイム。
+  actions:
+    - text: ebigentserver とは
+      link: /overview/
+      icon: right-arrow
+      variant: primary
+    - text: GitHub
+      link: https://github.com/shibukawa/ebigentserver
+      icon: external
+      variant: minimal
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+ゲームに CPU 戦を足すとき、たいてい `if isAI` が増える。対戦相手が人間かボットかでコードが分岐し、
+リプレイ再生のためにもう一本の経路が生え、三本になったところでルールの修正が三箇所必要になる。
+
+ebigentserver はその分岐を最初から禁じる。観測を受け取って行動を返すもの、という一点で人間もボットも
+LLM もリプレイストリームも同じ `agent` だと決めてしまえば、ゲームのルールは「誰が座っているか」を
+二度と問わなくてよくなる。切断したプレイヤーの席にボットを座らせる処理は、追加の機構ではなく
+ただの新しい着席になる。
+
+<CardGrid>
+	<Card title="接続方法" icon="setting">
+		1人で遊ぶのか、2人で直結するのか、サーバを立てるのか。席の数・ホストの種類・リンクの
+		3軸で、実際に到達できる組み合わせだけが決まる。
+
+		[接続の選び方 →](/connection/)
+	</Card>
+	<Card title="ゲームとの接点" icon="puzzle">
+		ゲームが実装するのは `Simulation[S, A, O]` の5メソッドと、必要なら `Agent` の4メソッド。
+		tick も差分も投影の配送も、framework 側にある。
+
+		[接点は4つしかない →](/integration/)
+	</Card>
+	<Card title="ログと AI" icon="rocket">
+		対局を JSONL で記録し、述語の語彙で切り出し、条件→行動の候補を提案させ、
+		人が承認したものだけを Go のコードに落とす。
+
+		[ログが AI になるまで →](/ai/)
+	</Card>
+	<Card title="Ebitengine への統合" icon="laptop">
+		`Update` は何も決めず、`Draw` は何も持たない。同じ `cmd/` ディレクトリから、
+		描画するクライアントとレンダラを一切リンクしないサーバの両方が出る。
+
+		[Ebitengine への統合 →](/integration/ebitengine/)
+	</Card>
+	<Card title="決定性が全部の土台" icon="approve-check">
+		固定小数点、シード付き RNG、slot 順コミット。記録した対局の再生がビット一致するから、
+		ログは証拠になり、生成した AI は検証できる。
+
+		[越えてはいけない境界 →](/integration/boundaries/)
+	</Card>
+</CardGrid>
