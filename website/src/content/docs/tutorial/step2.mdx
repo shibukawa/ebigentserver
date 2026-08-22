@@ -109,7 +109,7 @@ go generate ./tutorial/step2-lobby/msg/
 宣言はこれで全部だ。
 
 ```go
-// tutorial/step2-lobby/game/bind.go
+// tutorial/step2-lobby/game/bind.go — ルールの隣
 func Binding() run.Binding[State, Action, Observation] {
 	return run.Binding[State, Action, Observation]{
 		Slots:             Slots(),
@@ -118,11 +118,19 @@ func Binding() run.Binding[State, Action, Observation] {
 		EvaluationVersion: Evaluation,
 	}
 }
+```
 
-func Network() run.Networking[State, Action, Observation] {
-	return lan.Auto(LANOptions(), 1500*time.Millisecond)
+```go
+// tutorial/step2-lobby/main.go — ウィンドウの隣
+func network() run.Networking[game.State, game.Action, game.Observation] {
+	return lan.Auto(lan.Options[...]{ /* codec と入出力 */ }, 1500*time.Millisecond)
 }
 ```
+
+ネットワークの宣言が**ルールの隣ではなくエントリポイントにある**のは意図的だ。どのトランスポートで
+相手に届くかは、そのビルドがどこで走るかの性質であって、ゲームが何であるかの性質ではない。
+LAN プリセットは待ち受けソケットと UDP ブロードキャストを要るのでブラウザでは動かないが、
+`game/` と `msg/` は全ターゲットでビルドできる——同じルールのブラウザ版は別の経路を名指すことになる。
 
 **`NewAgent` がない。** 空席はボットの席ではなく、**まだ起動していない人の席**だからだ。
 ロビーは `NoBots: true` でそれを宣言し、最後の席が埋まった瞬間に対局を始める——
@@ -167,10 +175,10 @@ admission が席に束ねた接続になる。
 
 <FileTree>
 - tutorial/step2-lobby/
-  - main.go engine を import する唯一の場所
+  - main.go ウィンドウ・入力・描画・ネットワークの宣言
   - game/
     - game.go ルール。session.Simulation の実装
-    - bind.go Options / Binding / Network の宣言
+    - bind.go Options / Binding の宣言
     - net_test.go 2インスタンスの通し
   - msg/
     - types.go ワイヤ型の宣言
