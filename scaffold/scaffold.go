@@ -516,6 +516,9 @@ func render(spec *Spec) (map[string][]byte, error) {
 func execute(name string, data any) ([]byte, error) {
 	t, err := template.New(name).Funcs(template.FuncMap{
 		"addOne": func(i int) int { return i + 1 },
+		// half splits a seat count into two teams for the commented
+		// example, so the sample division always adds up.
+		"half": func(i int) int { return i / 2 },
 	}).ParseFS(templates, "templates/"+name)
 	if err != nil {
 		return nil, fmt.Errorf("scaffold: template %s: %w", name, err)
@@ -611,3 +614,43 @@ func goRun(dir string, env []string, args ...string) error {
 	}
 	return nil
 }
+
+// Realtime is the concept:realtime-intensity a project starts at.
+//
+// A starting value, not a constraint. The wizard does not ask it outright
+// because the play style already implies it: duo exists as a style
+// because the tight input-to-pixel loop is the point, and everything else
+// begins where a frame of delay is invisible. A puzzle game edits this to
+// turn_based and loses nothing by having started elsewhere.
+func (s *Spec) Realtime() string {
+	if s.Style == "duo" {
+		return "twitch"
+	}
+	return "paced"
+}
+
+// View is the concept:view-arrangement, which is the shared-screen answer
+// under the name the configuration uses.
+func (s *Spec) View() string {
+	if s.SharedScreen {
+		return "shared"
+	}
+	return "per_agent"
+}
+
+// ProtocolSync is the concept:synchronization-mode the [protocol] table
+// declares. A solo game has no link and therefore no mode to choose, so
+// it takes the authoritative value rather than leaving the key empty:
+// there is nothing to synchronize either way, and an empty enum is a
+// validation error rather than a statement.
+func (s *Spec) ProtocolSync() string {
+	if s.SyncMode == "" {
+		return "server_authoritative"
+	}
+	return s.SyncMode
+}
+
+// Devices are the input devices the generated game accepts. The
+// placeholder reads keys and nothing else; a game that grows a cursor
+// adds mouse here and writes the api:input-adapter to match.
+func (s *Spec) Devices() []string { return []string{"keyboard"} }

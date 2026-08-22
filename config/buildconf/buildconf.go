@@ -93,6 +93,7 @@ type Behavior struct {
 // Config is every toolchain section, bound in one call.
 type Config struct {
 	Project  *Project
+	Protocol *Protocol
 	Build    *Build
 	Dev      *Dev
 	Behavior *Behavior
@@ -103,6 +104,7 @@ type Config struct {
 func Bind() *Config {
 	return &Config{
 		Project:  configbind.Bind[Project]("project"),
+		Protocol: configbind.Bind[Protocol]("protocol"),
 		Build:    configbind.Bind[Build]("build"),
 		Dev:      configbind.Bind[Dev]("dev"),
 		Behavior: configbind.Bind[Behavior]("behavior"),
@@ -112,5 +114,5 @@ func Bind() *Config {
 // Prefixes reports the configuration prefixes Bind claims, for the
 // prefix-scoped stray key check of decision:one-config-file-many-sections.
 func Prefixes() []string {
-	return []string{"project", "build", "dev", "behavior"}
+	return []string{"project", "protocol", "build", "dev", "behavior"}
 }

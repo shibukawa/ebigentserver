@@ -1,12 +1,17 @@
 # {{.Name}} — written by ebigent init. {{.Style}}, {{.Seats}} seat(s){{if .SharedScreen}}, one shared stage{{end}}.
 #
 # One file, and a section prefix decides which struct binds a key: the
-# ebigent tool reads [project], [build], [dev], and [behavior];
+# ebigent tool reads [project], [protocol], [build], [dev], and [behavior];
 # a built artifact reads [run]. Each ignores the other's
 # sections, so both can share this file.
 #
-# Every key below also has an environment variable and a command-line
-# option. The order is fixed: default < this file < environment < option.
+# [protocol] is settled at build. `ebigent generate` turns it into Go
+# constants, so nothing in it is read at startup and nothing in it may
+# differ between a development machine and production.
+#
+# [run] is read at startup. Every key below also has an environment
+# variable and a command-line option. The order is fixed:
+# default < this file < environment < option.
 # Run `ebigent config scaffold` to see every key with its default.
 
 [project]
@@ -14,7 +19,46 @@ module = "{{.Module}}"
 {{- if .GoVersion}}
 go = "{{.GoVersion}}"
 {{- end}}
-{{range .Targets}}
+
+# The game's own contract: how many play, how they connect, and how
+# tightly the loop has to close. Changing anything here is a rebuild.
+[protocol]
+# The identity half of the pair two peers compare before they play. It
+# defaults to project.module, which is the whole path while one module
+# holds one game; a repository holding several writes the subpath too.
+package = "{{.Module}}"
+title = "{{.Name}}"
+shape = "{{.Style}}"
+# A starting value: the style implies the tier, and a game that waits for
+# a considered move edits this to turn_based.
+realtime = "{{.Realtime}}"
+view = "{{.View}}"
+# The placeholder reads keys. A game that grows a cursor adds "mouse" and
+# writes the adapter to match — a device nobody wrote an adapter for
+# cannot be accepted.
+devices = [{{range $i, $d := .Devices}}{{if $i}}, {{end}}"{{$d}}"{{end}}]
+sync = "{{.ProtocolSync}}"
+
+[protocol.seats]
+count = {{.Seats}}
+{{- if gt .Seats 1}}
+# What a match does with a seat nobody took: complete the roster with a
+# bot so play can start, or start short. Set it to "empty" for a game
+# that would rather wait than seat a stand-in.
+{{- end}}
+fill = "bots"
+occupant = "any"
+{{if gt .Seats 1}}
+# Teams are optional and off by default. Declaring any means they account
+# for every seat, since a seat on no team has no answer to who it is
+# playing with.
+#
+# [[protocol.team]]
+# name = "red"
+# seats = {{half .Seats}}
+# occupant = "human"
+{{end}}
+{{- range .Targets}}
 [[build.target]]
 name = "{{.Name}}"
 kind = "{{.ConfigKind}}"
@@ -37,8 +81,8 @@ console = "127.0.0.1:8930"
 
 [behavior]
 library = "behavior/chips.json"
-corpus = "corpus"
 
+# Read at startup, so the same artifact runs under either of these.
 [run]
 # A starting value, not a constraint: any seat count runs under either
 # host. Switch to "listen" and run the -tags listen build to have a player
@@ -48,16 +92,3 @@ topology = "{{.Topology}}"
 {{- if ne .Topology "standalone"}}
 listen = "127.0.0.1:4433"
 {{- end}}
-{{if .SyncMode}}sync.mode = "{{.SyncMode}}"{{end}}
-{{- if .RequireUnreliable}}
-
-# This game asks for a datagram channel, which rules out a websocket-only
-# deployment. A turn-based game would not, and would run over any https
-# endpoint with no certificate story of its own.
-transport.require_unreliable = true
-{{- end}}
-
-# Recording is off until a directory is named. Turn it on before you need
-# the data: a corpus cannot be collected retroactively.
-# episode.dir = "corpus"
-# episode.mode = "analysis_sampled"

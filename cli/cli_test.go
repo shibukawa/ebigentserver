@@ -72,6 +72,27 @@ func TestInitNonInteractiveProducesAWorkingProject(t *testing.T) {
 	if !strings.Contains(out, "probe is ready") {
 		t.Errorf("stdout = %q", out)
 	}
+
+	// Every key the scaffold writes has to reach the overlay, or the
+	// template is naming something no struct binds.
+	code, out, errOut = run(t, dir, "config", "show")
+	if code != 0 {
+		t.Fatalf("config show in a fresh project: exit %d\nstdout:\n%s\nstderr:\n%s", code, out, errOut)
+	}
+	for _, want := range []string{"protocol.package", "protocol.shape", "protocol.seats.count"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("the effective configuration does not report %s:\n%s", want, out)
+		}
+	}
+
+	// And it has to satisfy the validation a project-scoped verb runs
+	// before it touches anything. config show skips that check, so on its
+	// own it would accept a template that writes a file the next command
+	// rejects — which is exactly what adding a required section risks.
+	code, out, errOut = run(t, dir, "build", "simulation")
+	if code != 0 {
+		t.Fatalf("build in a fresh project: exit %d\nstdout:\n%s\nstderr:\n%s", code, out, errOut)
+	}
 }
 
 // A second init must not overwrite a live project.
