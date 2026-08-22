@@ -54,14 +54,14 @@ type Observation struct {
 	Signal session.EvaluationSignal
 }
 
-// Game implements session.TickGame. The zero value is ready to use.
-type Game struct{}
+// Simulation implements session.TickSimulation. The zero value is ready to use.
+type Simulation struct{}
 
-var _ session.TickGame[State, Input, Observation] = Game{}
+var _ session.TickSimulation[State, Input, Observation] = Simulation{}
 
 // Start serves the first ball to the right; the shared seed is unused —
 // pong's serve pattern is score-driven, not random.
-func (Game) Start(uint64) State {
+func (Simulation) Start(uint64) State {
 	s := State{}
 	center(&s, true)
 	s.LeftY = msg.Fixed1024FromF64(height.Div(fixmath.FromInt32(2)))
@@ -71,7 +71,7 @@ func (Game) Start(uint64) State {
 
 // ActingSlots is unused in realtime pacing; it reports the open slots so
 // the step-paced loop would not spin.
-func (Game) ActingSlots(s *State) []session.SlotID {
+func (Simulation) ActingSlots(s *State) []session.SlotID {
 	if s.Over {
 		return nil
 	}
@@ -79,7 +79,7 @@ func (Game) ActingSlots(s *State) []session.SlotID {
 }
 
 // Apply moves the slot's paddle by one validated input.
-func (Game) Apply(s *State, slot session.SlotID, in Input) {
+func (Simulation) Apply(s *State, slot session.SlotID, in Input) {
 	step := paddleStep.Mul(fixmath.FromInt32(int32(in.MoveY)))
 	lo, hi := paddleHalf, height.Sub(paddleHalf)
 	if slot == SlotLeft {
@@ -90,7 +90,7 @@ func (Game) Apply(s *State, slot session.SlotID, in Input) {
 }
 
 // Advance runs one tick of authoritative physics in fixed point.
-func (Game) Advance(s *State) {
+func (Simulation) Advance(s *State) {
 	if s.Over {
 		return
 	}
@@ -141,12 +141,12 @@ func (Game) Advance(s *State) {
 }
 
 // Project builds a slot's observation (global visibility).
-func (g Game) Project(s *State, slot session.SlotID) Observation {
+func (g Simulation) Project(s *State, slot session.SlotID) Observation {
 	return Observation{You: slot, State: *s, Signal: g.Evaluate(s, slot)}
 }
 
 // Evaluate computes the slot's data:evaluation-signal.
-func (Game) Evaluate(s *State, slot session.SlotID) session.EvaluationSignal {
+func (Simulation) Evaluate(s *State, slot session.SlotID) session.EvaluationSignal {
 	own, opp := int64(s.ScoreL), int64(s.ScoreR)
 	if slot == SlotRight {
 		own, opp = opp, own

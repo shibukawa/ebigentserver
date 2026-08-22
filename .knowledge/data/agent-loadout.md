@@ -14,5 +14,5 @@ fields:
 two_axes: chips decide what this agent knows; profile decides how well it executes — the same pairing as concept:skill-level-gating
 instantiation: resolved when the agent is created; mid-game variation happens through concept:tactic-selector branching, never re-assembly
 materializes_as: one data:behavior-tree per loadout, compiled per decision:behavior-tree-compiled-to-go
-consumers: actor:behavior-tree-agent, concept:simulation-farm rosters, ui:chip-benchmark, concept:continuous-match-loop pairings
+consumers: actor:behavior-tree-agent, concept:training-farm rosters, ui:chip-benchmark, concept:continuous-match-loop pairings
 ```

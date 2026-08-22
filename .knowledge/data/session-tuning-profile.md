@@ -25,5 +25,5 @@ consistency_checks:
   - silence_deadline must exceed the worst case gap implied by ack_mode
 hard_ceiling: every value must fit data:runtime-resource-budget; tuning cannot raise a process safety bound
 presets: shipped as examples per genre, never as defaults, see decision:no-framework-tuning-defaults
-measured_against: metric:balance-signals runs and concept:simulation-farm load tests
+measured_against: metric:balance-signals runs and concept:training-farm load tests
 ```

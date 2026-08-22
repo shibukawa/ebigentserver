@@ -145,16 +145,16 @@ type Observation struct {
 // index maps a slot to its array position.
 func index(slot session.SlotID) int { return int(slot) - 1 }
 
-// Game implements session.TickGame: session.Game plus Advance, which is
+// Simulation implements session.TickSimulation: session.Simulation plus Advance, which is
 // what a realtime session needs.
-type Game struct{}
+type Simulation struct{}
 
-var _ session.TickGame[State, Action, Observation] = Game{}
+var _ session.TickSimulation[State, Action, Observation] = Simulation{}
 
 // Start returns the opening position, derived from the session's shared
 // RNG seed (rule:shared-rng-seed). Two runs with the same seed produce
 // the same pipes, which is what makes an episode replayable.
-func (Game) Start(seed uint64) State {
+func (Simulation) Start(seed uint64) State {
 	s := State{Rand: fixmath.NewRand(seed)}
 	mid := fixmath.FromInt32(FieldH / 2)
 	for i := range s.Bird {
@@ -176,7 +176,7 @@ func (s *State) spawn() {
 // ActingSlots returns the slots still flying. A realtime session reads
 // inputs from every slot each tick rather than asking whose turn it is,
 // so this mainly answers "is anyone left".
-func (Game) ActingSlots(s *State) []session.SlotID {
+func (Simulation) ActingSlots(s *State) []session.SlotID {
 	if s.Over {
 		return nil
 	}
@@ -191,7 +191,7 @@ func (Game) ActingSlots(s *State) []session.SlotID {
 
 // Apply advances the state by one already-validated action. Legality was
 // settled by Validator, so Apply cannot fail and must not re-check.
-func (Game) Apply(s *State, slot session.SlotID, a Action) {
+func (Simulation) Apply(s *State, slot session.SlotID, a Action) {
 	b := &s.Bird[index(slot)]
 	if a.Flap && b.Alive {
 		b.VY = flapVY
@@ -201,7 +201,7 @@ func (Game) Apply(s *State, slot session.SlotID, a Action) {
 // Advance runs one simulation step after this tick's inputs were
 // applied. This is the whole of the game's physics, and every line of it
 // is integer arithmetic.
-func (Game) Advance(s *State) {
+func (Simulation) Advance(s *State) {
 	if s.Over {
 		return
 	}
@@ -269,7 +269,7 @@ func overlapsX(x fixmath.F64) bool {
 }
 
 // Project builds a slot's observation.
-func (g Game) Project(s *State, slot session.SlotID) Observation {
+func (g Simulation) Project(s *State, slot session.SlotID) Observation {
 	me := index(slot)
 	others := make([]Bird, 0, Seats-1)
 	for i, b := range s.Bird {
@@ -290,7 +290,7 @@ func (g Game) Project(s *State, slot session.SlotID) Observation {
 
 // Evaluate computes a slot's data:evaluation-signal. The session calls
 // this; an agent never scores itself (rule:evaluation-computed-by-session).
-func (Game) Evaluate(s *State, slot session.SlotID) session.EvaluationSignal {
+func (Simulation) Evaluate(s *State, slot session.SlotID) session.EvaluationSignal {
 	me := s.Bird[index(slot)]
 	best := int32(-1)
 	for i, b := range s.Bird {
@@ -369,7 +369,7 @@ func Config(id string, seed uint64, broadcast func(session.Tick, *State)) sessio
 	return session.Config[State, Action, Observation]{
 		ID:        id,
 		Slots:     Slots(),
-		Game:      Game{},
+		Simulation:      Simulation{},
 		Validator: Validator{},
 		Seed:      seed,
 		Tuning:    &tuning,
@@ -436,7 +436,7 @@ type Driver struct {
 
 // OnWorld feeds one broadcast world to the controller.
 func (d *Driver) OnWorld(state *State) {
-	obs := Game{}.Project(state, d.Slot)
+	obs := Simulation{}.Project(state, d.Slot)
 	d.Agent.Observe(obs)
 	if action, ok := d.Agent.Decide(context.Background()); ok {
 		d.Inbox.Submit(action)

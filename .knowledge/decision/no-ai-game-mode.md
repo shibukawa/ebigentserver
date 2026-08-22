@@ -10,8 +10,8 @@ decided: yes
 forbidden: rules, actions, observations, or scoring that differ by controller kind
 allowed_and_wanted:
   - an all ai run mode that fills every concept:player-slot with agents and plays unattended
-  - its purpose is bulk data:episode-log harvesting, see concept:simulation-farm
-  - no rendering, no realtime pacing, see concept:simulation-mode
+  - its purpose is bulk data:episode-log harvesting, see concept:training-farm
+  - no rendering, no realtime pacing, see concept:training-mode
 distinction: the mode chooses who occupies the slots; the game still cannot ask what occupies them
 game_defines: concept:player-slot set, roles, legal concept:action set, concept:observation projection, rules, data:evaluation-signal
 follows_from: decision:agent-as-central-abstraction

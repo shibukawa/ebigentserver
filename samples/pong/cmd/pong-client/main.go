@@ -56,13 +56,13 @@ func main() {
 		fatal(err)
 	}
 	s, err := session.New(session.Config[pong.State, pong.Input, pong.Observation]{
-		ID:        "pong-client",
-		Slots:     pong.Slots(),
-		Game:      pong.Game{},
-		Validator: pong.Validator{},
-		Canonical: pong.Canonical,
-		Tuning:    &tuning,
-		Broadcast: hub.Broadcast,
+		ID:         "pong-client",
+		Slots:      pong.Slots(),
+		Simulation: pong.Simulation{},
+		Validator:  pong.Validator{},
+		Canonical:  pong.Canonical,
+		Tuning:     &tuning,
+		Broadcast:  hub.Broadcast,
 	})
 	if err != nil {
 		fatal(err)

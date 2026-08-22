@@ -15,7 +15,7 @@ enables:
   - human plus AI cooperative play
   - automated playtest via flow:automated-playtest
   - game AI growth via flow:behavior-profile-derivation
-  - replay and offline simulation via concept:simulation-mode
+  - replay and offline simulation via concept:training-mode
   - bounded production operation via requirement:production-runtime-safety
 grounded_by:
   - decision:agent-as-central-abstraction

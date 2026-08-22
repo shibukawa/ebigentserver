@@ -7,7 +7,7 @@ Generate training episodes by letting a language model play offline at controlle
 
 ```yaml
 flow:
-  trigger: offline training run in concept:simulation-mode
+  trigger: offline training run in concept:training-mode
   steps:
     - id: serialize
       actor: concept:session

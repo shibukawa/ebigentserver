@@ -112,9 +112,9 @@ func newDungeonNet(t *testing.T, adventurers int, tickLimit uint32, d time.Durat
 	if err != nil {
 		t.Fatal(err)
 	}
-	game := dungeon.Game{Adventurers: adventurers, TickLimit: tickLimit}
+	sim := dungeon.Simulation{Adventurers: adventurers, TickLimit: tickLimit}
 	s, err = session.New(session.Config[dungeon.State, dungeon.Input, Observation]{
-		ID: "dungeon-1", Slots: dungeon.Slots(adventurers), Game: game,
+		ID: "dungeon-1", Slots: dungeon.Slots(adventurers), Simulation: sim,
 		Validator: dungeon.Validator{}, Canonical: dungeon.Canonical,
 		Tuning: &dgTuning, Seed: 77, Broadcast: server.Broadcast,
 	})

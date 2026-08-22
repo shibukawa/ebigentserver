@@ -18,7 +18,7 @@ var testTuning = session.TuningProfile{
 }
 
 func TestOrdersAndOwnership(t *testing.T) {
-	g := rtslite.Game{Players: 2, TickLimit: 600}
+	g := rtslite.Simulation{Players: 2, TickLimit: 600}
 	s := g.Start(3)
 	v := rtslite.Validator{}
 	mine := s.Units[0].ID                        // owner 1
@@ -48,7 +48,7 @@ func TestOrdersAndOwnership(t *testing.T) {
 }
 
 func TestCombatEndsTheGame(t *testing.T) {
-	g := rtslite.Game{Players: 2, TickLimit: 4000}
+	g := rtslite.Simulation{Players: 2, TickLimit: 4000}
 	s := g.Start(3)
 	// March both armies onto the same cell block until one side dies.
 	for slot := session.SlotID(1); slot <= 2; slot++ {
@@ -71,7 +71,7 @@ func TestCombatEndsTheGame(t *testing.T) {
 // term:fog-of-war as a projection predicate: enemies exist for a player
 // only inside sight of an own unit.
 func TestFogOfWar(t *testing.T) {
-	g := rtslite.Game{Players: 2, TickLimit: 600}
+	g := rtslite.Simulation{Players: 2, TickLimit: 600}
 	s := g.Start(3)
 
 	// Armies start in opposite corners, far outside sight range.
@@ -109,7 +109,7 @@ func TestBothProfilesInOneGame(t *testing.T) {
 	if len(wire) > 16 {
 		t.Fatalf("wire-profile command is %d bytes", len(wire))
 	}
-	g := rtslite.Game{Players: 4, TickLimit: 600}
+	g := rtslite.Simulation{Players: 4, TickLimit: 600}
 	s := g.Start(3)
 	view := rtslite.ProjectPlayer(&s, 1)
 	snap := view.AppendCBORTo(nil)
@@ -164,10 +164,10 @@ func record(t *testing.T, src func(session.Tick, session.SlotID) (rtslite.Input,
 		episode.ReplayComplete,
 		episode.Meta{EpisodeID: "rts-ep", ProtocolVersion: msg.CBORProtocolVersion},
 	)
-	g := rtslite.Game{Players: 2, TickLimit: 400}
+	g := rtslite.Simulation{Players: 2, TickLimit: 400}
 	tuning := testTuning
 	s, err := session.New(session.Config[rtslite.State, rtslite.Input, rtslite.Observation]{
-		ID: "rts-test", Slots: rtslite.Slots(2), Game: g,
+		ID: "rts-test", Slots: rtslite.Slots(2), Simulation: g,
 		Validator: rtslite.Validator{}, Canonical: rtslite.Canonical,
 		Tuning: &tuning, Clock: func() int64 { return 0 },
 		Seed: 3, Recorder: w, InputSource: src,
@@ -195,7 +195,7 @@ func record(t *testing.T, src func(session.Tick, session.SlotID) (rtslite.Input,
 // Multi-command ticks record and replay bit-identically: the schedule
 // reader hands back each slot's several orders in recorded FIFO order.
 func TestCommandStreamRecordReplaysBitIdentical(t *testing.T) {
-	g := rtslite.Game{Players: 2, TickLimit: 400}
+	g := rtslite.Simulation{Players: 2, TickLimit: 400}
 	s0 := g.Start(3)
 	original, _ := record(t, scriptedCommands(&s0))
 	_, schedule, err := episode.ReadReplaySchedule[rtslite.Input](bytes.NewReader(original.decisions.Bytes()))
@@ -240,7 +240,7 @@ func TestCommandStreamRecordReplaysBitIdentical(t *testing.T) {
 
 // The scripted battle's final checkpoint pins across architectures.
 func TestScriptedBattleDigestPinned(t *testing.T) {
-	g := rtslite.Game{Players: 2, TickLimit: 400}
+	g := rtslite.Simulation{Players: 2, TickLimit: 400}
 	s0 := g.Start(3)
 	l, ticks := record(t, scriptedCommands(&s0))
 	cps, err := episode.ReadCheckpoints(bytes.NewReader(l.events.Bytes()))

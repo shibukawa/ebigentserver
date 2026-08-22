@@ -71,15 +71,15 @@ type Observation struct {
 	Signal session.EvaluationSignal
 }
 
-// Game implements session.Game. The zero value is ready to use.
-type Game struct{}
+// Simulation implements session.Simulation. The zero value is ready to use.
+type Simulation struct{}
 
 // Start deals an empty board with X to move.
-func (Game) Start(uint64) State { return State{Next: SlotX} }
+func (Simulation) Start(uint64) State { return State{Next: SlotX} }
 
 // ActingSlots returns the slot whose turn it is: strict alternation, one
 // decision per step.
-func (Game) ActingSlots(s *State) []session.SlotID {
+func (Simulation) ActingSlots(s *State) []session.SlotID {
 	if s.Over {
 		return nil
 	}
@@ -87,7 +87,7 @@ func (Game) ActingSlots(s *State) []session.SlotID {
 }
 
 // Apply places the (already validated) mark and resolves the position.
-func (Game) Apply(s *State, slot session.SlotID, m Move) {
+func (Simulation) Apply(s *State, slot session.SlotID, m Move) {
 	s.Board[m.Cell] = mark(slot)
 	s.Moves++
 	if winningLine(&s.Board, mark(slot)) {
@@ -105,7 +105,7 @@ func (Game) Apply(s *State, slot session.SlotID, m Move) {
 }
 
 // Project builds a slot's observation.
-func (g Game) Project(s *State, slot session.SlotID) Observation {
+func (g Simulation) Project(s *State, slot session.SlotID) Observation {
 	return Observation{
 		You:      slot,
 		Mark:     mark(slot),
@@ -117,7 +117,7 @@ func (g Game) Project(s *State, slot session.SlotID) Observation {
 
 // Evaluate computes the slot's data:evaluation-signal. Phase 1 carries the
 // terminal outcome plus a trivial progress measure (board fill).
-func (Game) Evaluate(s *State, slot session.SlotID) session.EvaluationSignal {
+func (Simulation) Evaluate(s *State, slot session.SlotID) session.EvaluationSignal {
 	sig := session.EvaluationSignal{
 		Progress: fixmath.FromScaled(int64(s.Moves), 0).Div(fixmath.FromInt32(9)),
 	}

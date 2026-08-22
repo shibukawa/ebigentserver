@@ -23,7 +23,7 @@ import (
 func TestBaselineModesDivergeMeasurably(t *testing.T) {
 	// One deterministic 4-player battle, states collected at the send
 	// cadence.
-	g := rtslite.Game{Players: 4, TickLimit: 600}
+	g := rtslite.Simulation{Players: 4, TickLimit: 600}
 	s := g.Start(9)
 	// Everyone charges the center: maximal churn in every fog view.
 	for slot := session.SlotID(1); slot <= 4; slot++ {

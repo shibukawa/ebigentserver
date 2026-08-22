@@ -61,19 +61,19 @@ type Observation struct {
 	Annotation session.VisibilityAnnotation
 }
 
-// Game implements session.TickGame.
-type Game struct {
+// Simulation implements session.TickSimulation.
+type Simulation struct {
 	// Adventurers is the party size (1..4).
 	Adventurers int
 	// TickLimit ends the crawl with a DM win; 0 means 3600.
 	TickLimit uint32
 }
 
-var _ session.TickGame[State, Input, Observation] = Game{}
+var _ session.TickSimulation[State, Input, Observation] = Simulation{}
 
 // Start builds the maze from the shared seed (rule:shared-rng-seed): the
 // same seed reproduces the same dungeon on every peer and every replay.
-func (g Game) Start(seed uint64) State {
+func (g Simulation) Start(seed uint64) State {
 	rng := fixmath.NewRand(seed | 1)
 	s := State{
 		Walls:      make([]uint8, msg.BitmapLen),
@@ -123,7 +123,7 @@ func (g Game) Start(seed uint64) State {
 }
 
 // ActingSlots reports whoever can still act (step-paced use only).
-func (g Game) ActingSlots(s *State) []session.SlotID {
+func (g Simulation) ActingSlots(s *State) []session.SlotID {
 	if s.Over {
 		return nil
 	}
@@ -137,7 +137,7 @@ func (g Game) ActingSlots(s *State) []session.SlotID {
 }
 
 // Apply performs one validated action.
-func (Game) Apply(s *State, slot session.SlotID, in Input) {
+func (Simulation) Apply(s *State, slot session.SlotID, in Input) {
 	if slot == SlotDM {
 		switch in.Kind {
 		case msg.ActPlaceTrap:
@@ -190,7 +190,7 @@ func (Game) Apply(s *State, slot session.SlotID, in Input) {
 
 // Advance runs one tick: sight and discovery update, then the end
 // conditions.
-func (Game) Advance(s *State) {
+func (Simulation) Advance(s *State) {
 	if s.Over {
 		return
 	}

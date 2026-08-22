@@ -10,7 +10,7 @@ modes:
   - concept:standalone-mode
   - concept:listen-server-mode
   - concept:dedicated-server-mode
-  - concept:simulation-mode
+  - concept:training-mode
 selection: build target plus configuration, see concept:build-target
 constraint: rule:session-independent-of-transport-and-agent-kind
 ```

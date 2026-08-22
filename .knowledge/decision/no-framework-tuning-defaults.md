@@ -12,7 +12,7 @@ instead:
   - collect the parameters in one declared data:session-tuning-profile rather than scattering them across subsystems
   - validate the profile for internal consistency at startup, since the parameters constrain each other
   - ship genre presets as examples, which a game copies and edits
-  - measure the result through concept:simulation-farm rather than guessing
+  - measure the result through concept:training-farm rather than guessing
 consequence: a game must make these choices explicitly, and cannot inherit a silent default that fails at scale
 open_by_design: the values stay unanswered in this catalog on purpose; the profile is the answer to where they live
 ```

@@ -6,11 +6,11 @@ title: Continuous Match Loop
 Long-running mode that plays match after match unattended, accumulating a corpus rather than answering one question.
 
 ```yaml
-difference_from_farm: concept:simulation-farm runs a batch and reports; this runs indefinitely and rotates what it plays
+difference_from_farm: concept:training-farm runs a batch and reports; this runs indefinitely and rotates what it plays
 loop:
   - pick a pairing
   - build a data:run-config with that agent roster and a fresh seed
-  - run a concept:simulation-mode session to completion
+  - run a concept:training-mode session to completion
   - append data:episode-log, rotate files, sample or discard low value episodes
   - update running metric:balance-signals
   - repeat

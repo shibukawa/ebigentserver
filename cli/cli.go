@@ -95,7 +95,7 @@ type (
 	DevOptions struct{}
 	// RunOptions starts a built target with a data:run-config.
 	RunOptions struct{}
-	// SimulateOptions runs concept:simulation-farm workloads.
+	// SimulateOptions runs concept:training-farm workloads.
 	SimulateOptions struct{}
 	// ReplayOptions plays an episode back through actor:replay-agent.
 	ReplayOptions struct{}
@@ -176,7 +176,7 @@ func Run(stdout, stderr io.Writer) int {
 	case runOpts != nil:
 		return ctx.report(pending("run", "launching a built artifact"))
 	case simulateOpts != nil:
-		return ctx.report(pending("simulate", "concept:simulation-farm workloads"))
+		return ctx.report(pending("simulate", "concept:training-farm workloads"))
 	case replayOpts != nil:
 		return ctx.report(pending("replay", "actor:replay-agent playback"))
 	case editOpts != nil:

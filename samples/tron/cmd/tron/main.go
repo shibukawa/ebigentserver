@@ -83,8 +83,8 @@ func main() {
 	}
 	s, err = session.New(session.Config[tron.State, tron.Input, tron.Observation]{
 		ID: "tron-local", Slots: slotIDs,
-		Game:      tron.Game{SlotIDs: slotIDs},
-		Validator: tron.Validator{}, Plausibility: tron.Plausibility{FutureWindow: 120},
+		Simulation: tron.Simulation{SlotIDs: slotIDs},
+		Validator:  tron.Validator{}, Plausibility: tron.Plausibility{FutureWindow: 120},
 		Canonical: tron.Canonical, Tuning: &tuning,
 		Broadcast: server.Broadcast,
 	})
@@ -132,7 +132,7 @@ func main() {
 			c, err := netplay.Connect(ctx, clientConn, ticket, netplay.ClientConfig[tron.State, tron.Input, msg.TronStateDelta, tron.Observation]{
 				Protocol: msg.CBORProtocolVersion, Tuning: tuning, Codec: tron.Codec(),
 				EncodeInput: func(dst []byte, a tron.Input) []byte { return a.AppendCBORTo(dst) },
-				Project:     func(w *tron.State, sl session.SlotID) tron.Observation { return tron.Game{}.Project(w, sl) },
+				Project:     func(w *tron.State, sl session.SlotID) tron.Observation { return tron.Simulation{}.Project(w, sl) },
 			})
 			if err != nil {
 				fmt.Fprintln(os.Stderr, "tron: connect:", err)

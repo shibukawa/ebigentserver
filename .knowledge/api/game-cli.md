@@ -24,7 +24,7 @@ verbs:
   - name: doctor
     action: report toolchain and environment problems
   - name: simulate
-    action: run concept:simulation-farm workloads, writing data:episode-log
+    action: run concept:training-farm workloads, writing data:episode-log
   - name: replay
     action: play back an episode through actor:replay-agent
   - name: export

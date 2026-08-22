@@ -10,7 +10,7 @@ decided: yes
 modes:
   - name: agent_driven_step
     description: agent advances the clock; session waits for its concept:action
-    default_for: actor:llm-agent in concept:simulation-mode
+    default_for: actor:llm-agent in concept:training-mode
     control: concept:game-time-control step mode
   - name: realtime_nonblocking
     description: session advances on schedule; a late agent contributes no action this tick

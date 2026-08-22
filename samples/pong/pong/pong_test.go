@@ -35,13 +35,13 @@ func patternInput(tick session.Tick, slot session.SlotID) (pong.Input, bool) {
 func newSession(t *testing.T, cfg func(*session.Config[pong.State, pong.Input, pong.Observation])) *session.Session[pong.State, pong.Input, pong.Observation] {
 	t.Helper()
 	c := session.Config[pong.State, pong.Input, pong.Observation]{
-		ID:        "pong-test",
-		Slots:     pong.Slots(),
-		Game:      pong.Game{},
-		Validator: pong.Validator{},
-		Canonical: pong.Canonical,
-		Tuning:    &testTuning,
-		Clock:     func() int64 { return 0 },
+		ID:         "pong-test",
+		Slots:      pong.Slots(),
+		Simulation: pong.Simulation{},
+		Validator:  pong.Validator{},
+		Canonical:  pong.Canonical,
+		Tuning:     &testTuning,
+		Clock:      func() int64 { return 0 },
 	}
 	if cfg != nil {
 		cfg(&c)

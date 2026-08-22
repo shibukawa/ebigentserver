@@ -12,8 +12,8 @@ flow:
     - id: configure
       action: define agent mix by concept:behavior-profile
     - id: run
-      actor: concept:simulation-farm
-      action: execute many concept:simulation-mode sessions in parallel
+      actor: concept:training-farm
+      action: execute many concept:training-mode sessions in parallel
     - id: aggregate
       action: collect data:episode-log results
     - id: report

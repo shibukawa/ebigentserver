@@ -9,7 +9,7 @@ import (
 )
 
 func TestOpeningLegalMoves(t *testing.T) {
-	g := reversi.Game{}
+	g := reversi.Simulation{}
 	s := g.Start(0)
 	obs := g.Project(&s, reversi.SlotBlack)
 	// Black's classical four openings: d3(19), c4(26), f5(37), e6(44),
@@ -31,7 +31,7 @@ func TestOpeningLegalMoves(t *testing.T) {
 
 func TestValidator(t *testing.T) {
 	v := reversi.Validator{}
-	s := reversi.Game{}.Start(0)
+	s := reversi.Simulation{}.Start(0)
 	if err := v.Legal(&s, reversi.SlotBlack, reversi.Move{Cell: 19}); err != nil {
 		t.Errorf("d3 rejected: %v", err)
 	}
@@ -50,7 +50,7 @@ func TestValidator(t *testing.T) {
 }
 
 func TestApplyFlips(t *testing.T) {
-	g := reversi.Game{}
+	g := reversi.Simulation{}
 	s := g.Start(0)
 	g.Apply(&s, reversi.SlotBlack, reversi.Move{Cell: 19}) // d3
 	// d4 (27) flipped to black; d3 placed.
@@ -69,12 +69,12 @@ func TestApplyFlips(t *testing.T) {
 func newMatch(t *testing.T, black, white session.Agent[reversi.Observation, reversi.Move], cfg func(*session.Config[reversi.State, reversi.Move, reversi.Observation])) *session.Session[reversi.State, reversi.Move, reversi.Observation] {
 	t.Helper()
 	c := session.Config[reversi.State, reversi.Move, reversi.Observation]{
-		ID:        "reversi-test",
-		Slots:     reversi.Slots(),
-		Game:      reversi.Game{},
-		Validator: reversi.Validator{},
-		Canonical: reversi.Canonical,
-		Clock:     func() int64 { return 0 }, // latency-free logs for byte comparisons
+		ID:         "reversi-test",
+		Slots:      reversi.Slots(),
+		Simulation: reversi.Simulation{},
+		Validator:  reversi.Validator{},
+		Canonical:  reversi.Canonical,
+		Clock:      func() int64 { return 0 }, // latency-free logs for byte comparisons
 	}
 	if cfg != nil {
 		cfg(&c)

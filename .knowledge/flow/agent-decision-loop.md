@@ -8,6 +8,7 @@ Per-tick cycle turning world state into the next world state through agents.
 ```yaml
 flow:
   trigger: concept:session starts a new term:tick
+  contracts: api:simulation-interface on the game side, api:agent-interface on the controller side
   steps:
     - id: observe
       actor: concept:session

@@ -8,13 +8,13 @@ import (
 	"github.com/shibukawa/ebigentserver/session"
 )
 
-func newGame(adventurers int) (dungeon.Game, dungeon.State) {
-	g := dungeon.Game{Adventurers: adventurers, TickLimit: 600}
+func newSimulation(adventurers int) (dungeon.Simulation, dungeon.State) {
+	g := dungeon.Simulation{Adventurers: adventurers, TickLimit: 600}
 	return g, g.Start(42)
 }
 
 func TestMazeIsDeterministic(t *testing.T) {
-	g := dungeon.Game{Adventurers: 4}
+	g := dungeon.Simulation{Adventurers: 4}
 	a, b := g.Start(7), g.Start(7)
 	for i := range a.Walls {
 		if a.Walls[i] != b.Walls[i] {
@@ -34,7 +34,7 @@ func TestMazeIsDeterministic(t *testing.T) {
 }
 
 func TestTrapSpringsAndDiscovers(t *testing.T) {
-	g, s := newGame(1) // scout only
+	g, s := newSimulation(1) // scout only
 	v := dungeon.Validator{}
 	scout := session.SlotID(2)
 	// Clear the corridor cells the test walks, whatever the seed rolled.
@@ -73,7 +73,7 @@ func TestTrapSpringsAndDiscovers(t *testing.T) {
 }
 
 func TestRoleGating(t *testing.T) {
-	g, s := newGame(4)
+	g, s := newSimulation(4)
 	v := dungeon.Validator{}
 	scout, engineer := session.SlotID(2), session.SlotID(3)
 
@@ -120,7 +120,7 @@ func assertAdventurerViewInvariants(t *testing.T, v *msg.AdventurerView, navigat
 }
 
 func TestProjectionsHideAndReveal(t *testing.T) {
-	g, s := newGame(4)
+	g, s := newSimulation(4)
 	scout, navigator := session.SlotID(2), session.SlotID(5)
 
 	// A trap far from the party is invisible to every adventurer but
@@ -174,7 +174,7 @@ func TestProjectionsHideAndReveal(t *testing.T) {
 // rule:evaluation-respects-visibility-scope — a hidden DM action must not
 // move the party's numbers.
 func TestEvaluationIsScoped(t *testing.T) {
-	g, s := newGame(2)
+	g, s := newSimulation(2)
 	scout := session.SlotID(2)
 	before := g.Evaluate(&s, scout)
 	g.Apply(&s, dungeon.SlotDM, dungeon.Input{Kind: msg.ActPlaceTrap, X: msg.GridW - 4, Y: msg.GridH - 4})
@@ -197,7 +197,7 @@ func TestEvaluationIsScoped(t *testing.T) {
 // The party wins: the test plans a route with full knowledge (tests may
 // cheat; players may not) and drives the carrier through it.
 func TestPartyCanWin(t *testing.T) {
-	g, s := newGame(4)
+	g, s := newSimulation(4)
 	carrier := session.SlotID(4)
 	v := dungeon.Validator{}
 

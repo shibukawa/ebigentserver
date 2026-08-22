@@ -41,7 +41,7 @@ func clientConfig(tuning session.TuningProfile) netplay.ClientConfig[tron.State,
 		Tuning:      tuning,
 		Codec:       tron.Codec(),
 		EncodeInput: func(dst []byte, a tron.Input) []byte { return a.AppendCBORTo(dst) },
-		Project:     func(w *tron.State, slot session.SlotID) tron.Observation { return tron.Game{}.Project(w, slot) },
+		Project:     func(w *tron.State, slot session.SlotID) tron.Observation { return tron.Simulation{}.Project(w, slot) },
 	}
 }
 
@@ -90,7 +90,7 @@ func TestEightPlayersSpectatorsAndInjectedFailures(t *testing.T) {
 	defer cancel()
 
 	// The session: 8 seats, plausibility on, escalation declared.
-	game := tron.Game{SlotIDs: slots(8)}
+	sim := tron.Simulation{SlotIDs: slots(8)}
 	var s *session.Session[tron.State, tron.Input, tron.Observation]
 
 	takeover := make(chan session.SlotID, 8)
@@ -120,7 +120,7 @@ func TestEightPlayersSpectatorsAndInjectedFailures(t *testing.T) {
 		t.Fatal(err)
 	}
 	s, err = session.New(session.Config[tron.State, tron.Input, tron.Observation]{
-		ID: "tron-1", Slots: slots(8), Game: game,
+		ID: "tron-1", Slots: slots(8), Simulation: sim,
 		Validator: tron.Validator{}, Plausibility: tron.Plausibility{FutureWindow: 240},
 		Canonical: tron.Canonical, Tuning: &tuning, Seed: 9,
 		Broadcast: server.Broadcast,

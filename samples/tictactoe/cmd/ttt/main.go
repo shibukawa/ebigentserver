@@ -33,10 +33,10 @@ func main() {
 	flag.Parse()
 
 	s, err := session.New(session.Config[ttt.State, ttt.Move, ttt.Observation]{
-		ID:        "ttt-cli",
-		Slots:     ttt.Slots(),
-		Game:      ttt.Game{},
-		Validator: ttt.Validator{},
+		ID:         "ttt-cli",
+		Slots:      ttt.Slots(),
+		Simulation: ttt.Simulation{},
+		Validator:  ttt.Validator{},
 	})
 	if err != nil {
 		fatal(err)

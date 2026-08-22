@@ -108,11 +108,11 @@ func (r *recordSink) Report(rep session.Report) error {
 func newAddSession(t *testing.T, a3, a7 *addAgent, sink session.ReportSink, log *[]string) *session.Session[addState, addMove, addObs] {
 	t.Helper()
 	s, err := session.New(session.Config[addState, addMove, addObs]{
-		ID:        "add-test",
-		Slots:     []session.SlotID{7, 3}, // unsorted on purpose
-		Game:      addGame{log: log},
-		Validator: addValidator{},
-		Reports:   sink,
+		ID:         "add-test",
+		Slots:      []session.SlotID{7, 3}, // unsorted on purpose
+		Simulation: addGame{log: log},
+		Validator:  addValidator{},
+		Reports:    sink,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -133,7 +133,7 @@ func newAddSession(t *testing.T, a3, a7 *addAgent, sink session.ReportSink, log 
 
 func TestLifecycleGuards(t *testing.T) {
 	s, err := session.New(session.Config[addState, addMove, addObs]{
-		Slots: []session.SlotID{3, 7}, Game: addGame{},
+		Slots: []session.SlotID{3, 7}, Simulation: addGame{},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -172,13 +172,13 @@ func TestConfigValidation(t *testing.T) {
 	if _, err := session.New(session.Config[addState, addMove, addObs]{Slots: []session.SlotID{1}}); err == nil {
 		t.Fatal("nil game must fail")
 	}
-	if _, err := session.New(session.Config[addState, addMove, addObs]{Game: addGame{}}); err == nil {
+	if _, err := session.New(session.Config[addState, addMove, addObs]{Simulation: addGame{}}); err == nil {
 		t.Fatal("empty slots must fail")
 	}
-	if _, err := session.New(session.Config[addState, addMove, addObs]{Game: addGame{}, Slots: []session.SlotID{0, 1}}); err == nil {
+	if _, err := session.New(session.Config[addState, addMove, addObs]{Simulation: addGame{}, Slots: []session.SlotID{0, 1}}); err == nil {
 		t.Fatal("slot 0 must fail")
 	}
-	if _, err := session.New(session.Config[addState, addMove, addObs]{Game: addGame{}, Slots: []session.SlotID{2, 2}}); err == nil {
+	if _, err := session.New(session.Config[addState, addMove, addObs]{Simulation: addGame{}, Slots: []session.SlotID{2, 2}}); err == nil {
 		t.Fatal("duplicate slot must fail")
 	}
 }

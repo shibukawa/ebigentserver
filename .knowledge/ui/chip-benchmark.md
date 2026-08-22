@@ -32,7 +32,7 @@ ui:
         id: panel.ablation
         title: Ablation
         state: re-run the pairing with one chip removed and show the win-rate delta
-        action: queue an ablation batch on concept:simulation-farm
+        action: queue an ablation batch on concept:training-farm
       - kind: chart
         id: chart.tactics
         title: Tactic Frequency

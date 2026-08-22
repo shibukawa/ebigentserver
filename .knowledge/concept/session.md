@@ -6,6 +6,7 @@ title: Session
 Runtime that advances game state by applying agent actions on each tick.
 
 ```yaml
+rules: api:simulation-interface, supplied by the game
 holds:
   - agent set
   - tick clock, see term:tick

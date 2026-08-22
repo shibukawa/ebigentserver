@@ -193,7 +193,7 @@ func Connect(ctx context.Context, conn transport.Conn, ticket string, tuning ses
 // Decide → input datagram. Acks flush per the declared policy so a
 // silent agent still confirms baselines.
 func (c *NetClient) Run(ctx context.Context, agent session.Agent[Observation, Input]) error {
-	var game Game
+	var sim Simulation
 	agent.Joined(c.Slot)
 	for {
 		m, err := c.conn.Receive(ctx)
@@ -227,7 +227,7 @@ func (c *NetClient) Run(ctx context.Context, agent session.Agent[Observation, In
 		if !ok {
 			continue
 		}
-		agent.Observe(game.Project(world, c.Slot))
+		agent.Observe(sim.Project(world, c.Slot))
 		if in, ok := agent.Decide(ctx); ok {
 			buf := in.AppendCBORTo(nil)
 			_ = c.layer.SendDatagram(ctx, buf, uint64(world.Tick))

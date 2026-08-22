@@ -14,7 +14,7 @@ covers:
   - determinism tests, replaying recorded matches across architectures
   - replay corpus generation for flow:behavior-tree-synthesis
   - balance and regression checks through metric:balance-signals
-runner: concept:simulation-farm and flow:automated-playtest, the same machinery games use
+runner: concept:training-farm and flow:automated-playtest, the same machinery games use
 acceptance: concept:sample-acceptance-matrix fixes configuration and assertions for CI
 consequence: a framework change that breaks a sample breaks the build, so samples cannot rot
 cost: samples must stay maintained at library quality, which is the point

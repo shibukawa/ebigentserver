@@ -35,7 +35,7 @@ type SlotID uint16
 // is one tick.
 type Tick uint64
 
-// Game is what a game implements to be hosted (rule:observation-content-
+// Simulation is what a game implements to be hosted (rule:observation-content-
 // owned-by-game: every content decision lives here, none in the session).
 // S is the game's world state (concept:world-state), A its action type
 // (concept:action), O its observation type (concept:observation).
@@ -43,7 +43,7 @@ type Tick uint64
 // S and O are deliberately distinct type parameters even though a Phase 1
 // game may project one into the other almost unchanged: per-slot visibility
 // (concept:visibility-scope) later changes Project, never the session loop.
-type Game[S, A, O any] interface {
+type Simulation[S, A, O any] interface {
 	// Start returns the initial world state. seed is the session's
 	// shared RNG seed (rule:shared-rng-seed): a game that needs
 	// randomness derives it from here — typically by embedding a
@@ -85,8 +85,8 @@ type Config[S, A, O any] struct {
 	// Slots is the game-defined slot set (concept:player-slot). Must be
 	// non-empty, unique, and must not contain 0.
 	Slots []SlotID
-	// Game supplies the rules.
-	Game Game[S, A, O]
+	// Simulation supplies the rules.
+	Simulation Simulation[S, A, O]
 	// Validator judges legality before Apply (api:action-validator).
 	// Nil admits every action — the Phase 1 seam default.
 	Validator ActionValidator[S, A]
@@ -99,7 +99,7 @@ type Config[S, A, O any] struct {
 	// default of 3.
 	RetryBudget int
 	// Seed is the session's shared RNG seed (rule:shared-rng-seed),
-	// passed to Game.Start and recorded in the episode header.
+	// passed to Simulation.Start and recorded in the episode header.
 	Seed uint64
 	// Recorder receives the episode's record hooks. Nil records
 	// nothing.
@@ -158,8 +158,8 @@ type Session[S, A, O any] struct {
 
 // New validates the configuration and returns a session in StateCreated.
 func New[S, A, O any](cfg Config[S, A, O]) (*Session[S, A, O], error) {
-	if cfg.Game == nil {
-		return nil, errors.New("session: Config.Game is required")
+	if cfg.Simulation == nil {
+		return nil, errors.New("session: Config.Simulation is required")
 	}
 	if len(cfg.Slots) == 0 {
 		return nil, errors.New("session: Config.Slots must not be empty")
@@ -247,7 +247,7 @@ func (s *Session[S, A, O]) Run(ctx context.Context) error {
 			return fmt.Errorf("%w: %d", ErrSlotEmpty, slot)
 		}
 	}
-	s.world = s.cfg.Game.Start(s.cfg.Seed)
+	s.world = s.cfg.Simulation.Start(s.cfg.Seed)
 	if s.cfg.Recorder != nil {
 		s.cfg.Recorder.EpisodeStarted(EpisodeStart{
 			SessionID: s.cfg.ID,
@@ -267,7 +267,7 @@ func (s *Session[S, A, O]) Run(ctx context.Context) error {
 		if ctx.Err() != nil {
 			return s.drain(s.abandonRemaining(signals))
 		}
-		acting := slices.Clone(s.cfg.Game.ActingSlots(&s.world))
+		acting := slices.Clone(s.cfg.Simulation.ActingSlots(&s.world))
 		if len(acting) == 0 {
 			return s.abort(fmt.Errorf("session: no acting slots but position is not terminal (tick %d)", s.tick))
 		}
@@ -295,7 +295,7 @@ func (s *Session[S, A, O]) Run(ctx context.Context) error {
 				return s.drain(s.abandonRemaining(signals))
 			}
 			s.commitAction(slot, action)
-			s.cfg.Game.Apply(&s.world, slot, action)
+			s.cfg.Simulation.Apply(&s.world, slot, action)
 		}
 		s.tick++ // the single commit point of the step
 		s.recordCommit()
@@ -370,7 +370,7 @@ func (s *Session[S, A, O]) evaluateAll() (map[SlotID]EvaluationSignal, bool) {
 	signals := make(map[SlotID]EvaluationSignal, len(s.slots))
 	done := true
 	for _, slot := range s.slots {
-		sig := s.cfg.Game.Evaluate(&s.world, slot)
+		sig := s.cfg.Simulation.Evaluate(&s.world, slot)
 		signals[slot] = sig
 		if sig.Terminal == NotTerminal {
 			done = false
@@ -391,7 +391,7 @@ func (s *Session[S, A, O]) evaluateAll() (map[SlotID]EvaluationSignal, bool) {
 func (s *Session[S, A, O]) observeAll(acting []SlotID, signals map[SlotID]EvaluationSignal) map[SlotID]O {
 	delivered := make(map[SlotID]O, len(acting))
 	for _, slot := range s.slots {
-		obs := s.cfg.Game.Project(&s.world, slot)
+		obs := s.cfg.Simulation.Project(&s.world, slot)
 		if slices.Contains(acting, slot) {
 			delivered[slot] = obs
 		} else if s.cfg.Recorder != nil {

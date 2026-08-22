@@ -36,7 +36,7 @@ func (c *Client) Run(ctx context.Context, wg *sync.WaitGroup) {
 	if err != nil {
 		panic(err) // static misconfiguration, not a runtime condition
 	}
-	var game Game
+	var sim Simulation
 	for {
 		select {
 		case <-ctx.Done():
@@ -56,7 +56,7 @@ func (c *Client) Run(ctx context.Context, wg *sync.WaitGroup) {
 			if !ok {
 				continue
 			}
-			c.Agent.Observe(game.Project(world, c.Slot))
+			c.Agent.Observe(sim.Project(world, c.Slot))
 			if in, ok := c.Agent.Decide(ctx); ok {
 				c.Inbox.Submit(in)
 			}

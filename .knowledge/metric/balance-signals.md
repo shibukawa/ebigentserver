@@ -14,7 +14,7 @@ signals:
   - tactic frequency
   - cooperative action rate
   - unwinnable or stuck state occurrence
-source: data:episode-log corpora produced by concept:simulation-farm
+source: data:episode-log corpora produced by concept:training-farm
 computation: sql aggregates over the decisions, events, and outcomes streams, typically with system:duckdb
 ground_truth_allowed: these are outcome measures, so the world stream may be read here, unlike condition synthesis under rule:analysis-restricted-to-visible-fields
 flow: flow:automated-playtest

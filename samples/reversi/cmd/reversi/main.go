@@ -31,11 +31,11 @@ func main() {
 	flag.Parse()
 
 	cfg := session.Config[reversi.State, reversi.Move, reversi.Observation]{
-		ID:        "reversi-cli",
-		Slots:     reversi.Slots(),
-		Game:      reversi.Game{},
-		Validator: reversi.Validator{},
-		Canonical: reversi.Canonical,
+		ID:         "reversi-cli",
+		Slots:      reversi.Slots(),
+		Simulation: reversi.Simulation{},
+		Validator:  reversi.Validator{},
+		Canonical:  reversi.Canonical,
 	}
 
 	var recorder *episode.Writer[reversi.State, reversi.Move, reversi.Observation]

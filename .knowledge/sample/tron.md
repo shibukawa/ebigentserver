@@ -16,6 +16,6 @@ exercises:
   - permission:spectator-receive-only, including the dedicated ack need of concept:ack-transmission-policy
   - concept:agent-departure-policy and concept:agent-proxy-designation on a real disconnect
   - per receiver baseline cost of decision:framework-side-delta-generation at eight receivers
-  - concept:simulation-farm load testing with bot only fields
+  - concept:training-farm load testing with bot only fields
 role: the step between one on one realtime and world projection
 ```

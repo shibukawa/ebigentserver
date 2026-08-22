@@ -25,10 +25,10 @@ networked game uses, and it is deliberately small enough to throw away.
 | `State` | the world; everything the session commits |
 | `Action` | what one decision is — here, one boolean |
 | `Observation` | what one slot may see — narrow this before shipping |
-| `Game.Advance` | one simulation step; the physics |
-| `Game.Apply` | how a validated action changes the world |
-| `Game.Project` | how the world becomes an observation |
-| `Game.Evaluate` | the score, progress, and terminal state of a slot |
+| `Simulation.Advance` | one simulation step; the physics |
+| `Simulation.Apply` | how a validated action changes the world |
+| `Simulation.Project` | how the world becomes an observation |
+| `Simulation.Evaluate` | the score, progress, and terminal state of a slot |
 | `Validator.Legal` | which actions are possible at all |
 | `Tuning` | tick rate, send rate, snapshot cadence |
 

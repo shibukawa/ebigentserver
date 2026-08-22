@@ -1,4 +1,4 @@
-// The simulation entry point (concept:simulation-mode): session and local
+// The simulation entry point (concept:training-mode): session and local
 // state only, no transport, no engine. It advances a fixed-point world —
 // fixmath trigonometry, declared-scale quantization, generated CBOR deltas —
 // and prints a digest of every encoded delta: the seed of Phase 2's

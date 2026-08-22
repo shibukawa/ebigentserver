@@ -70,7 +70,7 @@ func ProjectDM(s *State) msg.DMView {
 
 // Project builds the session-level observation for a slot; the recorded
 // observation is therefore the same projection the wire carries.
-func (g Game) Project(s *State, slot session.SlotID) Observation {
+func (g Simulation) Project(s *State, slot session.SlotID) Observation {
 	obs := Observation{You: slot, Role: RoleOf(slot), Signal: g.Evaluate(s, slot)}
 	if slot == SlotDM {
 		v := ProjectDM(s)
@@ -124,7 +124,7 @@ func DMAnnotation(v *msg.DMView) session.VisibilityAnnotation {
 // only from team knowledge — exploration, party health, the carry — so
 // no hidden trap or unseen DM action ever moves them. The DM's signal is
 // privileged, which its annotation declares.
-func (g Game) Evaluate(s *State, slot session.SlotID) session.EvaluationSignal {
+func (g Simulation) Evaluate(s *State, slot session.SlotID) session.EvaluationSignal {
 	explored := 0
 	for _, b := range s.Explored {
 		for ; b != 0; b &= b - 1 {
