@@ -8,7 +8,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/shibukawa/ebigentserver/discovery"
 	"github.com/shibukawa/ebigentserver/run"
 	"github.com/shibukawa/ebigentserver/session"
 )
@@ -111,47 +110,41 @@ func (g *Guest[S, A, D, O]) Over() bool {
 	return g.over
 }
 
-// Auto is the preset a game hands to the wrapper: browse briefly, join
-// whoever answers, and host when nobody does.
-//
-// Two people launching the same binary therefore get a match without
-// either of them being told to host — the first one to start is the
-// host because nobody answered it, and that is the whole configuration.
-func Auto[S, A, D, O any](opts Options[S, A, D, O], window time.Duration) run.Networking[S, A, O] {
-	if window <= 0 {
-		window = 2 * time.Second
-	}
-	return &auto[S, A, D, O]{opts: opts, window: window}
+// Preset is what a game hands to the wrapper: this network, this
+// protocol, these wire types. The wrapper asks it what is out there and
+// the player decides — which is why hosting and joining are separate
+// calls rather than one that picks for them.
+func Preset[S, A, D, O any](opts Options[S, A, D, O]) run.Networking[S, A, O] {
+	return &preset[S, A, D, O]{opts: opts, window: opts.browseWindow()}
 }
 
-type auto[S, A, D, O any] struct {
+type preset[S, A, D, O any] struct {
 	opts   Options[S, A, D, O]
 	window time.Duration
 }
 
-// Begin looks for a host and becomes one if there is none.
-func (a *auto[S, A, D, O]) Begin(ctx context.Context, r *run.Roster[S, A, O], seed uint64) (run.Hosting[S, A, O], run.Joined[S, A, O], error) {
-	found, err := Browse(ctx, a.opts, a.window)
+// Discover lists the games answering on this network.
+func (p *preset[S, A, D, O]) Discover(ctx context.Context) ([]run.Found, error) {
+	beacons, err := Browse(ctx, p.opts, p.window)
 	if err != nil && !errors.Is(err, context.DeadlineExceeded) {
-		return nil, nil, err
+		return nil, err
 	}
-	for _, b := range found {
-		guest, err := Join(ctx, a.opts, b.Endpoint)
-		if err != nil {
-			continue // that host filled up or went away; try the next
-		}
-		return nil, guest, nil
+	out := make([]run.Found, 0, len(beacons))
+	for _, b := range beacons {
+		out = append(out, run.Found{Name: b.Session, Address: b.Endpoint, Players: b.PlayerCount})
 	}
-	host, err := Open(ctx, a.opts, r, seed)
-	if err != nil {
-		return nil, nil, err
-	}
-	return host, nil, nil
+	return out, nil
 }
 
-// Found is one host a browse turned up, for a game showing its own list
-// instead of taking the first answer.
-type Found = discovery.Beacon
+// Host offers this instance's match.
+func (p *preset[S, A, D, O]) Host(ctx context.Context, r *run.Roster[S, A, O], seed uint64) (run.Hosting[S, A, O], error) {
+	return Open(ctx, p.opts, r, seed)
+}
+
+// Join takes a seat on one of the games Discover reported.
+func (p *preset[S, A, D, O]) Join(ctx context.Context, f run.Found) (run.Joined[S, A, O], error) {
+	return JoinAt(ctx, p.opts, f.Address)
+}
 
 // The two halves of run.Networking, checked here so a signature drift in
 // either package fails at build time rather than at a player's keyboard.

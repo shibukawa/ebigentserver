@@ -181,26 +181,50 @@ func (a *app[S, A, O]) gather() error {
 		return err
 	}
 	a.roster = roster
-	if a.opts.Network != nil && a.hosting == nil && a.joined == nil {
-		hosting, joined, err := a.opts.Network.Begin(a.ctx, roster, a.opts.Seed)
-		if err != nil {
-			return err
-		}
-		a.hosting, a.joined = hosting, joined
-		if joined != nil {
-			// Somebody else is gathering. This instance has a seat
-			// already and nothing to fill, so it goes straight to
-			// playing and waits inside the link.
-			a.scene = newRemote(a, joined)
-			return nil
-		}
+	// A roster belongs to one match, so an offer still filling the
+	// finished one would seat the next arrival nowhere.
+	if a.hosting != nil {
+		a.hosting.Rebind(roster)
+	}
+	if a.joined != nil {
+		// The previous link is done with. Looking again is what lets
+		// the same window rejoin, or host, without being restarted.
+		_ = a.joined.Close()
+		a.joined = nil
 	}
 	if a.opts.Scene != nil {
 		a.scene = a.opts.Scene(roster)
 		return nil
 	}
-	a.scene = NewLobby(a, roster)
+	a.scene = NewLobby[S, A, O](a, roster)
 	return nil
+}
+
+// Roster is the one being gathered.
+func (a *app[S, A, O]) Roster() *run.Roster[S, A, O] { return a.roster }
+
+// Network is the preset, or nil when this build plays offline.
+func (a *app[S, A, O]) Network() run.Networking[S, A, O] { return a.opts.Network }
+
+// Context bounds the work a scene starts.
+func (a *app[S, A, O]) Context() context.Context { return a.ctx }
+
+// Declared hands a gathering scene the framework declaration.
+func (a *app[S, A, O]) Declared() (run.Options, LobbyOptions, run.Binding[S, A, O]) {
+	return a.opts.Options, a.opts.Lobby, a.opts.Binding
+}
+
+// Hosting is the offer this instance already makes, or nil.
+func (a *app[S, A, O]) Hosting() run.Hosting[S, A, O] { return a.hosting }
+
+// BecomeHost records that this instance is offering its match.
+func (a *app[S, A, O]) BecomeHost(h run.Hosting[S, A, O]) { a.hosting = h }
+
+// BecomeGuest records that this instance took a seat elsewhere, and
+// switches to the scene that renders a link instead of a match.
+func (a *app[S, A, O]) BecomeGuest(j run.Joined[S, A, O]) {
+	a.joined = j
+	a.scene = newRemote(a, j)
 }
 
 // Start finalizes the roster and moves to the play scene. A gathering
@@ -287,7 +311,11 @@ func (a *app[S, A, O]) ended() error {
 	if a.opts.OnMatch != nil {
 		a.opts.OnMatch(res)
 	}
-	return a.gather()
+	// The board stays up until somebody dismisses it. Going straight
+	// back to the lobby would take the last frame away before they had
+	// seen how it ended.
+	a.scene = newResult(a, outcomeLine(&res))
+	return nil
 }
 
 // stop releases the running match, if any.

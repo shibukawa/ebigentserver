@@ -107,7 +107,7 @@ func TestTwoInstancesPlayOneBoard(t *testing.T) {
 	guestReady := make(chan *lan.Guest[game.State, game.Action, msg.TTTStateDelta, game.Observation], 1)
 	guestFail := make(chan error, 1)
 	go func() {
-		g, err := lan.Join(ctx, opts, host.Endpoint())
+		g, err := lan.JoinAt(ctx, opts, host.Endpoint())
 		if err != nil {
 			guestFail <- err
 			return

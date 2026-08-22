@@ -225,7 +225,7 @@ func TestTwoInstancesPlayOverTheLink(t *testing.T) {
 	joined := make(chan *lan.Guest[State, Action, Delta, Observation], 1)
 	joinErr := make(chan error, 1)
 	go func() {
-		g, err := lan.Join(ctx, opts, host.Endpoint())
+		g, err := lan.JoinAt(ctx, opts, host.Endpoint())
 		if err != nil {
 			joinErr <- err
 			return
@@ -407,7 +407,7 @@ func TestBrowseFindsTheHost(t *testing.T) {
 	// The endpoint the beacon carried is enough to take a seat.
 	joined := make(chan error, 1)
 	go func() {
-		_, err := lan.Join(ctx, opts, b.Endpoint)
+		_, err := lan.JoinAt(ctx, opts, b.Endpoint)
 		joined <- err
 	}()
 	deadline := time.Now().Add(5 * time.Second)
@@ -445,7 +445,7 @@ func TestProtocolMismatchIsRefusedAtTheSeat(t *testing.T) {
 
 	stale := options()
 	stale.Protocol = "lan-test-0"
-	if _, err := lan.Join(ctx, stale, host.Endpoint()); err == nil {
+	if _, err := lan.JoinAt(ctx, stale, host.Endpoint()); err == nil {
 		t.Fatal("a guest speaking an older protocol was seated")
 	}
 	for _, seat := range roster.Seats() {
@@ -455,17 +455,16 @@ func TestProtocolMismatchIsRefusedAtTheSeat(t *testing.T) {
 	}
 }
 
-// TestAutoHostsFirstThenJoins is the whole of the tutorial's
-// configuration: launch the same binary twice and the parts sort
-// themselves out. The first instance finds nobody and offers its match;
-// the second finds it and takes a seat.
-func TestAutoHostsFirstThenJoins(t *testing.T) {
+// TestPresetDiscoversThenJoins is what the lobby does: ask the network,
+// and either pick from what answered or offer a game because nothing did.
+func TestPresetDiscoversThenJoins(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
 	addr := freeUDPPort(t)
 	opts := options()
 	opts.BeaconAddr, opts.DiscoveryAddr = addr, addr
+	opts.BrowseWindow = 300 * time.Millisecond
 
 	newRoster := func() *run.Roster[State, Action, Observation] {
 		r, err := run.NewRoster[State, Action, Observation](
@@ -476,34 +475,47 @@ func TestAutoHostsFirstThenJoins(t *testing.T) {
 		}
 		return r
 	}
+	preset := lan.Preset(opts)
 
-	// First instance: nobody answers, so it becomes the one to answer.
+	// First instance: nothing answers, so it offers a game and sits.
 	first := newRoster()
-	hosting, joined, err := lan.Auto(opts, 300*time.Millisecond).Begin(ctx, first, 3)
+	found, err := preset.Discover(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if hosting == nil || joined != nil {
-		t.Fatalf("first instance became hosting=%v joined=%v, want a host", hosting != nil, joined != nil)
+	if len(found) != 0 {
+		t.Fatalf("found %v before anybody was hosting", found)
+	}
+	hosting, err := preset.Host(ctx, first, 3)
+	if err != nil {
+		t.Fatal(err)
 	}
 	defer hosting.Close()
 	if _, err := first.JoinLocal("host-player"); err != nil {
 		t.Fatal(err)
 	}
 
-	// Second instance: finds the first and takes the seat it left.
-	second := newRoster()
-	hosting2, joined2, err := lan.Auto(opts, 3*time.Second).Begin(ctx, second, 3)
+	// Second instance: sees exactly one game, with a seat already taken.
+	wide := opts
+	wide.BrowseWindow = 3 * time.Second
+	found, err = lan.Preset(wide).Discover(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if joined2 == nil || hosting2 != nil {
-		t.Fatalf("second instance became hosting=%v joined=%v, want a guest", hosting2 != nil, joined2 != nil)
+	if len(found) != 1 {
+		t.Fatalf("discovered %v, want one game", found)
 	}
-	defer joined2.Close()
+	if found[0].Name != "lan-test" || found[0].Players != 1 {
+		t.Fatalf("discovered %+v, want lan-test with 1 seated", found[0])
+	}
 
-	// The seat it took is in the *first* instance's roster — the guest's
-	// own roster stays empty, because it has nothing to gather.
+	// Only now does anybody join — because a person chose to.
+	guest, err := preset.Join(ctx, found[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer guest.Close()
+
 	deadline := time.Now().Add(5 * time.Second)
 	for !first.Complete() {
 		if time.Now().After(deadline) {
@@ -511,12 +523,66 @@ func TestAutoHostsFirstThenJoins(t *testing.T) {
 		}
 		time.Sleep(10 * time.Millisecond)
 	}
-	for _, seat := range second.Seats() {
-		if seat.Filled() {
-			t.Fatalf("the guest filled its own roster at seat %d", seat.Slot)
-		}
-	}
-	if got := joined2.LocalSeats(); len(got) != 1 || got[0].Slot != slotGuest {
+	if got := guest.LocalSeats(); len(got) != 1 || got[0].Slot != slotGuest {
 		t.Fatalf("guest plays %v, want one seat at %d", got, slotGuest)
+	}
+}
+
+// TestRebindMovesTheOfferToTheNextMatch covers the lifecycle bug a real
+// game found: a roster belongs to one match, and an offer still filling
+// the finished one leaves the next lobby waiting for somebody who
+// already arrived somewhere that no longer exists.
+func TestRebindMovesTheOfferToTheNextMatch(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	opts := options()
+	first, err := run.NewRoster[State, Action, Observation](
+		run.Options{Name: "lan-test", Devices: run.Keyboard, MaxLocalSeats: 1},
+		[]session.SlotID{slotHost, slotGuest})
+	if err != nil {
+		t.Fatal(err)
+	}
+	host, err := lan.Open(ctx, opts, first, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer host.Close()
+
+	// The next match brings a fresh roster.
+	second, err := run.NewRoster[State, Action, Observation](
+		run.Options{Name: "lan-test", Devices: run.Keyboard, MaxLocalSeats: 1},
+		[]session.SlotID{slotHost, slotGuest})
+	if err != nil {
+		t.Fatal(err)
+	}
+	host.Rebind(second)
+
+	guest, err := lan.JoinAt(ctx, opts, host.Endpoint())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer guest.Close()
+
+	deadline := time.Now().Add(5 * time.Second)
+	for {
+		taken := 0
+		for _, seat := range second.Seats() {
+			if seat.Filled() {
+				taken++
+			}
+		}
+		if taken == 1 {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("the arrival went to neither roster: first=%v second=%v", first.Seats(), second.Seats())
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	for _, seat := range first.Seats() {
+		if seat.Filled() {
+			t.Fatalf("the arrival was seated in the finished match's roster at slot %d", seat.Slot)
+		}
 	}
 }

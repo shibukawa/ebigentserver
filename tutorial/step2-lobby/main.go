@@ -2,10 +2,10 @@
 //
 //	go run ./tutorial/step2-lobby      # on both machines, or twice on one
 //
-// Nothing is configured and no address is typed. Each instance looks for
-// a game on the network for a moment; the first one to start finds none
-// and offers its own, the second finds it and takes the free seat. Click
-// once to sit down, and the match begins when the other player arrives.
+// Nothing is configured and no address is typed. Each instance asks the
+// network who is there. The first to start finds nobody, so it offers a
+// game and sits down to wait; the second sees it listed and clicks to
+// join. The match begins the moment the second player is seated.
 //
 // What changed from step 1 is not the drawing — that is nearly the same
 // code. It is that nothing here decides anything any more. Update no
@@ -21,7 +21,6 @@ import (
 	"os"
 	"os/signal"
 	"sync"
-	"time"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
@@ -61,7 +60,6 @@ func main() {
 			// The other seat belongs to a person, so leave it empty
 			// and let their arrival be what starts the match.
 			NoBots:     true,
-			Prompt:     "click to sit down",
 			Background: colBG,
 		},
 		Time:         session.Paced,
@@ -75,15 +73,15 @@ func main() {
 	}
 }
 
-// network is the LAN preset: look for a game on this network for a
-// moment, join it if one answers, and offer one if none does.
+// network is the LAN preset. The lobby asks it who is out there; if
+// somebody answers, the player picks, and if nobody does this instance
+// hosts and waits.
 //
-// That is the whole configuration, and it lives here rather than beside
-// the rules because which transport reaches the other player is a
-// property of where this build runs. A browser build of the same rules
-// would name a different one.
+// It lives here rather than beside the rules because which transport
+// reaches the other player is a property of where this build runs. A
+// browser build of the same rules would name a different one.
 func network() run.Networking[game.State, game.Action, game.Observation] {
-	return lan.Auto(lan.Options[game.State, game.Action, msg.TTTStateDelta, game.Observation]{
+	return lan.Preset(lan.Options[game.State, game.Action, msg.TTTStateDelta, game.Observation]{
 		Name:        "tictactoe",
 		Protocol:    game.Protocol,
 		Codec:       game.Codec(),
@@ -91,7 +89,7 @@ func network() run.Networking[game.State, game.Action, game.Observation] {
 		EncodeInput: game.EncodeAction,
 		DecodeInput: game.DecodeAction,
 		Project:     game.Simulation{}.Project,
-	}, 1500*time.Millisecond)
+	})
 }
 
 // view is the play scene. It holds the last board it was given and no
@@ -119,6 +117,17 @@ func cellAt(x, y int) (uint8, bool) {
 // machine plays. Where the action goes — an inbox one goroutine away or
 // a socket one machine away — is the seating's business, not this file's.
 func (v *view) Intake(seating run.Seating[game.Action]) {
+	seats := seating.LocalSeats()
+
+	// Which seat this machine plays is known from the first frame, not
+	// from the first click. Learning it late is why the status line
+	// used to open on "waiting" during a turn that was already yours.
+	v.mu.Lock()
+	if len(seats) > 0 {
+		v.you = seats[0].Slot
+	}
+	v.mu.Unlock()
+
 	mx, my := ebiten.CursorPosition()
 	cell, on := cellAt(mx, my)
 
@@ -132,10 +141,7 @@ func (v *view) Intake(seating run.Seating[game.Action]) {
 	if !inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) || !on {
 		return
 	}
-	for _, seat := range seating.LocalSeats() {
-		v.mu.Lock()
-		v.you = seat.Slot
-		v.mu.Unlock()
+	for _, seat := range seats {
 		// An illegal cell is refused upstream by the validator, so a
 		// click anywhere on the board is safe to send.
 		_ = seating.Submit(seat.Slot, game.Action{Cell: cell})

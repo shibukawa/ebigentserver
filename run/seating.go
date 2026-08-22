@@ -20,12 +20,30 @@ type Seating[A any] interface {
 	Submit(slot session.SlotID, action A) error
 }
 
+// Found is one game a Networking turned up. It carries what somebody
+// deciding whether to join needs to read, and nothing about how the link
+// is made — that is the preset's business.
+type Found struct {
+	// Name is what the host called itself.
+	Name string
+	// Address is how the preset will reach it. It is shown because a
+	// player with two networks may care which one answered.
+	Address string
+	// Players is how many seats were taken when the host last said so.
+	Players int
+}
+
 // Hosting is a networking preset offering this instance's match to
-// others. The two calls are separated because the session does not exist
+// others. The calls are separated because the session does not exist
 // when the offer opens: Attach installs the downstream hook into the
 // configuration, and Serve is what can only happen once there is a match
 // to admit people into.
 type Hosting[S, A, O any] interface {
+	// Rebind points the offer at a new roster. A roster belongs to one
+	// match (concept:match-lifecycle), so the next match brings a new
+	// one, and an offer still filling the finished match's roster
+	// would seat arrivals nowhere.
+	Rebind(r *Roster[S, A, O])
 	// Attach installs the downstream hook before session.New is called.
 	Attach(cfg *session.Config[S, A, O])
 	// Serve wires the finalized match and admits whoever was waiting.
@@ -51,11 +69,18 @@ type Joined[S, A, O any] interface {
 	Close() error
 }
 
-// Networking decides which part this instance plays. A preset that finds
-// a host joins it and returns Joined; one that finds none offers its own
-// match and returns Hosting. Exactly one of the two is non-nil.
+// Networking is how an instance reaches other people. It is three calls
+// rather than one because a player is entitled to see who is out there
+// and decide, instead of being put into the first match that answered.
 type Networking[S, A, O any] interface {
-	Begin(ctx context.Context, r *Roster[S, A, O], seed uint64) (Hosting[S, A, O], Joined[S, A, O], error)
+	// Discover reports the games this instance can see right now.
+	Discover(ctx context.Context) ([]Found, error)
+	// Host offers this instance's match to whoever looks.
+	Host(ctx context.Context, r *Roster[S, A, O], seed uint64) (Hosting[S, A, O], error)
+	// Join takes a seat on one of the games Discover reported. It
+	// returns once the seat is granted, before the host has started
+	// anything.
+	Join(ctx context.Context, f Found) (Joined[S, A, O], error)
 }
 
 var _ Seating[int] = (*Match[int, int, int])(nil)

@@ -79,10 +79,23 @@ type Options[S, A, D, O any] struct {
 	// Port is the host's listening port; 0 picks a free one.
 	Port int
 
+	// BrowseWindow is how long Discover listens before answering. Zero
+	// takes a second and a half, which is two beacon intervals plus
+	// slack — long enough that a host that just started is seen, short
+	// enough that a player alone on the network is not left staring.
+	BrowseWindow time.Duration
+
 	// BeaconAddr overrides the broadcast destination and DiscoveryAddr
 	// the listen address. Both are for tests, which cannot broadcast.
 	BeaconAddr    string
 	DiscoveryAddr string
+}
+
+func (o Options[S, A, D, O]) browseWindow() time.Duration {
+	if o.BrowseWindow > 0 {
+		return o.BrowseWindow
+	}
+	return 1500 * time.Millisecond
 }
 
 func (o Options[S, A, D, O]) validate() error {
@@ -132,7 +145,7 @@ type grant struct {
 // Host is one instance offering its match to the network.
 type Host[S, A, D, O any] struct {
 	opts   Options[S, A, D, O]
-	roster *run.Roster[S, A, O]
+	roster *run.Roster[S, A, O] // guarded by mu
 
 	endpoint string
 	priv     ed25519.PrivateKey
@@ -220,13 +233,31 @@ func Open[S, A, D, O any](ctx context.Context, opts Options[S, A, D, O], roster 
 // name.
 func (h *Host[S, A, D, O]) Endpoint() string { return h.endpoint }
 
+// Rebind points the offer at the next match's roster. A roster belongs
+// to one match, so without this the offer would keep seating arrivals
+// into the finished one, and the new lobby would wait for people who had
+// already arrived somewhere else.
+func (h *Host[S, A, D, O]) Rebind(r *run.Roster[S, A, O]) {
+	h.mu.Lock()
+	h.roster = r
+	h.mu.Unlock()
+	h.server.Store(nil)
+}
+
+// currentRoster reads the roster the offer is filling.
+func (h *Host[S, A, D, O]) currentRoster() *run.Roster[S, A, O] {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	return h.roster
+}
+
 // announce repeats the beacon until the context ends.
 func (h *Host[S, A, D, O]) announce(ctx context.Context) {
 	a := &discovery.Announcer{
 		Addr: h.opts.BeaconAddr,
 		Beacon: func() discovery.Beacon {
 			seated := 0
-			for _, s := range h.roster.Seats() {
+			for _, s := range h.currentRoster().Seats() {
 				if s.Filled() {
 					seated++
 				}
@@ -251,7 +282,8 @@ func (h *Host[S, A, D, O]) handleJoin(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "protocol mismatch: host speaks "+h.opts.Protocol, http.StatusConflict)
 		return
 	}
-	slot, err := h.claimFreeSeat(r.RemoteAddr)
+	roster := h.currentRoster()
+	slot, err := h.claimFreeSeat(roster, r.RemoteAddr)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusConflict)
 		return
@@ -267,7 +299,7 @@ func (h *Host[S, A, D, O]) handleJoin(w http.ResponseWriter, r *http.Request) {
 		Role:      "player",
 	})
 	if err != nil {
-		h.roster.Leave(slot)
+		roster.Leave(slot)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -277,12 +309,12 @@ func (h *Host[S, A, D, O]) handleJoin(w http.ResponseWriter, r *http.Request) {
 
 // claimFreeSeat takes the lowest seat nobody holds. Two guests arriving
 // together race here, and the roster's own lock decides.
-func (h *Host[S, A, D, O]) claimFreeSeat(id string) (session.SlotID, error) {
-	for _, seat := range h.roster.Seats() {
+func (h *Host[S, A, D, O]) claimFreeSeat(roster *run.Roster[S, A, O], id string) (session.SlotID, error) {
+	for _, seat := range roster.Seats() {
 		if seat.Filled() {
 			continue
 		}
-		if err := h.roster.JoinRemote(seat.Slot, id); err == nil {
+		if err := roster.JoinRemote(seat.Slot, id); err == nil {
 			return seat.Slot, nil
 		}
 	}
@@ -469,11 +501,11 @@ type Guest[S, A, D, O any] struct {
 	over    bool
 }
 
-// Join takes a seat on a host. It returns as soon as the seat is
+// JoinAt takes a seat on a host. It returns as soon as the seat is
 // granted and the link is open — before the host has started anything,
 // because the host is still gathering and a guest with nothing on screen
 // until then would look broken. The handshake happens in Play.
-func Join[S, A, D, O any](ctx context.Context, opts Options[S, A, D, O], endpoint string) (*Guest[S, A, D, O], error) {
+func JoinAt[S, A, D, O any](ctx context.Context, opts Options[S, A, D, O], endpoint string) (*Guest[S, A, D, O], error) {
 	if err := opts.validate(); err != nil {
 		return nil, err
 	}
