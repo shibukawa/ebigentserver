@@ -87,22 +87,42 @@ step 1 は盤面をただの Go 配列に持っていて、それがどう運ば
 ```go
 // tutorial/step2-lobby/msg/types.go
 type TTTState struct {
-	Cells  []uint8 `cbor:"cells,key=1"`
-	Turn   uint16  `cbor:"turn,key=2"`
-	Winner uint16  `cbor:"winner,key=3"`
-	Line   []uint8 `cbor:"line,key=4"`
-	Moves  uint8   `cbor:"moves,key=5"`
-	Over   bool    `cbor:"over,key=6"`
+	Cells  []uint8 `json:"cells"`
+	Turn   uint16  `json:"turn"`
+	Winner uint16  `json:"winner"`
+	Line   []uint8 `json:"line"`
+	Moves  uint8   `json:"moves"`
+	Over   bool    `json:"over"`
 }
 
-var _ = cborbind.GenerateWorldDelta[TTTState]()
+// この2つの呼び出しがコーデックの依頼そのものになる。
+func AppendTTTState(dst []byte, v TTTState) []byte { return cborbind.AppendCBORInMapTo(dst, v) }
+func DecodeTTTState(data []byte) (TTTState, error) { return cborbind.DecodeCBORInMapFrom[TTTState](data) }
 ```
+
+宣言を書く場所は無く、**エントリポイントを呼ぶことが依頼**になる。そして呼んだ名前が
+形を決める。
+
+| | 配列 | マップ |
+|---|---|---|
+| ワイヤ上 | 位置決め、メンバ名を載せない | キー付き |
+| 知らないメンバ | 存在しえない | デコード時に読み飛ばす |
+| フィールド追加 | 両端を同時に作り直す | 古いビルドが読み続けられる |
+
+着手（`Move`）は配列だ。小さく、両端が一緒に更新される。盤面はマップで、だから
+**片方だけ先に出荷できる**。
 
 ```bash
-go generate ./tutorial/step2-lobby/msg/
+go generate ./tutorial/step2-lobby/msg/   # コーデック
+ebigent generate                          # 差分とスキーマ版
 ```
 
-生成された `CBORProtocolVersion` がそのままハンドシェイクのプロトコル版になるので、
+2つ目が要るのは、コーデックを生成するライブラリが**差分を生成しないから**だ。
+2つの盤面の diff、それを戻す patch、変わった分だけを運ぶエンコード——
+これはフレームワーク側の仕事になっている。マップ形式を要求した型が world state だと
+分かるので、どの型に差分が要るかは設定せずに済む。
+
+生成された `SchemaVersion` がそのままハンドシェイクの版になるので、
 **ワイヤが1バイト動けば版も動く**。版の違う相手は席をもらう前に断られる。
 
 <Aside type="caution" title="スライスを持つ状態の罠">
@@ -195,7 +215,9 @@ admission が席に束ねた接続になる。
     - net_test.go 2インスタンスの通し
   - msg/
     - types.go ワイヤ型の宣言
-    - cborbind_gen.go 生成物（コミットする）
+    - tinybind_gen.go コーデック（go generate）
+    - delta_gen.go 差分（ebigent generate）
+    - schema_gen.go スキーマ指紋（ebigent generate）
 </FileTree>
 
 ## まだないもの

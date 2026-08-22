@@ -47,7 +47,9 @@ step2-lobby/
 │   └── net_test.go  2インスタンスがウィンドウなしで1局を通すテスト
 └── msg/
     ├── types.go     ワイヤ型の宣言
-    └── cborbind_gen.go  生成物（コミットする）
+    ├── tinybind_gen.go  コーデック（go generate）
+    ├── delta_gen.go     差分（ebigent generate）
+    └── schema_gen.go    スキーマ指紋（ebigent generate）
 ```
 
 ## 足したもの

@@ -167,16 +167,17 @@
 | 項目 | 状態 | 実装 |
 |---|---|---|
 | `api:fixed-point-math` | 済 | [github.com/shibukawa/fixmath](https://github.com/shibukawa/fixmath) v0.9.0 — F64 (s32.32)、BAM Angle、Vec2、宣言スケール変換（`ToScaled` はフィールド幅で飽和）。v1.0.0 tag で出力ビットが凍結される |
-| CBOR 生成（wire / world プロファイル、スケール対応） | 済 | tinybind-go v0.5.17 + tinygodriver v1.2.6 |
-| `rule:codegen-rejects-nondeterministic-types` | 済 | tinybind の生成時検査（[検証テスト](examples/phase0/msg/gencheck_test.go)） |
-| `data:protocol-version` | 済 | 生成コードの `CBORProtocolVersion` / `CBORSchema` |
+| CBOR 生成（配列 / マップ形状、スケール対応） | 済 | tinybind-go v0.5.23 + tinygodriver v1.2.7。プロファイルは廃止され、形状は呼ぶエントリポイントが決める |
+| `rule:codegen-rejects-nondeterministic-types` | 済 | [codegen](codegen/) の読み取り時検査。v0.5.23 は float も素の int も受けるので、ゲートはフレームワーク側にしかない |
+| `data:game-version` | 済 | 生成コードの `SchemaVersion`。tinybind は v0.5.21 で導出をやめたので [codegen](codegen/) が導出する |
+| 差分生成（diff / patch / 差分エンコード） | 済 | [codegen](codegen/)。tinybind は生成しないので `decision:framework-side-delta-generation` が実装になった |
 | `decision:entry-points-over-build-tags` の cmd/ 構成 | 済 | [examples/phase0/cmd/](examples/phase0/cmd/) |
 | `rule:engine-import-confined-to-client-entry` | 済 | [importcheck/](importcheck/) |
 
 ### 完了条件の対応
 
-- **固定小数点フィールドを持つ構造体が CBOR で往復できる** — [examples/phase0/msg/roundtrip_test.go](examples/phase0/msg/roundtrip_test.go)。wire プロファイルの生バイト列も固定している。
-- **構造体に float を足すとビルドが落ちる** — 生成パスが float / 素の int / map / interface / time.Time を拒否する。[examples/phase0/msg/gencheck_test.go](examples/phase0/msg/gencheck_test.go) が検証。
+- **固定小数点フィールドを持つ構造体が CBOR で往復できる** — [examples/phase0/msg/roundtrip_test.go](examples/phase0/msg/roundtrip_test.go)。配列形状の生バイト列も固定している。
+- **構造体に float を足すとビルドが落ちる** — 生成パスが float / 素の int / map を拒否し、フィールド名を挙げて止まる。[codegen/read_test.go](codegen/read_test.go) が検証。
 - **ゲームルールのパッケージから Ebitengine を import するとビルドが落ちる** — [importcheck](importcheck/) が import グラフを検査し、違反パッケージと import 連鎖を named error で報告する。ルート [boundary_test.go](boundary_test.go) が本モジュール自身に適用。
 
 ## パッケージ
@@ -190,7 +191,8 @@
 - `behavior` — 蒸留パイプライン: 語彙・分析(Analyzer差替可)・チップライブラリ・再生成マージ・Goコード生成。
 - `matchloop` — 無人連続対局と結果集計。
 - `analysis` — corpus集計とDuckDB SQL生成(ゲームプロセス外の分析ツール)。
-- `config/buildconf`, `config/runconf`, `config/confload` — `ebigent.toml` 1ファイルを prefix でセクション分けして bind。既定 < ファイル < 環境変数 < オプションの順で上書き。
+- `config/buildconf`, `config/runconf`, `config/confload` — `ebigent.toml` 1ファイルを prefix でセクション分けして bind。既定 < ファイル < 環境変数 < オプションの順で上書き。`[protocol]` はビルド時に定数化されるので起動時に読まれない。`[run]` は同じ成果物の2回の起動で正当に違いうるものだけを持つ。
+- `codegen` — ワイヤ型を読み、ライブラリが生成しなくなったものを出す。差分(diff/patch/エンコード)、スキーマ指紋、そして決定性ゲート(float / 素の int / map の拒否)。マップ形状を要求している型が world state だと分かるので、対象は設定しない。
 - `scaffold` — `ebigent init` が書き出すプロジェクト雛形。既定は Ebitengine の Flappy Bird 風(2羽が同じパイプ列を飛ぶ、操作はflapのみ)で、リアルタイムsession・固定小数点物理・シード付きRNG・engineをclientエントリに閉じ込める構成が最初から動く。生成物がビルドでき自身のテスト(境界テスト含む)が通ることをテストで担保している。
   ウィザードは3問: **プレイスタイル**(1人 / 2人 / マルチ) → **最大人数**(マルチのときだけ) → **1台で複数人が遊べるようにするか**(1人以外)。生成されるコードパターンは5通り。
   2人が独立したスタイルなのは、star型P2Pでは**3人以上だとピア経由もサーバ経由も等しく2ホップ**になり、1ホップの直結が2人のときだけ成立するため。したがって2人は rollback/delay が射程内、3人以上は権威型。ピアかdedicatedかはコード差ではなく `data:run-config` の値で、**マルチでもlistenは許容**(ブラウザがWebRTCでN人をホストする `concept:static-host-mode` はバックエンド不要)。
@@ -221,11 +223,15 @@ go build -o bin/ebigent ./cmd/ebigent
 
 ```bash
 ebigent init            # ウィザードでプロジェクト雛形を生成
-ebigent build [target]  # 宣言済み build target をビルド
+ebigent generate        # 設定が確定させたものを Go にする
+ebigent build [target]  # generate してから build target をビルド
 ebigent config show     # 実効値と、それを設定した層
 ebigent doctor          # 動かない理由
 ebigent --help          # 全 verb
 ```
+
+`build` が `generate` を先に走らせるので、生成を思い出す必要はない。古い定数で
+コンパイルされたターゲットこそ、生成が防ごうとしている失敗だからだ。
 
 設定オプションは verb の**前**に置く(verb は自分の名前より後ろの引数を全部取るため):
 
@@ -238,10 +244,22 @@ ebigent --run-topology dedicated build server
 ## コード生成
 
 ```bash
-go generate ./...
+go generate ./...   # コーデック(tinybind)
+ebigent generate    # 差分・スキーマ指紋・protocol 定数
 ```
 
-メッセージパッケージには `//go:generate go run github.com/shibukawa/tinybind-go/cmd/tinybind-gen generate -openapi=false` を置く。生成物 `cborbind_gen.go` はコミットする。
+メッセージパッケージには `//go:generate go run github.com/shibukawa/tinybind-go/cmd/tinybind-gen generate -openapi=false` を置く。生成物(`tinybind_gen.go` / `delta_gen.go` / `schema_gen.go`)はコミットする。
+
+2段になっているのは、tinybind がコーデックしか生成しないからだ。v0.5.23 には書くべき宣言が無く、**エントリポイントを呼ぶことが依頼**になっている。
+
+```go
+func AppendTTTState(dst []byte, v TTTState) []byte { return cborbind.AppendCBORInMapTo(dst, v) }
+func DecodeTTTState(data []byte) (TTTState, error) { return cborbind.DecodeCBORInMapFrom[TTTState](data) }
+```
+
+そして呼んだ名前が形を決める。配列は位置決めでメンバ名を載せず、両端を同時に作り直す(`concept:cbor-wire-profile`)。マップはキー付きで、知らないメンバを読み飛ばすので片方だけ先に出荷できる(`concept:cbor-world-profile`)。プロファイルという概念自体は無くなった。
+
+差分は tinybind が生成しないので `ebigent generate` が出す。マップ形式を要求した型が world state なので、対象を設定する必要はない。
 
 ## ビルドターゲット
 
