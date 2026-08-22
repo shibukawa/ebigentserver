@@ -6,6 +6,7 @@ title: Run Wrapper
 Entry point call that starts a game or a server from one main function, wrapping the system:ebitengine run call and adding framework options.
 
 ```yaml
+receives: the game's rules as api:simulation-interface, declared once beside them so both builds start from the same binding
 replaces: the pre engine construction a game entry used to perform, which built concept:session, admitted every concept:agent, and wired transports before anything ran
 now_built_later: the session belongs to concept:match-lifecycle, so an entry point starts almost empty
 packages:

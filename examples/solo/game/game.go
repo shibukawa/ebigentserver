@@ -198,16 +198,16 @@ func GapY(o Observation) fixmath.F64 { return o.Quarry.Y.Sub(o.Self.Y) }
 // index maps a slot to its array position.
 func index(slot session.SlotID) int { return int(slot) - 1 }
 
-// Game implements session.TickGame: session.Game plus Advance, which is
+// Simulation implements session.TickSimulation: session.Simulation plus Advance, which is
 // what a realtime session needs.
-type Game struct{}
+type Simulation struct{}
 
-var _ session.TickGame[State, Action, Observation] = Game{}
+var _ session.TickSimulation[State, Action, Observation] = Simulation{}
 
 // Start returns the opening position, derived from the session's shared
 // RNG seed. Two runs with the same seed place the same enemies, which is
 // what makes an episode replayable.
-func (Game) Start(seed uint64) State {
+func (Simulation) Start(seed uint64) State {
 	s := State{Rand: fixmath.NewRand(seed)}
 	s.Actor[index(Player)] = Actor{
 		X: fieldW.Div(fixmath.FromInt32(2)),
@@ -234,7 +234,7 @@ func (Game) Start(seed uint64) State {
 // ActingSlots reports who still has decisions to make. A realtime session
 // reads every slot's inbox each tick rather than asking whose turn it is,
 // so this mainly answers "is the episode still running".
-func (Game) ActingSlots(s *State) []session.SlotID {
+func (Simulation) ActingSlots(s *State) []session.SlotID {
 	if s.Over {
 		return nil
 	}
@@ -243,14 +243,14 @@ func (Game) ActingSlots(s *State) []session.SlotID {
 
 // Apply advances the state by one already-validated action. Legality was
 // settled by Validator, so Apply cannot fail and must not re-check.
-func (Game) Apply(s *State, slot session.SlotID, a Action) {
+func (Simulation) Apply(s *State, slot session.SlotID, a Action) {
 	s.Actor[index(slot)].Move = a.Move
 }
 
 // Advance runs one simulation step after this tick's inputs were applied.
 // This is the whole of the game's physics, and every line of it is
 // integer arithmetic.
-func (Game) Advance(s *State) {
+func (Simulation) Advance(s *State) {
 	if s.Over {
 		return
 	}
@@ -309,7 +309,7 @@ func manhattan(a, b Actor) fixmath.F64 {
 }
 
 // Project builds a slot's observation.
-func (g Game) Project(s *State, slot session.SlotID) Observation {
+func (g Simulation) Project(s *State, slot session.SlotID) Observation {
 	me := index(slot)
 	others := make([]Actor, 0, Seats-1)
 	for i, a := range s.Actor {
@@ -335,7 +335,7 @@ func (g Game) Project(s *State, slot session.SlotID) Observation {
 // measured by time survived and distance kept, an enemy by how close it
 // has closed. Recording both is what lets a later analysis ask whether an
 // enemy kind is actually contributing.
-func (Game) Evaluate(s *State, slot session.SlotID) session.EvaluationSignal {
+func (Simulation) Evaluate(s *State, slot session.SlotID) session.EvaluationSignal {
 	player := s.Actor[index(Player)]
 	if slot == Player {
 		nearest := maxDist
@@ -440,7 +440,7 @@ func Config(id string, seed uint64) session.Config[State, Action, Observation] {
 	return session.Config[State, Action, Observation]{
 		ID:              id,
 		Slots:           Slots(),
-		Game:            Game{},
+		Simulation:      Simulation{},
 		Validator:       Validator{},
 		Seed:            seed,
 		Tuning:          &tuning,

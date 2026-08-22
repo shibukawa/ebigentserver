@@ -18,6 +18,7 @@
 {"category": "interface", "id": "api:run-wrapper", "path": ".knowledge/api/run-wrapper.md", "role": "primary", "title": "Run Wrapper", "type": "api"}
 {"category": "interface", "id": "api:runtime-observability", "path": ".knowledge/api/runtime-observability.md", "role": "primary", "title": "Runtime Observability", "type": "api"}
 {"category": "interface", "id": "api:sequence-ack-layer", "path": ".knowledge/api/sequence-ack-layer.md", "role": "primary", "title": "Sequence And Ack Layer", "type": "api"}
+{"category": "interface", "id": "api:simulation-interface", "path": ".knowledge/api/simulation-interface.md", "role": "primary", "title": "Simulation Interface", "type": "api"}
 {"category": "interface", "id": "api:tick-hooks", "path": ".knowledge/api/tick-hooks.md", "role": "primary", "title": "Tick Hooks", "type": "api"}
 {"category": "interface", "id": "api:transport-interface", "path": ".knowledge/api/transport-interface.md", "role": "primary", "title": "Transport Interface", "type": "api"}
 {"category": "concept", "id": "concept:ack-transmission-policy", "path": ".knowledge/concept/ack-transmission-policy.md", "role": "supporting", "title": "Ack Transmission Policy", "type": "concept"}
@@ -58,14 +59,14 @@
 {"category": "concept", "id": "concept:session-lifecycle", "path": ".knowledge/concept/session-lifecycle.md", "role": "supporting", "title": "Session Lifecycle", "type": "concept"}
 {"category": "concept", "id": "concept:session", "path": ".knowledge/concept/session.md", "role": "supporting", "title": "Session", "type": "concept"}
 {"category": "concept", "id": "concept:signaling-method", "path": ".knowledge/concept/signaling-method.md", "role": "supporting", "title": "Signaling Method", "type": "concept"}
-{"category": "concept", "id": "concept:simulation-farm", "path": ".knowledge/concept/simulation-farm.md", "role": "supporting", "title": "Simulation Farm", "type": "concept"}
-{"category": "concept", "id": "concept:simulation-mode", "path": ".knowledge/concept/simulation-mode.md", "role": "supporting", "title": "Simulation Mode", "type": "concept"}
 {"category": "concept", "id": "concept:skill-level-gating", "path": ".knowledge/concept/skill-level-gating.md", "role": "supporting", "title": "Skill Level Gating", "type": "concept"}
 {"category": "concept", "id": "concept:standalone-mode", "path": ".knowledge/concept/standalone-mode.md", "role": "supporting", "title": "Standalone Mode", "type": "concept"}
 {"category": "concept", "id": "concept:state-synchronization", "path": ".knowledge/concept/state-synchronization.md", "role": "supporting", "title": "State Synchronization", "type": "concept"}
 {"category": "concept", "id": "concept:static-host-mode", "path": ".knowledge/concept/static-host-mode.md", "role": "supporting", "title": "Static Host Mode", "type": "concept"}
 {"category": "concept", "id": "concept:synchronization-mode", "path": ".knowledge/concept/synchronization-mode.md", "role": "supporting", "title": "Synchronization Mode", "type": "concept"}
 {"category": "concept", "id": "concept:tactic-selector", "path": ".knowledge/concept/tactic-selector.md", "role": "supporting", "title": "Tactic Selector", "type": "concept"}
+{"category": "concept", "id": "concept:training-farm", "path": ".knowledge/concept/training-farm.md", "role": "supporting", "title": "Training Farm", "type": "concept"}
+{"category": "concept", "id": "concept:training-mode", "path": ".knowledge/concept/training-mode.md", "role": "supporting", "title": "Training Mode", "type": "concept"}
 {"category": "concept", "id": "concept:transport-capability", "path": ".knowledge/concept/transport-capability.md", "role": "supporting", "title": "Transport Capability", "type": "concept"}
 {"category": "concept", "id": "concept:trust-model", "path": ".knowledge/concept/trust-model.md", "role": "supporting", "title": "Trust Model", "type": "concept"}
 {"category": "concept", "id": "concept:view-arrangement", "path": ".knowledge/concept/view-arrangement.md", "role": "supporting", "title": "View Arrangement", "type": "concept"}
@@ -125,6 +126,7 @@
 {"category": "constraint", "id": "decision:separate-topology-from-synchronization", "path": ".knowledge/decision/separate-topology-from-synchronization.md", "role": "supporting", "title": "Separate Topology From Synchronization", "type": "decision"}
 {"category": "constraint", "id": "decision:shared-chip-library", "path": ".knowledge/decision/shared-chip-library.md", "role": "supporting", "title": "Shared Chip Library", "type": "decision"}
 {"category": "constraint", "id": "decision:shared-tree-with-level-gates", "path": ".knowledge/decision/shared-tree-with-level-gates.md", "role": "supporting", "title": "Shared Tree With Level Gates", "type": "decision"}
+{"category": "constraint", "id": "decision:simulation-not-game", "path": ".knowledge/decision/simulation-not-game.md", "role": "supporting", "title": "The Game Side Contract Is Named Simulation", "type": "decision"}
 {"category": "constraint", "id": "decision:single-dev-console-ui", "path": ".knowledge/decision/single-dev-console-ui.md", "role": "supporting", "title": "Single Dev Console UI", "type": "decision"}
 {"category": "constraint", "id": "decision:split-realtime-and-control-plane-processes", "path": ".knowledge/decision/split-realtime-and-control-plane-processes.md", "role": "supporting", "title": "Split Realtime And Control Plane Processes", "type": "decision"}
 {"category": "constraint", "id": "decision:vm-host-not-for-servers", "path": ".knowledge/decision/vm-host-not-for-servers.md", "role": "supporting", "title": "Engine Virtual Machine Host Not Used For Servers", "type": "decision"}

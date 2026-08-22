@@ -34,7 +34,7 @@ type driver[S, A, O any] struct {
 	slot  session.SlotID
 	agent session.Agent[O, A]
 	inbox *session.Inbox[A]
-	game  session.Game[S, A, O]
+	game  session.Simulation[S, A, O]
 	ctx   context.Context
 }
 
@@ -81,7 +81,7 @@ func (r *Roster[S, A, O]) Finalize(cfg session.Config[S, A, O]) (*Match[S, A, O]
 		done:    make(chan struct{}),
 	}
 
-	game := cfg.Game
+	game := cfg.Simulation
 	appBroadcast := cfg.Broadcast
 	cfg.Broadcast = func(tick session.Tick, world *S) {
 		// Local controllers decide against the world that just

@@ -84,12 +84,12 @@ func (*stepper) Ended(session.Result)                    {}
 func config(id string, seed uint64) session.Config[state, action, observation] {
 	tuning := session.TuningProfile{TickRate: 60, SendRate: 60, HistoryDepth: 1}
 	return session.Config[state, action, observation]{
-		ID:        id,
-		Slots:     []session.SlotID{1, 2},
-		Game:      rules{},
-		Seed:      seed,
-		Tuning:    &tuning,
-		Canonical: func(s *state) []byte { b, _ := json.Marshal(s); return b },
+		ID:         id,
+		Slots:      []session.SlotID{1, 2},
+		Simulation: rules{},
+		Seed:       seed,
+		Tuning:     &tuning,
+		Canonical:  func(s *state) []byte { b, _ := json.Marshal(s); return b },
 	}
 }
 
