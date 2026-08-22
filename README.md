@@ -181,6 +181,8 @@
 
 ## パッケージ
 
+- `run` — `api:run-wrapper` のエンジン非依存側。`api:roster`(席の確定)、`Match`(セッション構築と局所エージェントの駆動)、`concept:match-lifecycle` のヘッドレスループ `Serve`、`data:episode-log` の自動記録。**セッションはプロセス寿命ではなく1試合の寿命**になり、エントリポイントは起動時にほぼ何も組み立てない。
+- `run/eb` — `api:run-wrapper` のエンジン側。`ebiten.RunGameWithOptions` を包み、メインループをシーンに委譲する。既定の `ui:lobby-scene` つき。ゲームが実装するのは `Intake` / `Apply` / `Draw` / `Layout` の4つだけで、これが `api:tick-hooks` の入力・取り出しと描画にあたる。エンジンをimportするのはこのパッケージだけ。
 - `session` — セッション核。lifecycle 状態機械、slot 順の決定的コミット、agent interface、evaluation signal、action validator フック、progress report 発行点、記録フック(Recorder)とcheckpoint。
 - `episode` — `data:episode-log` の JSONL 読み書き。session.Recorder 実装の Writer と、replay 用 Reader。
 - `entity` — owner 名前空間つきエンティティ ID と決定的 allocator。
@@ -203,8 +205,9 @@
 - `admission` — Ed25519署名のsession ticketとhandshake(バージョン照合→ローカル検証→着席)。
 - `statesync` — framework側delta生成。生成コーデックを差し込む`Codec`、受信者ごとの`Sender`/`Receiver`(双方が履歴保持)、baseline mode 3種、ループバック`Hub`。
 - `samples/reversi` — 合法手列挙つき観測と記録/再生の実証。`go run ./samples/reversi/cmd/reversi` で人間対greedy bot、`-record=DIR` でエピソード記録。
-- `samples/pong` — 最小リアルタイム。`go run ./samples/pong/cmd/pong` でbot対bot(観戦チャネルがスコア表示)、`-record=DIR` 対応。`go run ./samples/pong/cmd/pong-client` でEbitengine描画クライアント(W/S・↑/↓で左パドル操作、`-left=bot`で観戦)。clientエントリだけがengineをimportでき(`samples/*/cmd/*client*`)、headlessターゲット(wasip1/386)のビルドマトリクスからは除外される。
+- `samples/pong` — 最小リアルタイム。`go run ./samples/pong/cmd/pong` でbot対bot(観戦チャネルがスコア表示)、`-record=DIR` 対応。`go run ./samples/pong/cmd/pong-client` でEbitengine描画クライアント(W/S・↑/↓で左パドル操作、`-left=bot`で観戦)。clientエントリだけがengineをimportできる(`samples/*/cmd/*client*`)。
 - `importcheck` — 依存の閉じ込め検査。ゲームモジュールは `importcheck.Enforce(t, ".", importcheck.Default())` を 1 テスト持つ。
+- `examples/solo` — **ソロゲームで一周が閉じることの証明**([README](examples/solo/README.md))。一人が二体の敵に追われるだけのゲームだが、敵が席に座っているので判断が観測つきで記録される。`solo-client`(窓)/ `solo-sim`(ヘッドレス)/ `solo-distill`(コーパス→チップ→Go)の3エントリ。**蒸留した敵を座らせると手書きの敵と1tickも違わない試合になる**(`TestDistilledEnemiesPlayTheSameMatch`)。同じ語彙・同じコーパスから敵2種が別の決定リストになることもテストで担保している。
 - `examples/phase0` — Phase 0 の証明: 固定小数点型 + 生成 CBOR コーデック + delta、build target ごとの cmd エントリポイント。
 - `examples/phase0/sim` — Phase 0 スタック全体（fixmath の Sin/Atan2/Sqrt → 宣言スケール量子化 → 生成 delta エンコード）を通した決定的エピソード。digest をテストで固定しており、これが Phase 2 のクロスアーキテクチャ検証の種になる。
 
@@ -250,4 +253,4 @@ go run ./examples/phase0/cmd/phase0-sim      # simulation（決定的、digest �
 go run ./examples/phase0/cmd/phase0-client   # client（描画は Phase 1 から）
 ```
 
-全パッケージが `js/wasm`, `wasip1/wasm`, `linux/386` でビルドできることを維持する（`requirement:native-and-wasm-targets`）。
+全パッケージが `js/wasm` でビルドできることを維持する（`requirement:native-and-wasm-targets`）。wasmはstandalone / listen（`concept:static-host-mode`）専用で、dedicated serverはネイティブのみ。wasip1と32bitターゲットは対象外（wasip1は `net.Listen` 非対応でサーバーとして成立せず、engine排除の保証はビルドマトリクスではなくimportcheckが担う）。

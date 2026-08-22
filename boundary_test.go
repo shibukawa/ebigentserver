@@ -22,6 +22,12 @@ func TestModuleImportBoundary(t *testing.T) {
 		"samples/*/cmd/*client*",
 		"samples/*/cmd/*listen*",
 		"samples/*/cmd/*static*",
+		// run/eb is the engine half of api:run-wrapper: the framework's
+		// own adapter, and the reason a game's entry point no longer has
+		// to write one. It is where the boundary is drawn rather than a
+		// hole in it — package run, which every headless build links, is
+		// checked by this same pass and must stay clean.
+		"run/eb",
 	}
 	cfg.Rules[0].AllowedEntries = append(cfg.Rules[0].AllowedEntries, exampleEntries...)
 	cfg.AllowedCgoEntries = append(cfg.AllowedCgoEntries, exampleEntries...)

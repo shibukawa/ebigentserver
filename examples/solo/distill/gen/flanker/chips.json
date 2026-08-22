@@ -1,0 +1,277 @@
+{
+  "game": "solo",
+  "chips": [
+    {
+      "condition": "quarry_left_on_narrow_axis",
+      "action": "move_left",
+      "priority": 0,
+      "coverage": 1133,
+      "counterexamples": 0,
+      "evidence": [
+        {
+          "episode": "solo-0000",
+          "tick": 1
+        },
+        {
+          "episode": "solo-0000",
+          "tick": 2
+        },
+        {
+          "episode": "solo-0000",
+          "tick": 3
+        },
+        {
+          "episode": "solo-0000",
+          "tick": 4
+        },
+        {
+          "episode": "solo-0000",
+          "tick": 5
+        }
+      ],
+      "rationale": "when quarry_left_on_narrow_axis held, move_left was taken 1133/1133 times at this list position",
+      "approved": true,
+      "tags": [
+        "kind:flanker"
+      ]
+    },
+    {
+      "condition": "quarry_right_on_narrow_axis",
+      "action": "move_right",
+      "priority": 1,
+      "coverage": 898,
+      "counterexamples": 0,
+      "evidence": [
+        {
+          "episode": "solo-0001",
+          "tick": 1
+        },
+        {
+          "episode": "solo-0001",
+          "tick": 2
+        },
+        {
+          "episode": "solo-0001",
+          "tick": 3
+        },
+        {
+          "episode": "solo-0001",
+          "tick": 4
+        },
+        {
+          "episode": "solo-0001",
+          "tick": 5
+        }
+      ],
+      "rationale": "when quarry_right_on_narrow_axis held, move_right was taken 898/898 times at this list position",
+      "approved": true,
+      "tags": [
+        "kind:flanker"
+      ]
+    },
+    {
+      "condition": "quarry_below_on_wide_axis",
+      "action": "move_down",
+      "priority": 2,
+      "coverage": 447,
+      "counterexamples": 0,
+      "evidence": [
+        {
+          "episode": "solo-0001",
+          "tick": 183
+        },
+        {
+          "episode": "solo-0001",
+          "tick": 192
+        },
+        {
+          "episode": "solo-0001",
+          "tick": 193
+        },
+        {
+          "episode": "solo-0001",
+          "tick": 194
+        },
+        {
+          "episode": "solo-0001",
+          "tick": 195
+        }
+      ],
+      "rationale": "when quarry_below_on_wide_axis held, move_down was taken 447/447 times at this list position",
+      "approved": true,
+      "tags": [
+        "kind:flanker"
+      ]
+    },
+    {
+      "condition": "quarry_below_on_narrow_axis",
+      "action": "move_down",
+      "priority": 3,
+      "coverage": 312,
+      "counterexamples": 0,
+      "evidence": [
+        {
+          "episode": "solo-0005",
+          "tick": 61
+        },
+        {
+          "episode": "solo-0005",
+          "tick": 62
+        },
+        {
+          "episode": "solo-0005",
+          "tick": 63
+        },
+        {
+          "episode": "solo-0005",
+          "tick": 64
+        },
+        {
+          "episode": "solo-0005",
+          "tick": 65
+        }
+      ],
+      "rationale": "when quarry_below_on_narrow_axis held, move_down was taken 312/312 times at this list position",
+      "approved": true,
+      "tags": [
+        "kind:flanker"
+      ]
+    },
+    {
+      "condition": "quarry_above_on_narrow_axis",
+      "action": "move_up",
+      "priority": 4,
+      "coverage": 305,
+      "counterexamples": 0,
+      "evidence": [
+        {
+          "episode": "solo-0005",
+          "tick": 1
+        },
+        {
+          "episode": "solo-0005",
+          "tick": 2
+        },
+        {
+          "episode": "solo-0005",
+          "tick": 3
+        },
+        {
+          "episode": "solo-0005",
+          "tick": 4
+        },
+        {
+          "episode": "solo-0005",
+          "tick": 5
+        }
+      ],
+      "rationale": "when quarry_above_on_narrow_axis held, move_up was taken 305/305 times at this list position",
+      "approved": true,
+      "tags": [
+        "kind:flanker"
+      ]
+    },
+    {
+      "condition": "quarry_left_on_wide_axis",
+      "action": "move_left",
+      "priority": 5,
+      "coverage": 311,
+      "counterexamples": 0,
+      "evidence": [
+        {
+          "episode": "solo-0005",
+          "tick": 128
+        },
+        {
+          "episode": "solo-0005",
+          "tick": 129
+        },
+        {
+          "episode": "solo-0005",
+          "tick": 130
+        },
+        {
+          "episode": "solo-0005",
+          "tick": 131
+        },
+        {
+          "episode": "solo-0005",
+          "tick": 132
+        }
+      ],
+      "rationale": "when quarry_left_on_wide_axis held, move_left was taken 311/311 times at this list position",
+      "approved": true,
+      "tags": [
+        "kind:flanker"
+      ]
+    },
+    {
+      "condition": "quarry_above_on_wide_axis",
+      "action": "move_up",
+      "priority": 6,
+      "coverage": 269,
+      "counterexamples": 0,
+      "evidence": [
+        {
+          "episode": "solo-0000",
+          "tick": 125
+        },
+        {
+          "episode": "solo-0000",
+          "tick": 126
+        },
+        {
+          "episode": "solo-0000",
+          "tick": 127
+        },
+        {
+          "episode": "solo-0000",
+          "tick": 128
+        },
+        {
+          "episode": "solo-0000",
+          "tick": 129
+        }
+      ],
+      "rationale": "when quarry_above_on_wide_axis held, move_up was taken 269/269 times at this list position",
+      "approved": true,
+      "tags": [
+        "kind:flanker"
+      ]
+    },
+    {
+      "condition": "quarry_right_on_wide_axis",
+      "action": "move_right",
+      "priority": 7,
+      "coverage": 64,
+      "counterexamples": 0,
+      "evidence": [
+        {
+          "episode": "solo-0008",
+          "tick": 176
+        },
+        {
+          "episode": "solo-0008",
+          "tick": 177
+        },
+        {
+          "episode": "solo-0008",
+          "tick": 178
+        },
+        {
+          "episode": "solo-0008",
+          "tick": 179
+        },
+        {
+          "episode": "solo-0008",
+          "tick": 180
+        }
+      ],
+      "rationale": "when quarry_right_on_wide_axis held, move_right was taken 64/64 times at this list position",
+      "approved": true,
+      "tags": [
+        "kind:flanker"
+      ]
+    }
+  ]
+}

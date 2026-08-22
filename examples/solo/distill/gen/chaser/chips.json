@@ -1,0 +1,141 @@
+{
+  "game": "solo",
+  "chips": [
+    {
+      "condition": "quarry_left_on_wide_axis",
+      "action": "move_left",
+      "priority": 0,
+      "coverage": 1180,
+      "counterexamples": 0,
+      "evidence": [
+        {
+          "episode": "solo-0000",
+          "tick": 13
+        },
+        {
+          "episode": "solo-0000",
+          "tick": 14
+        },
+        {
+          "episode": "solo-0000",
+          "tick": 15
+        },
+        {
+          "episode": "solo-0000",
+          "tick": 16
+        },
+        {
+          "episode": "solo-0000",
+          "tick": 17
+        }
+      ],
+      "rationale": "when quarry_left_on_wide_axis held, move_left was taken 1180/1180 times at this list position",
+      "approved": true,
+      "tags": [
+        "kind:chaser"
+      ]
+    },
+    {
+      "condition": "quarry_below_on_wide_axis",
+      "action": "move_down",
+      "priority": 1,
+      "coverage": 1098,
+      "counterexamples": 0,
+      "evidence": [
+        {
+          "episode": "solo-0000",
+          "tick": 1
+        },
+        {
+          "episode": "solo-0000",
+          "tick": 2
+        },
+        {
+          "episode": "solo-0000",
+          "tick": 3
+        },
+        {
+          "episode": "solo-0000",
+          "tick": 4
+        },
+        {
+          "episode": "solo-0000",
+          "tick": 5
+        }
+      ],
+      "rationale": "when quarry_below_on_wide_axis held, move_down was taken 1098/1098 times at this list position",
+      "approved": true,
+      "tags": [
+        "kind:chaser"
+      ]
+    },
+    {
+      "condition": "quarry_right_on_wide_axis",
+      "action": "move_right",
+      "priority": 2,
+      "coverage": 838,
+      "counterexamples": 0,
+      "evidence": [
+        {
+          "episode": "solo-0001",
+          "tick": 1
+        },
+        {
+          "episode": "solo-0001",
+          "tick": 2
+        },
+        {
+          "episode": "solo-0001",
+          "tick": 3
+        },
+        {
+          "episode": "solo-0001",
+          "tick": 4
+        },
+        {
+          "episode": "solo-0001",
+          "tick": 5
+        }
+      ],
+      "rationale": "when quarry_right_on_wide_axis held, move_right was taken 838/838 times at this list position",
+      "approved": true,
+      "tags": [
+        "kind:chaser"
+      ]
+    },
+    {
+      "condition": "quarry_above_on_wide_axis",
+      "action": "move_up",
+      "priority": 3,
+      "coverage": 623,
+      "counterexamples": 0,
+      "evidence": [
+        {
+          "episode": "solo-0006",
+          "tick": 1
+        },
+        {
+          "episode": "solo-0006",
+          "tick": 2
+        },
+        {
+          "episode": "solo-0006",
+          "tick": 3
+        },
+        {
+          "episode": "solo-0006",
+          "tick": 4
+        },
+        {
+          "episode": "solo-0006",
+          "tick": 5
+        }
+      ],
+      "rationale": "when quarry_above_on_wide_axis held, move_up was taken 623/623 times at this list position",
+      "approved": true,
+      "tags": [
+        "kind:chaser"
+      ]
+    }
+  ]
+}
