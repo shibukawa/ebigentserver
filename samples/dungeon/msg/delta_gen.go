@@ -24,9 +24,9 @@ var DecodeLimits = cbor.DecoderOptions{
 	RejectFloats:       true,
 }
 
-// equalAdventurer compares two slices element by element. A delta asks whether
+// equalPartyMate compares two slices element by element. A delta asks whether
 // a field changed, and for a slice that is a question about contents.
-func equalAdventurer(a, b []Adventurer) bool {
+func equalPartyMate(a, b []PartyMate) bool {
 	if len(a) != len(b) {
 		return false
 	}
@@ -38,9 +38,9 @@ func equalAdventurer(a, b []Adventurer) bool {
 	return true
 }
 
-// appendAdventurerSlice writes the slice as one CBOR array, each element
+// appendPartyMateSlice writes the slice as one CBOR array, each element
 // through its own generated codec.
-func appendAdventurerSlice(dst []byte, v []Adventurer) []byte {
+func appendPartyMateSlice(dst []byte, v []PartyMate) []byte {
 	dst = cbor.AppendArrayHeader(dst, len(v))
 	for i := range v {
 		dst = v[i].AppendCBORTo(dst)
@@ -48,19 +48,19 @@ func appendAdventurerSlice(dst []byte, v []Adventurer) []byte {
 	return dst
 }
 
-// readAdventurerSlice reads one CBOR array of elements into out, reusing its
+// readPartyMateSlice reads one CBOR array of elements into out, reusing its
 // capacity so a steady state allocates nothing.
-func readAdventurerSlice(r *cbor.Reader, out []Adventurer) ([]Adventurer, error) {
+func readPartyMateSlice(r *cbor.Reader, out []PartyMate) ([]PartyMate, error) {
 	n, indefinite, err := r.ReadArrayHeader()
 	if err != nil {
 		return out, err
 	}
 	if indefinite {
-		return out, &cbor.Error{Offset: int64(r.Offset()), Path: "Adventurer", Err: cbor.ErrUnexpectedToken}
+		return out, &cbor.Error{Offset: int64(r.Offset()), Path: "PartyMate", Err: cbor.ErrUnexpectedToken}
 	}
 	out = out[:0]
 	for range n {
-		var e Adventurer
+		var e PartyMate
 		raw, err := r.ReadRaw()
 		if err != nil {
 			return out, err
@@ -122,9 +122,9 @@ func readTrapSlice(r *cbor.Reader, out []Trap) ([]Trap, error) {
 	return out, nil
 }
 
-// equalPartyMate compares two slices element by element. A delta asks whether
+// equalAdventurer compares two slices element by element. A delta asks whether
 // a field changed, and for a slice that is a question about contents.
-func equalPartyMate(a, b []PartyMate) bool {
+func equalAdventurer(a, b []Adventurer) bool {
 	if len(a) != len(b) {
 		return false
 	}
@@ -136,9 +136,9 @@ func equalPartyMate(a, b []PartyMate) bool {
 	return true
 }
 
-// appendPartyMateSlice writes the slice as one CBOR array, each element
+// appendAdventurerSlice writes the slice as one CBOR array, each element
 // through its own generated codec.
-func appendPartyMateSlice(dst []byte, v []PartyMate) []byte {
+func appendAdventurerSlice(dst []byte, v []Adventurer) []byte {
 	dst = cbor.AppendArrayHeader(dst, len(v))
 	for i := range v {
 		dst = v[i].AppendCBORTo(dst)
@@ -146,19 +146,19 @@ func appendPartyMateSlice(dst []byte, v []PartyMate) []byte {
 	return dst
 }
 
-// readPartyMateSlice reads one CBOR array of elements into out, reusing its
+// readAdventurerSlice reads one CBOR array of elements into out, reusing its
 // capacity so a steady state allocates nothing.
-func readPartyMateSlice(r *cbor.Reader, out []PartyMate) ([]PartyMate, error) {
+func readAdventurerSlice(r *cbor.Reader, out []Adventurer) ([]Adventurer, error) {
 	n, indefinite, err := r.ReadArrayHeader()
 	if err != nil {
 		return out, err
 	}
 	if indefinite {
-		return out, &cbor.Error{Offset: int64(r.Offset()), Path: "PartyMate", Err: cbor.ErrUnexpectedToken}
+		return out, &cbor.Error{Offset: int64(r.Offset()), Path: "Adventurer", Err: cbor.ErrUnexpectedToken}
 	}
 	out = out[:0]
 	for range n {
-		var e PartyMate
+		var e Adventurer
 		raw, err := r.ReadRaw()
 		if err != nil {
 			return out, err
@@ -169,355 +169,6 @@ func readPartyMateSlice(r *cbor.Reader, out []PartyMate) ([]PartyMate, error) {
 		out = append(out, e)
 	}
 	return out, nil
-}
-
-// DungeonStateDelta is what changed between two DungeonState values.
-//
-// Present names the fields carried: bit n is set when field n of the list
-// below changed, and every other field holds nothing meaningful. The bit
-// order is declaration order, so moving a field moves the wire.
-type DungeonStateDelta struct {
-	Present uint64
-	// bit 0
-	Tick uint64
-	// bit 1
-	Walls []uint8
-	// bit 2
-	Explored []uint8
-	// bit 3
-	Adventurers []Adventurer
-	// bit 4
-	Traps []Trap
-	// bit 5
-	TrapBudget uint8
-	// bit 6
-	TreasureX uint8
-	// bit 7
-	TreasureY uint8
-	// bit 8
-	ExitX uint8
-	// bit 9
-	ExitY uint8
-	// bit 10
-	TickLimit uint32
-	// bit 11
-	Over bool
-	// bit 12
-	Winner uint8
-}
-
-// DiffDungeonStateInto fills d with what changed between baseline and
-// current, and reports whether anything did.
-func DiffDungeonStateInto(d *DungeonStateDelta, baseline, current DungeonState) bool {
-	d.Present = 0
-	if baseline.Tick != current.Tick {
-		d.Present |= 1 << 0
-		d.Tick = current.Tick
-	}
-	if string(baseline.Walls) != string(current.Walls) {
-		d.Present |= 1 << 1
-		d.Walls = current.Walls
-	}
-	if string(baseline.Explored) != string(current.Explored) {
-		d.Present |= 1 << 2
-		d.Explored = current.Explored
-	}
-	if !equalAdventurer(baseline.Adventurers, current.Adventurers) {
-		d.Present |= 1 << 3
-		d.Adventurers = current.Adventurers
-	}
-	if !equalTrap(baseline.Traps, current.Traps) {
-		d.Present |= 1 << 4
-		d.Traps = current.Traps
-	}
-	if baseline.TrapBudget != current.TrapBudget {
-		d.Present |= 1 << 5
-		d.TrapBudget = current.TrapBudget
-	}
-	if baseline.TreasureX != current.TreasureX {
-		d.Present |= 1 << 6
-		d.TreasureX = current.TreasureX
-	}
-	if baseline.TreasureY != current.TreasureY {
-		d.Present |= 1 << 7
-		d.TreasureY = current.TreasureY
-	}
-	if baseline.ExitX != current.ExitX {
-		d.Present |= 1 << 8
-		d.ExitX = current.ExitX
-	}
-	if baseline.ExitY != current.ExitY {
-		d.Present |= 1 << 9
-		d.ExitY = current.ExitY
-	}
-	if baseline.TickLimit != current.TickLimit {
-		d.Present |= 1 << 10
-		d.TickLimit = current.TickLimit
-	}
-	if baseline.Over != current.Over {
-		d.Present |= 1 << 11
-		d.Over = current.Over
-	}
-	if baseline.Winner != current.Winner {
-		d.Present |= 1 << 12
-		d.Winner = current.Winner
-	}
-	return d.Present != 0
-}
-
-// DiffDungeonState returns what changed between baseline and current.
-func DiffDungeonState(baseline, current DungeonState) DungeonStateDelta {
-	var d DungeonStateDelta
-	DiffDungeonStateInto(&d, baseline, current)
-	return d
-}
-
-// ApplyDungeonStateDelta puts d back onto v. A bit Present does not name
-// leaves that field as it stands, which is what makes a delta a delta.
-func ApplyDungeonStateDelta(v *DungeonState, d DungeonStateDelta) error {
-	if d.Present&(1<<0) != 0 {
-		v.Tick = d.Tick
-	}
-	if d.Present&(1<<1) != 0 {
-		v.Walls = d.Walls
-	}
-	if d.Present&(1<<2) != 0 {
-		v.Explored = d.Explored
-	}
-	if d.Present&(1<<3) != 0 {
-		v.Adventurers = d.Adventurers
-	}
-	if d.Present&(1<<4) != 0 {
-		v.Traps = d.Traps
-	}
-	if d.Present&(1<<5) != 0 {
-		v.TrapBudget = d.TrapBudget
-	}
-	if d.Present&(1<<6) != 0 {
-		v.TreasureX = d.TreasureX
-	}
-	if d.Present&(1<<7) != 0 {
-		v.TreasureY = d.TreasureY
-	}
-	if d.Present&(1<<8) != 0 {
-		v.ExitX = d.ExitX
-	}
-	if d.Present&(1<<9) != 0 {
-		v.ExitY = d.ExitY
-	}
-	if d.Present&(1<<10) != 0 {
-		v.TickLimit = d.TickLimit
-	}
-	if d.Present&(1<<11) != 0 {
-		v.Over = d.Over
-	}
-	if d.Present&(1<<12) != 0 {
-		v.Winner = d.Winner
-	}
-	return nil
-}
-
-// AppendCBORTo appends d as one CBOR array: the mask, then the values it
-// names, in bit order. A field the mask omits costs nothing.
-func (v DungeonStateDelta) AppendCBORTo(dst []byte) []byte {
-	n := 1
-	for bit := range 13 {
-		if v.Present&(1<<uint(bit)) != 0 {
-			n++
-		}
-	}
-	dst = cbor.AppendArrayHeader(dst, n)
-	dst = cbor.AppendUint(dst, v.Present)
-	if v.Present&(1<<0) != 0 {
-		dst = cbor.AppendUint(dst, uint64(v.Tick))
-	}
-	if v.Present&(1<<1) != 0 {
-		dst = cbor.AppendBytes(dst, []byte(v.Walls))
-	}
-	if v.Present&(1<<2) != 0 {
-		dst = cbor.AppendBytes(dst, []byte(v.Explored))
-	}
-	if v.Present&(1<<3) != 0 {
-		dst = appendAdventurerSlice(dst, v.Adventurers)
-	}
-	if v.Present&(1<<4) != 0 {
-		dst = appendTrapSlice(dst, v.Traps)
-	}
-	if v.Present&(1<<5) != 0 {
-		dst = cbor.AppendUint(dst, uint64(v.TrapBudget))
-	}
-	if v.Present&(1<<6) != 0 {
-		dst = cbor.AppendUint(dst, uint64(v.TreasureX))
-	}
-	if v.Present&(1<<7) != 0 {
-		dst = cbor.AppendUint(dst, uint64(v.TreasureY))
-	}
-	if v.Present&(1<<8) != 0 {
-		dst = cbor.AppendUint(dst, uint64(v.ExitX))
-	}
-	if v.Present&(1<<9) != 0 {
-		dst = cbor.AppendUint(dst, uint64(v.ExitY))
-	}
-	if v.Present&(1<<10) != 0 {
-		dst = cbor.AppendUint(dst, uint64(v.TickLimit))
-	}
-	if v.Present&(1<<11) != 0 {
-		dst = cbor.AppendBool(dst, bool(v.Over))
-	}
-	if v.Present&(1<<12) != 0 {
-		dst = cbor.AppendUint(dst, uint64(v.Winner))
-	}
-	return dst
-}
-
-// DecodeCBORFrom reads one delta into v, and refuses anything after it:
-// a trailing item means the sender and the receiver disagree about the
-// shape, which concept:cbor-wire-profile cannot detect any other way.
-func (v *DungeonStateDelta) DecodeCBORFrom(data []byte) error {
-	r, err := cbor.NewReader(data, DecodeLimits)
-	if err != nil {
-		return err
-	}
-	if err := v.decodeFrom(r); err != nil {
-		return err
-	}
-	if !r.Done() {
-		return cbor.ErrExtraneousData
-	}
-	return nil
-}
-
-// decodeFrom reads one delta off r.
-func (v *DungeonStateDelta) decodeFrom(r *cbor.Reader) error {
-	n, indefinite, err := r.ReadArrayHeader()
-	if err != nil {
-		return err
-	}
-	if indefinite || n < 1 {
-		return &cbor.Error{Offset: int64(r.Offset()), Path: "DungeonStateDelta", Err: cbor.ErrUnexpectedToken}
-	}
-	present, err := r.ReadUint64()
-	if err != nil {
-		return err
-	}
-	v.Present = present
-	read := 1
-	if present&(1<<0) != 0 {
-		x, err := r.ReadUint64()
-		if err != nil {
-			return err
-		}
-		v.Tick = uint64(x)
-		read++
-	}
-	if present&(1<<1) != 0 {
-		x, err := r.ReadBytes()
-		if err != nil {
-			return err
-		}
-		// ReadBytes borrows from the input, so the value is copied into
-		// whatever capacity the field already holds: it must outlive the
-		// buffer it was read from, and reusing the capacity keeps the
-		// steady state allocation-free.
-		v.Walls = append(v.Walls[:0], x...)
-		read++
-	}
-	if present&(1<<2) != 0 {
-		x, err := r.ReadBytes()
-		if err != nil {
-			return err
-		}
-		// ReadBytes borrows from the input, so the value is copied into
-		// whatever capacity the field already holds: it must outlive the
-		// buffer it was read from, and reusing the capacity keeps the
-		// steady state allocation-free.
-		v.Explored = append(v.Explored[:0], x...)
-		read++
-	}
-	if present&(1<<3) != 0 {
-		xs, err := readAdventurerSlice(r, v.Adventurers)
-		if err != nil {
-			return err
-		}
-		v.Adventurers = xs
-		read++
-	}
-	if present&(1<<4) != 0 {
-		xs, err := readTrapSlice(r, v.Traps)
-		if err != nil {
-			return err
-		}
-		v.Traps = xs
-		read++
-	}
-	if present&(1<<5) != 0 {
-		x, err := r.ReadUint64()
-		if err != nil {
-			return err
-		}
-		v.TrapBudget = uint8(x)
-		read++
-	}
-	if present&(1<<6) != 0 {
-		x, err := r.ReadUint64()
-		if err != nil {
-			return err
-		}
-		v.TreasureX = uint8(x)
-		read++
-	}
-	if present&(1<<7) != 0 {
-		x, err := r.ReadUint64()
-		if err != nil {
-			return err
-		}
-		v.TreasureY = uint8(x)
-		read++
-	}
-	if present&(1<<8) != 0 {
-		x, err := r.ReadUint64()
-		if err != nil {
-			return err
-		}
-		v.ExitX = uint8(x)
-		read++
-	}
-	if present&(1<<9) != 0 {
-		x, err := r.ReadUint64()
-		if err != nil {
-			return err
-		}
-		v.ExitY = uint8(x)
-		read++
-	}
-	if present&(1<<10) != 0 {
-		x, err := r.ReadUint64()
-		if err != nil {
-			return err
-		}
-		v.TickLimit = uint32(x)
-		read++
-	}
-	if present&(1<<11) != 0 {
-		x, err := r.ReadBool()
-		if err != nil {
-			return err
-		}
-		v.Over = bool(x)
-		read++
-	}
-	if present&(1<<12) != 0 {
-		x, err := r.ReadUint64()
-		if err != nil {
-			return err
-		}
-		v.Winner = uint8(x)
-		read++
-	}
-	if read != n {
-		return &cbor.Error{Offset: int64(r.Offset()), Path: "DungeonStateDelta", Err: cbor.ErrUnexpectedToken}
-	}
-	return nil
 }
 
 // AdventurerViewDelta is what changed between two AdventurerView values.
@@ -1274,6 +925,355 @@ func (v *DMViewDelta) decodeFrom(r *cbor.Reader) error {
 	}
 	if read != n {
 		return &cbor.Error{Offset: int64(r.Offset()), Path: "DMViewDelta", Err: cbor.ErrUnexpectedToken}
+	}
+	return nil
+}
+
+// DungeonStateDelta is what changed between two DungeonState values.
+//
+// Present names the fields carried: bit n is set when field n of the list
+// below changed, and every other field holds nothing meaningful. The bit
+// order is declaration order, so moving a field moves the wire.
+type DungeonStateDelta struct {
+	Present uint64
+	// bit 0
+	Tick uint64
+	// bit 1
+	Walls []uint8
+	// bit 2
+	Explored []uint8
+	// bit 3
+	Adventurers []Adventurer
+	// bit 4
+	Traps []Trap
+	// bit 5
+	TrapBudget uint8
+	// bit 6
+	TreasureX uint8
+	// bit 7
+	TreasureY uint8
+	// bit 8
+	ExitX uint8
+	// bit 9
+	ExitY uint8
+	// bit 10
+	TickLimit uint32
+	// bit 11
+	Over bool
+	// bit 12
+	Winner uint8
+}
+
+// DiffDungeonStateInto fills d with what changed between baseline and
+// current, and reports whether anything did.
+func DiffDungeonStateInto(d *DungeonStateDelta, baseline, current DungeonState) bool {
+	d.Present = 0
+	if baseline.Tick != current.Tick {
+		d.Present |= 1 << 0
+		d.Tick = current.Tick
+	}
+	if string(baseline.Walls) != string(current.Walls) {
+		d.Present |= 1 << 1
+		d.Walls = current.Walls
+	}
+	if string(baseline.Explored) != string(current.Explored) {
+		d.Present |= 1 << 2
+		d.Explored = current.Explored
+	}
+	if !equalAdventurer(baseline.Adventurers, current.Adventurers) {
+		d.Present |= 1 << 3
+		d.Adventurers = current.Adventurers
+	}
+	if !equalTrap(baseline.Traps, current.Traps) {
+		d.Present |= 1 << 4
+		d.Traps = current.Traps
+	}
+	if baseline.TrapBudget != current.TrapBudget {
+		d.Present |= 1 << 5
+		d.TrapBudget = current.TrapBudget
+	}
+	if baseline.TreasureX != current.TreasureX {
+		d.Present |= 1 << 6
+		d.TreasureX = current.TreasureX
+	}
+	if baseline.TreasureY != current.TreasureY {
+		d.Present |= 1 << 7
+		d.TreasureY = current.TreasureY
+	}
+	if baseline.ExitX != current.ExitX {
+		d.Present |= 1 << 8
+		d.ExitX = current.ExitX
+	}
+	if baseline.ExitY != current.ExitY {
+		d.Present |= 1 << 9
+		d.ExitY = current.ExitY
+	}
+	if baseline.TickLimit != current.TickLimit {
+		d.Present |= 1 << 10
+		d.TickLimit = current.TickLimit
+	}
+	if baseline.Over != current.Over {
+		d.Present |= 1 << 11
+		d.Over = current.Over
+	}
+	if baseline.Winner != current.Winner {
+		d.Present |= 1 << 12
+		d.Winner = current.Winner
+	}
+	return d.Present != 0
+}
+
+// DiffDungeonState returns what changed between baseline and current.
+func DiffDungeonState(baseline, current DungeonState) DungeonStateDelta {
+	var d DungeonStateDelta
+	DiffDungeonStateInto(&d, baseline, current)
+	return d
+}
+
+// ApplyDungeonStateDelta puts d back onto v. A bit Present does not name
+// leaves that field as it stands, which is what makes a delta a delta.
+func ApplyDungeonStateDelta(v *DungeonState, d DungeonStateDelta) error {
+	if d.Present&(1<<0) != 0 {
+		v.Tick = d.Tick
+	}
+	if d.Present&(1<<1) != 0 {
+		v.Walls = d.Walls
+	}
+	if d.Present&(1<<2) != 0 {
+		v.Explored = d.Explored
+	}
+	if d.Present&(1<<3) != 0 {
+		v.Adventurers = d.Adventurers
+	}
+	if d.Present&(1<<4) != 0 {
+		v.Traps = d.Traps
+	}
+	if d.Present&(1<<5) != 0 {
+		v.TrapBudget = d.TrapBudget
+	}
+	if d.Present&(1<<6) != 0 {
+		v.TreasureX = d.TreasureX
+	}
+	if d.Present&(1<<7) != 0 {
+		v.TreasureY = d.TreasureY
+	}
+	if d.Present&(1<<8) != 0 {
+		v.ExitX = d.ExitX
+	}
+	if d.Present&(1<<9) != 0 {
+		v.ExitY = d.ExitY
+	}
+	if d.Present&(1<<10) != 0 {
+		v.TickLimit = d.TickLimit
+	}
+	if d.Present&(1<<11) != 0 {
+		v.Over = d.Over
+	}
+	if d.Present&(1<<12) != 0 {
+		v.Winner = d.Winner
+	}
+	return nil
+}
+
+// AppendCBORTo appends d as one CBOR array: the mask, then the values it
+// names, in bit order. A field the mask omits costs nothing.
+func (v DungeonStateDelta) AppendCBORTo(dst []byte) []byte {
+	n := 1
+	for bit := range 13 {
+		if v.Present&(1<<uint(bit)) != 0 {
+			n++
+		}
+	}
+	dst = cbor.AppendArrayHeader(dst, n)
+	dst = cbor.AppendUint(dst, v.Present)
+	if v.Present&(1<<0) != 0 {
+		dst = cbor.AppendUint(dst, uint64(v.Tick))
+	}
+	if v.Present&(1<<1) != 0 {
+		dst = cbor.AppendBytes(dst, []byte(v.Walls))
+	}
+	if v.Present&(1<<2) != 0 {
+		dst = cbor.AppendBytes(dst, []byte(v.Explored))
+	}
+	if v.Present&(1<<3) != 0 {
+		dst = appendAdventurerSlice(dst, v.Adventurers)
+	}
+	if v.Present&(1<<4) != 0 {
+		dst = appendTrapSlice(dst, v.Traps)
+	}
+	if v.Present&(1<<5) != 0 {
+		dst = cbor.AppendUint(dst, uint64(v.TrapBudget))
+	}
+	if v.Present&(1<<6) != 0 {
+		dst = cbor.AppendUint(dst, uint64(v.TreasureX))
+	}
+	if v.Present&(1<<7) != 0 {
+		dst = cbor.AppendUint(dst, uint64(v.TreasureY))
+	}
+	if v.Present&(1<<8) != 0 {
+		dst = cbor.AppendUint(dst, uint64(v.ExitX))
+	}
+	if v.Present&(1<<9) != 0 {
+		dst = cbor.AppendUint(dst, uint64(v.ExitY))
+	}
+	if v.Present&(1<<10) != 0 {
+		dst = cbor.AppendUint(dst, uint64(v.TickLimit))
+	}
+	if v.Present&(1<<11) != 0 {
+		dst = cbor.AppendBool(dst, bool(v.Over))
+	}
+	if v.Present&(1<<12) != 0 {
+		dst = cbor.AppendUint(dst, uint64(v.Winner))
+	}
+	return dst
+}
+
+// DecodeCBORFrom reads one delta into v, and refuses anything after it:
+// a trailing item means the sender and the receiver disagree about the
+// shape, which concept:cbor-wire-profile cannot detect any other way.
+func (v *DungeonStateDelta) DecodeCBORFrom(data []byte) error {
+	r, err := cbor.NewReader(data, DecodeLimits)
+	if err != nil {
+		return err
+	}
+	if err := v.decodeFrom(r); err != nil {
+		return err
+	}
+	if !r.Done() {
+		return cbor.ErrExtraneousData
+	}
+	return nil
+}
+
+// decodeFrom reads one delta off r.
+func (v *DungeonStateDelta) decodeFrom(r *cbor.Reader) error {
+	n, indefinite, err := r.ReadArrayHeader()
+	if err != nil {
+		return err
+	}
+	if indefinite || n < 1 {
+		return &cbor.Error{Offset: int64(r.Offset()), Path: "DungeonStateDelta", Err: cbor.ErrUnexpectedToken}
+	}
+	present, err := r.ReadUint64()
+	if err != nil {
+		return err
+	}
+	v.Present = present
+	read := 1
+	if present&(1<<0) != 0 {
+		x, err := r.ReadUint64()
+		if err != nil {
+			return err
+		}
+		v.Tick = uint64(x)
+		read++
+	}
+	if present&(1<<1) != 0 {
+		x, err := r.ReadBytes()
+		if err != nil {
+			return err
+		}
+		// ReadBytes borrows from the input, so the value is copied into
+		// whatever capacity the field already holds: it must outlive the
+		// buffer it was read from, and reusing the capacity keeps the
+		// steady state allocation-free.
+		v.Walls = append(v.Walls[:0], x...)
+		read++
+	}
+	if present&(1<<2) != 0 {
+		x, err := r.ReadBytes()
+		if err != nil {
+			return err
+		}
+		// ReadBytes borrows from the input, so the value is copied into
+		// whatever capacity the field already holds: it must outlive the
+		// buffer it was read from, and reusing the capacity keeps the
+		// steady state allocation-free.
+		v.Explored = append(v.Explored[:0], x...)
+		read++
+	}
+	if present&(1<<3) != 0 {
+		xs, err := readAdventurerSlice(r, v.Adventurers)
+		if err != nil {
+			return err
+		}
+		v.Adventurers = xs
+		read++
+	}
+	if present&(1<<4) != 0 {
+		xs, err := readTrapSlice(r, v.Traps)
+		if err != nil {
+			return err
+		}
+		v.Traps = xs
+		read++
+	}
+	if present&(1<<5) != 0 {
+		x, err := r.ReadUint64()
+		if err != nil {
+			return err
+		}
+		v.TrapBudget = uint8(x)
+		read++
+	}
+	if present&(1<<6) != 0 {
+		x, err := r.ReadUint64()
+		if err != nil {
+			return err
+		}
+		v.TreasureX = uint8(x)
+		read++
+	}
+	if present&(1<<7) != 0 {
+		x, err := r.ReadUint64()
+		if err != nil {
+			return err
+		}
+		v.TreasureY = uint8(x)
+		read++
+	}
+	if present&(1<<8) != 0 {
+		x, err := r.ReadUint64()
+		if err != nil {
+			return err
+		}
+		v.ExitX = uint8(x)
+		read++
+	}
+	if present&(1<<9) != 0 {
+		x, err := r.ReadUint64()
+		if err != nil {
+			return err
+		}
+		v.ExitY = uint8(x)
+		read++
+	}
+	if present&(1<<10) != 0 {
+		x, err := r.ReadUint64()
+		if err != nil {
+			return err
+		}
+		v.TickLimit = uint32(x)
+		read++
+	}
+	if present&(1<<11) != 0 {
+		x, err := r.ReadBool()
+		if err != nil {
+			return err
+		}
+		v.Over = bool(x)
+		read++
+	}
+	if present&(1<<12) != 0 {
+		x, err := r.ReadUint64()
+		if err != nil {
+			return err
+		}
+		v.Winner = uint8(x)
+		read++
+	}
+	if read != n {
+		return &cbor.Error{Offset: int64(r.Offset()), Path: "DungeonStateDelta", Err: cbor.ErrUnexpectedToken}
 	}
 	return nil
 }

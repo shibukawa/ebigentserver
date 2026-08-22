@@ -122,207 +122,6 @@ func readGlimpseSlice(r *cbor.Reader, out []Glimpse) ([]Glimpse, error) {
 	return out, nil
 }
 
-// RTSStateDelta is what changed between two RTSState values.
-//
-// Present names the fields carried: bit n is set when field n of the list
-// below changed, and every other field holds nothing meaningful. The bit
-// order is declaration order, so moving a field moves the wire.
-type RTSStateDelta struct {
-	Present uint64
-	// bit 0
-	Tick uint64
-	// bit 1
-	Units []Unit
-	// bit 2
-	NextSeq uint32
-	// bit 3
-	TickLimit uint32
-	// bit 4
-	Over bool
-	// bit 5
-	Winner uint16
-}
-
-// DiffRTSStateInto fills d with what changed between baseline and
-// current, and reports whether anything did.
-func DiffRTSStateInto(d *RTSStateDelta, baseline, current RTSState) bool {
-	d.Present = 0
-	if baseline.Tick != current.Tick {
-		d.Present |= 1 << 0
-		d.Tick = current.Tick
-	}
-	if !equalUnit(baseline.Units, current.Units) {
-		d.Present |= 1 << 1
-		d.Units = current.Units
-	}
-	if baseline.NextSeq != current.NextSeq {
-		d.Present |= 1 << 2
-		d.NextSeq = current.NextSeq
-	}
-	if baseline.TickLimit != current.TickLimit {
-		d.Present |= 1 << 3
-		d.TickLimit = current.TickLimit
-	}
-	if baseline.Over != current.Over {
-		d.Present |= 1 << 4
-		d.Over = current.Over
-	}
-	if baseline.Winner != current.Winner {
-		d.Present |= 1 << 5
-		d.Winner = current.Winner
-	}
-	return d.Present != 0
-}
-
-// DiffRTSState returns what changed between baseline and current.
-func DiffRTSState(baseline, current RTSState) RTSStateDelta {
-	var d RTSStateDelta
-	DiffRTSStateInto(&d, baseline, current)
-	return d
-}
-
-// ApplyRTSStateDelta puts d back onto v. A bit Present does not name
-// leaves that field as it stands, which is what makes a delta a delta.
-func ApplyRTSStateDelta(v *RTSState, d RTSStateDelta) error {
-	if d.Present&(1<<0) != 0 {
-		v.Tick = d.Tick
-	}
-	if d.Present&(1<<1) != 0 {
-		v.Units = d.Units
-	}
-	if d.Present&(1<<2) != 0 {
-		v.NextSeq = d.NextSeq
-	}
-	if d.Present&(1<<3) != 0 {
-		v.TickLimit = d.TickLimit
-	}
-	if d.Present&(1<<4) != 0 {
-		v.Over = d.Over
-	}
-	if d.Present&(1<<5) != 0 {
-		v.Winner = d.Winner
-	}
-	return nil
-}
-
-// AppendCBORTo appends d as one CBOR array: the mask, then the values it
-// names, in bit order. A field the mask omits costs nothing.
-func (v RTSStateDelta) AppendCBORTo(dst []byte) []byte {
-	n := 1
-	for bit := range 6 {
-		if v.Present&(1<<uint(bit)) != 0 {
-			n++
-		}
-	}
-	dst = cbor.AppendArrayHeader(dst, n)
-	dst = cbor.AppendUint(dst, v.Present)
-	if v.Present&(1<<0) != 0 {
-		dst = cbor.AppendUint(dst, uint64(v.Tick))
-	}
-	if v.Present&(1<<1) != 0 {
-		dst = appendUnitSlice(dst, v.Units)
-	}
-	if v.Present&(1<<2) != 0 {
-		dst = cbor.AppendUint(dst, uint64(v.NextSeq))
-	}
-	if v.Present&(1<<3) != 0 {
-		dst = cbor.AppendUint(dst, uint64(v.TickLimit))
-	}
-	if v.Present&(1<<4) != 0 {
-		dst = cbor.AppendBool(dst, bool(v.Over))
-	}
-	if v.Present&(1<<5) != 0 {
-		dst = cbor.AppendUint(dst, uint64(v.Winner))
-	}
-	return dst
-}
-
-// DecodeCBORFrom reads one delta into v, and refuses anything after it:
-// a trailing item means the sender and the receiver disagree about the
-// shape, which concept:cbor-wire-profile cannot detect any other way.
-func (v *RTSStateDelta) DecodeCBORFrom(data []byte) error {
-	r, err := cbor.NewReader(data, DecodeLimits)
-	if err != nil {
-		return err
-	}
-	if err := v.decodeFrom(r); err != nil {
-		return err
-	}
-	if !r.Done() {
-		return cbor.ErrExtraneousData
-	}
-	return nil
-}
-
-// decodeFrom reads one delta off r.
-func (v *RTSStateDelta) decodeFrom(r *cbor.Reader) error {
-	n, indefinite, err := r.ReadArrayHeader()
-	if err != nil {
-		return err
-	}
-	if indefinite || n < 1 {
-		return &cbor.Error{Offset: int64(r.Offset()), Path: "RTSStateDelta", Err: cbor.ErrUnexpectedToken}
-	}
-	present, err := r.ReadUint64()
-	if err != nil {
-		return err
-	}
-	v.Present = present
-	read := 1
-	if present&(1<<0) != 0 {
-		x, err := r.ReadUint64()
-		if err != nil {
-			return err
-		}
-		v.Tick = uint64(x)
-		read++
-	}
-	if present&(1<<1) != 0 {
-		xs, err := readUnitSlice(r, v.Units)
-		if err != nil {
-			return err
-		}
-		v.Units = xs
-		read++
-	}
-	if present&(1<<2) != 0 {
-		x, err := r.ReadUint64()
-		if err != nil {
-			return err
-		}
-		v.NextSeq = uint32(x)
-		read++
-	}
-	if present&(1<<3) != 0 {
-		x, err := r.ReadUint64()
-		if err != nil {
-			return err
-		}
-		v.TickLimit = uint32(x)
-		read++
-	}
-	if present&(1<<4) != 0 {
-		x, err := r.ReadBool()
-		if err != nil {
-			return err
-		}
-		v.Over = bool(x)
-		read++
-	}
-	if present&(1<<5) != 0 {
-		x, err := r.ReadUint64()
-		if err != nil {
-			return err
-		}
-		v.Winner = uint16(x)
-		read++
-	}
-	if read != n {
-		return &cbor.Error{Offset: int64(r.Offset()), Path: "RTSStateDelta", Err: cbor.ErrUnexpectedToken}
-	}
-	return nil
-}
-
 // PlayerViewDelta is what changed between two PlayerView values.
 //
 // Present names the fields carried: bit n is set when field n of the list
@@ -560,6 +359,207 @@ func (v *PlayerViewDelta) decodeFrom(r *cbor.Reader) error {
 	}
 	if read != n {
 		return &cbor.Error{Offset: int64(r.Offset()), Path: "PlayerViewDelta", Err: cbor.ErrUnexpectedToken}
+	}
+	return nil
+}
+
+// RTSStateDelta is what changed between two RTSState values.
+//
+// Present names the fields carried: bit n is set when field n of the list
+// below changed, and every other field holds nothing meaningful. The bit
+// order is declaration order, so moving a field moves the wire.
+type RTSStateDelta struct {
+	Present uint64
+	// bit 0
+	Tick uint64
+	// bit 1
+	Units []Unit
+	// bit 2
+	NextSeq uint32
+	// bit 3
+	TickLimit uint32
+	// bit 4
+	Over bool
+	// bit 5
+	Winner uint16
+}
+
+// DiffRTSStateInto fills d with what changed between baseline and
+// current, and reports whether anything did.
+func DiffRTSStateInto(d *RTSStateDelta, baseline, current RTSState) bool {
+	d.Present = 0
+	if baseline.Tick != current.Tick {
+		d.Present |= 1 << 0
+		d.Tick = current.Tick
+	}
+	if !equalUnit(baseline.Units, current.Units) {
+		d.Present |= 1 << 1
+		d.Units = current.Units
+	}
+	if baseline.NextSeq != current.NextSeq {
+		d.Present |= 1 << 2
+		d.NextSeq = current.NextSeq
+	}
+	if baseline.TickLimit != current.TickLimit {
+		d.Present |= 1 << 3
+		d.TickLimit = current.TickLimit
+	}
+	if baseline.Over != current.Over {
+		d.Present |= 1 << 4
+		d.Over = current.Over
+	}
+	if baseline.Winner != current.Winner {
+		d.Present |= 1 << 5
+		d.Winner = current.Winner
+	}
+	return d.Present != 0
+}
+
+// DiffRTSState returns what changed between baseline and current.
+func DiffRTSState(baseline, current RTSState) RTSStateDelta {
+	var d RTSStateDelta
+	DiffRTSStateInto(&d, baseline, current)
+	return d
+}
+
+// ApplyRTSStateDelta puts d back onto v. A bit Present does not name
+// leaves that field as it stands, which is what makes a delta a delta.
+func ApplyRTSStateDelta(v *RTSState, d RTSStateDelta) error {
+	if d.Present&(1<<0) != 0 {
+		v.Tick = d.Tick
+	}
+	if d.Present&(1<<1) != 0 {
+		v.Units = d.Units
+	}
+	if d.Present&(1<<2) != 0 {
+		v.NextSeq = d.NextSeq
+	}
+	if d.Present&(1<<3) != 0 {
+		v.TickLimit = d.TickLimit
+	}
+	if d.Present&(1<<4) != 0 {
+		v.Over = d.Over
+	}
+	if d.Present&(1<<5) != 0 {
+		v.Winner = d.Winner
+	}
+	return nil
+}
+
+// AppendCBORTo appends d as one CBOR array: the mask, then the values it
+// names, in bit order. A field the mask omits costs nothing.
+func (v RTSStateDelta) AppendCBORTo(dst []byte) []byte {
+	n := 1
+	for bit := range 6 {
+		if v.Present&(1<<uint(bit)) != 0 {
+			n++
+		}
+	}
+	dst = cbor.AppendArrayHeader(dst, n)
+	dst = cbor.AppendUint(dst, v.Present)
+	if v.Present&(1<<0) != 0 {
+		dst = cbor.AppendUint(dst, uint64(v.Tick))
+	}
+	if v.Present&(1<<1) != 0 {
+		dst = appendUnitSlice(dst, v.Units)
+	}
+	if v.Present&(1<<2) != 0 {
+		dst = cbor.AppendUint(dst, uint64(v.NextSeq))
+	}
+	if v.Present&(1<<3) != 0 {
+		dst = cbor.AppendUint(dst, uint64(v.TickLimit))
+	}
+	if v.Present&(1<<4) != 0 {
+		dst = cbor.AppendBool(dst, bool(v.Over))
+	}
+	if v.Present&(1<<5) != 0 {
+		dst = cbor.AppendUint(dst, uint64(v.Winner))
+	}
+	return dst
+}
+
+// DecodeCBORFrom reads one delta into v, and refuses anything after it:
+// a trailing item means the sender and the receiver disagree about the
+// shape, which concept:cbor-wire-profile cannot detect any other way.
+func (v *RTSStateDelta) DecodeCBORFrom(data []byte) error {
+	r, err := cbor.NewReader(data, DecodeLimits)
+	if err != nil {
+		return err
+	}
+	if err := v.decodeFrom(r); err != nil {
+		return err
+	}
+	if !r.Done() {
+		return cbor.ErrExtraneousData
+	}
+	return nil
+}
+
+// decodeFrom reads one delta off r.
+func (v *RTSStateDelta) decodeFrom(r *cbor.Reader) error {
+	n, indefinite, err := r.ReadArrayHeader()
+	if err != nil {
+		return err
+	}
+	if indefinite || n < 1 {
+		return &cbor.Error{Offset: int64(r.Offset()), Path: "RTSStateDelta", Err: cbor.ErrUnexpectedToken}
+	}
+	present, err := r.ReadUint64()
+	if err != nil {
+		return err
+	}
+	v.Present = present
+	read := 1
+	if present&(1<<0) != 0 {
+		x, err := r.ReadUint64()
+		if err != nil {
+			return err
+		}
+		v.Tick = uint64(x)
+		read++
+	}
+	if present&(1<<1) != 0 {
+		xs, err := readUnitSlice(r, v.Units)
+		if err != nil {
+			return err
+		}
+		v.Units = xs
+		read++
+	}
+	if present&(1<<2) != 0 {
+		x, err := r.ReadUint64()
+		if err != nil {
+			return err
+		}
+		v.NextSeq = uint32(x)
+		read++
+	}
+	if present&(1<<3) != 0 {
+		x, err := r.ReadUint64()
+		if err != nil {
+			return err
+		}
+		v.TickLimit = uint32(x)
+		read++
+	}
+	if present&(1<<4) != 0 {
+		x, err := r.ReadBool()
+		if err != nil {
+			return err
+		}
+		v.Over = bool(x)
+		read++
+	}
+	if present&(1<<5) != 0 {
+		x, err := r.ReadUint64()
+		if err != nil {
+			return err
+		}
+		v.Winner = uint16(x)
+		read++
+	}
+	if read != n {
+		return &cbor.Error{Offset: int64(r.Offset()), Path: "RTSStateDelta", Err: cbor.ErrUnexpectedToken}
 	}
 	return nil
 }

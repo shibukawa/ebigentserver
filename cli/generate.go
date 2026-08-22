@@ -4,11 +4,15 @@ import (
 	"bytes"
 	"fmt"
 	"go/format"
+	"io/fs"
 	"os"
 	"path/filepath"
+	"sort"
 	"strconv"
+	"strings"
 	"text/template"
 
+	"github.com/shibukawa/ebigentserver/codegen"
 	"github.com/shibukawa/ebigentserver/config/buildconf"
 )
 
@@ -41,20 +45,107 @@ func runGenerate(c *context) error {
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return fmt.Errorf("generate: %w", err)
 	}
-	out := filepath.Join(dir, generatedFile)
+	if err := writeIfChanged(c, filepath.Join(dir, generatedFile), src); err != nil {
+		return err
+	}
+	return generateDeltas(c)
+}
 
-	// Writing only on change keeps a no-op generate from touching the
-	// mtime, which is what stops flow:dev-rebuild-loop from rebuilding
-	// because it just generated.
-	if old, err := os.ReadFile(out); err == nil && bytes.Equal(old, src) {
-		fmt.Fprintf(c.stdout, "%s (unchanged)\n", filepath.Join(GeneratedDir, generatedFile))
+// writeIfChanged writes only when the bytes differ, and says which it did.
+//
+// A no-op run has to leave the mtime alone: flow:dev-rebuild-loop watches
+// the tree, so a generator that rewrote identical bytes would make every
+// rebuild trigger the next one.
+func writeIfChanged(c *context, path string, src []byte) error {
+	rel, err := filepath.Rel(c.res.ProjectRoot, path)
+	if err != nil {
+		rel = path
+	}
+	if old, err := os.ReadFile(path); err == nil && bytes.Equal(old, src) {
+		fmt.Fprintf(c.stdout, "%s (unchanged)\n", rel)
 		return nil
 	}
-	if err := os.WriteFile(out, src, 0o644); err != nil {
+	if err := os.WriteFile(path, src, 0o644); err != nil {
 		return fmt.Errorf("generate: %w", err)
 	}
-	fmt.Fprintf(c.stdout, "%s\n", filepath.Join(GeneratedDir, generatedFile))
+	fmt.Fprintf(c.stdout, "%s\n", rel)
 	return nil
+}
+
+// generateDeltas emits the delta half of concept:state-synchronization for
+// every package declaring a world state, which since v0.5.23 no library
+// does (requirement:cborbind-migration).
+//
+// Which packages those are is not configured. A type asked for the map
+// shape is a world state, and asking is the declaration — the same idiom
+// tinybind adopted — so there is no list to keep in step with the source.
+func generateDeltas(c *context) error {
+	dirs, err := worldPackages(c.res.ProjectRoot)
+	if err != nil {
+		return err
+	}
+	for _, dir := range dirs {
+		names, err := codegen.Discover(dir)
+		if err != nil {
+			return err
+		}
+		if len(names) == 0 {
+			continue
+		}
+		pkg, structs, err := codegen.Read(dir, names)
+		if err != nil {
+			return err
+		}
+		src, err := codegen.Emit(pkg, structs)
+		if err != nil {
+			return err
+		}
+		if err := writeIfChanged(c, filepath.Join(dir, "delta_gen.go"), src); err != nil {
+			return err
+		}
+		if err := writeIfChanged(c, filepath.Join(dir, "schema_gen.go"), codegen.EmitVersion(pkg, structs)); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// worldPackages are the directories under root that hold Go source, in a
+// stable order. Discover then decides which of them declare anything.
+//
+// Walking beats configuring here: a game that grows a second stage adds a
+// package and nothing else, which is the point of
+// decision:codec-set-per-stage.
+func worldPackages(root string) ([]string, error) {
+	var out []string
+	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if !d.IsDir() {
+			return nil
+		}
+		name := d.Name()
+		if path != root && (strings.HasPrefix(name, ".") || name == "vendor" || name == "testdata" || name == "bin") {
+			return fs.SkipDir
+		}
+		entries, err := os.ReadDir(path)
+		if err != nil {
+			return err
+		}
+		for _, e := range entries {
+			if !e.IsDir() && strings.HasSuffix(e.Name(), ".go") {
+				out = append(out, path)
+				break
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, fmt.Errorf("generate: %w", err)
+	}
+	sort.Strings(out)
+	return out, nil
 }
 
 // generateProtocol renders the constants for one validated configuration.
