@@ -45,6 +45,12 @@ func runBuild(c *context, opts *BuildOptions) error {
 	if err := c.requireProject(); err != nil {
 		return err
 	}
+	// A target compiled against stale constants is the failure generation
+	// exists to prevent, so it is not a step anybody has to remember
+	// (requirement:config-codegen).
+	if err := runGenerate(c); err != nil {
+		return err
+	}
 	name := opts.Target
 	if name == "" {
 		t, ok := c.build.DevTarget()

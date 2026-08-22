@@ -3,6 +3,7 @@ package cli_test
 import (
 	"bytes"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -206,3 +207,144 @@ func TestPendingVerbNamesWhatItWaitsOn(t *testing.T) {
 		t.Errorf("stderr = %q", errOut)
 	}
 }
+
+// TestGenerateEmitsTheProtocolConstants covers requirement:config-codegen:
+// what ebigent.toml settles at build reaches the artifact as Go rather
+// than as a startup lookup.
+func TestGenerateEmitsTheProtocolConstants(t *testing.T) {
+	if testing.Short() {
+		t.Skip("shells out to the go toolchain")
+	}
+	dir := t.TempDir()
+	code, out, errOut := run(t, "", "init", dir,
+		"--yes", "--module", "example.com/squad", "--name", "squad",
+		"--style", "multi", "--seats", "4", "--shared_screen", "no",
+		"--framework_path", frameworkRoot(t))
+	if code != 0 {
+		t.Fatalf("init: exit %d\nstdout:\n%s\nstderr:\n%s", code, out, errOut)
+	}
+
+	code, out, errOut = run(t, dir, "generate")
+	if code != 0 {
+		t.Fatalf("generate: exit %d\nstdout:\n%s\nstderr:\n%s", code, out, errOut)
+	}
+	src, err := os.ReadFile(filepath.Join(dir, "internal", "ebigentgen", "protocol_gen.go"))
+	if err != nil {
+		t.Fatalf("generate wrote nothing: %v", err)
+	}
+	for _, want := range []string{
+		`const Package = "example.com/squad"`,
+		`const Title = "squad"`,
+		`Shape    = "multi"`,
+		`View     = "per_agent"`,
+		`const SeatCount = 4`,
+		`const FillUnclaimedSeats = true`,
+		`const Teamed = false`,
+		`{Slot: 4, Team: "", Occupant: "any"},`,
+	} {
+		if !strings.Contains(string(src), want) {
+			t.Errorf("generated source lacks %s:\n%s", want, src)
+		}
+	}
+
+	// Nothing imports the generated package yet, so building the entry
+	// point does not compile it. Checking the text alone would accept a
+	// template that emits Go which does not parse.
+	compile := exec.Command("go", "build", "./"+GeneratedDirSlash)
+	compile.Dir = dir
+	if combined, err := compile.CombinedOutput(); err != nil {
+		t.Fatalf("the generated package does not compile: %v\n%s", err, combined)
+	}
+
+	// Same table, same bytes: a no-op run must not touch the tree, or
+	// flow:dev-rebuild-loop rebuilds because it just generated.
+	code, out, errOut = run(t, dir, "generate")
+	if code != 0 {
+		t.Fatalf("second generate: exit %d\nstderr:\n%s", code, errOut)
+	}
+	if !strings.Contains(out, "unchanged") {
+		t.Errorf("a repeated generate did not report the file unchanged: %q", out)
+	}
+	again, err := os.ReadFile(filepath.Join(dir, "internal", "ebigentgen", "protocol_gen.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(again) != string(src) {
+		t.Error("generate is not idempotent")
+	}
+}
+
+// TestGenerateFollowsTheTeamDivision covers the part of the seat
+// composition that could not be said before the [protocol] table: the
+// generated seats carry their team and what may occupy them, so
+// api:roster needs no lookup of its own.
+func TestGenerateFollowsTheTeamDivision(t *testing.T) {
+	if testing.Short() {
+		t.Skip("shells out to the go toolchain")
+	}
+	dir := t.TempDir()
+	code, out, errOut := run(t, "", "init", dir,
+		"--yes", "--module", "example.com/duel", "--name", "duel",
+		"--style", "multi", "--seats", "4", "--shared_screen", "yes",
+		"--sync", "server_authoritative",
+		"--framework_path", frameworkRoot(t))
+	if code != 0 {
+		t.Fatalf("init: exit %d\nstderr:\n%s", code, errOut)
+	}
+	toml := filepath.Join(dir, "ebigent.toml")
+	src, err := os.ReadFile(toml)
+	if err != nil {
+		t.Fatal(err)
+	}
+	divided := string(src) + `
+[[protocol.team]]
+name = "red"
+seats = 3
+occupant = "human"
+
+[[protocol.team]]
+name = "blue"
+seats = 1
+occupant = "bot"
+`
+	if err := os.WriteFile(toml, []byte(divided), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	code, out, errOut = run(t, dir, "generate")
+	if code != 0 {
+		t.Fatalf("generate: exit %d\nstdout:\n%s\nstderr:\n%s", code, out, errOut)
+	}
+	gen, err := os.ReadFile(filepath.Join(dir, "internal", "ebigentgen", "protocol_gen.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{
+		`const Teamed = true`,
+		`{Slot: 1, Team: "red", Occupant: "human"},`,
+		`{Slot: 3, Team: "red", Occupant: "human"},`,
+		`{Slot: 4, Team: "blue", Occupant: "bot"},`,
+	} {
+		if !strings.Contains(string(gen), want) {
+			t.Errorf("generated source lacks %s:\n%s", want, gen)
+		}
+	}
+
+	// Teams that do not account for every seat are refused before they
+	// can become a constant.
+	short := strings.Replace(divided, "seats = 3", "seats = 2", 1)
+	if err := os.WriteFile(toml, []byte(short), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	code, _, errOut = run(t, dir, "generate")
+	if code == 0 {
+		t.Fatal("generate accepted a division that leaves a seat on no team")
+	}
+	if !strings.Contains(errOut, "account for 3 seats") {
+		t.Errorf("stderr = %q", errOut)
+	}
+}
+
+// GeneratedDirSlash is cli.GeneratedDir, spelled here so the test names
+// the same directory the verb writes to and cannot drift from it.
+const GeneratedDirSlash = cli.GeneratedDir

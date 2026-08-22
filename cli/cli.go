@@ -62,6 +62,12 @@ type BuildOptions struct {
 	Output string `default:"" help:"output path; defaults to ./bin/<target>"`
 }
 
+// GenerateOptions emits the code the configuration settles: the protocol
+// constants of requirement:config-codegen. It takes nothing — what to
+// generate is the whole of ebigent.toml, and a partial run would only
+// leave a tree half describing a file that has one answer.
+type GenerateOptions struct{}
+
 // ConfigOptions renders or explains the configuration.
 type ConfigOptions struct {
 	Action string `arg:"optional" default:"show" help:"scaffold, env, or show"`
@@ -109,6 +115,7 @@ func Run(stdout, stderr io.Writer) int {
 	initOpts := configbind.SubCommand[InitOptions]("init", "scaffold a new project")
 	buildOpts := configbind.SubCommand[BuildOptions]("build", "compile a declared build target")
 	configOpts := configbind.SubCommand[ConfigOptions]("config", "render or explain the configuration")
+	generateOpts := configbind.SubCommand[GenerateOptions]("generate", "emit the code the configuration settles")
 	analyzeOpts := configbind.SubCommand[AnalyzeOptions]("analyze", "aggregate a recorded episode corpus")
 	mergeOpts := configbind.SubCommand[MergeOptions]("merge", "fold analyzer proposals into a chip library")
 	doctorOpts := configbind.SubCommand[DoctorOptions]("doctor", "report environment problems")
@@ -160,6 +167,8 @@ func Run(stdout, stderr io.Writer) int {
 		return ctx.report(runInit(ctx, initOpts))
 	case buildOpts != nil:
 		return ctx.report(runBuild(ctx, buildOpts))
+	case generateOpts != nil:
+		return ctx.report(runGenerate(ctx))
 	case configOpts != nil:
 		return ctx.report(runConfig(ctx, configOpts))
 	case analyzeOpts != nil:
