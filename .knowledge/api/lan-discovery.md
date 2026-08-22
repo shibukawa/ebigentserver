@@ -13,4 +13,5 @@ availability: native builds only; browsers cannot send udp broadcast, so wasm us
 scope: link local by construction, which satisfies rule:unauthenticated-admission-requires-scope-or-capability
 version_filter: hide beacons whose protocol version differs, see rule:protocol-version-must-match
 pairs_with: decision:no-auth-on-lan
+composed_by: api:lan-preset, which pairs a beacon with a seat grant so a game needs neither
 ```

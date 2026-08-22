@@ -12,6 +12,7 @@
 {"category": "interface", "id": "api:game-cli", "path": ".knowledge/api/game-cli.md", "role": "primary", "title": "Ebigent CLI", "type": "api"}
 {"category": "interface", "id": "api:input-adapter", "path": ".knowledge/api/input-adapter.md", "role": "primary", "title": "Input Adapter", "type": "api"}
 {"category": "interface", "id": "api:lan-discovery", "path": ".knowledge/api/lan-discovery.md", "role": "primary", "title": "LAN Discovery", "type": "api"}
+{"category": "interface", "id": "api:lan-preset", "path": ".knowledge/api/lan-preset.md", "role": "primary", "title": "LAN Preset", "type": "api"}
 {"category": "interface", "id": "api:manual-signaling-token", "path": ".knowledge/api/manual-signaling-token.md", "role": "primary", "title": "Manual Signaling Token", "type": "api"}
 {"category": "interface", "id": "api:message-framing", "path": ".knowledge/api/message-framing.md", "role": "primary", "title": "Message Framing", "type": "api"}
 {"category": "interface", "id": "api:roster", "path": ".knowledge/api/roster.md", "role": "primary", "title": "Roster", "type": "api"}
