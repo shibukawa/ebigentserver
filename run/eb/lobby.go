@@ -24,6 +24,11 @@ type LobbyOptions struct {
 	// which is what a game waiting for remote players wants. Without it
 	// the remaining seats are filled from Binding.NewAgent on start —
 	// the enemies of a solo game, or a stand-in opponent.
+	//
+	// It also changes what starts the match: with bots, a press starts
+	// it, because the roster is complete the moment this machine is
+	// done. Without them the roster completes when the last person
+	// arrives, and that is the start signal.
 	NoBots bool
 	// Background paints the lobby.
 	Background color.Color
@@ -73,6 +78,13 @@ func NewLobby[S, A, O any](a *app[S, A, O], roster *run.Roster[S, A, O]) *Lobby[
 // local seat it may starts the match — or, with AutoStart, taking the
 // last one is itself the start.
 func (l *Lobby[S, A, O]) Update() error {
+	// NoBots means the empty seats belong to people arriving from
+	// elsewhere. When the last of them does, waiting for another press
+	// would mean somebody has to be watching the screen to notice —
+	// which is the job this scene was meant to do.
+	if l.lobby.NoBots && l.joined && l.roster.Complete() {
+		return l.start()
+	}
 	if !l.pressed() {
 		return nil
 	}

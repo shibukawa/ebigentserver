@@ -45,7 +45,11 @@ type Client[S, A, O any] interface {
 	// local seat (rule:no-engine-input-in-game-logic: a raw key becomes
 	// a concept:action here, and only here). It runs on Ebitengine's
 	// goroutine.
-	Intake(match *run.Match[S, A, O])
+	//
+	// The seating is this machine's match when it hosts and its link
+	// when it joined somebody else's. A play scene never learns which,
+	// because from here the difference is only where Submit ends up.
+	Intake(seating run.Seating[A])
 	// Apply receives each committed world. It runs on the session's
 	// goroutine, not Ebitengine's, so it must copy what Draw will read
 	// rather than retaining the pointer — the session keeps mutating
@@ -80,6 +84,13 @@ type Options[S, A, O any] struct {
 	// goroutine, which is why a replay of this game reproduces exactly
 	// and a headless build ticks the same way.
 	Time session.TimeControl
+	// Network, when set, is consulted once before the first lobby: the
+	// preset either offers this instance's match or takes a seat on
+	// somebody else's. Nil plays offline.
+	//
+	// A guest never sees the lobby. It has nothing to gather — the
+	// roster it would fill belongs to the host.
+	Network run.Networking[S, A, O]
 	// Record is where data:episode-log goes. A zero Root records
 	// nothing; setting it is what turns ordinary play into a corpus.
 	Record run.RecordOptions
@@ -148,6 +159,8 @@ type app[S, A, O any] struct {
 
 	scene   Scene
 	roster  *run.Roster[S, A, O]
+	hosting run.Hosting[S, A, O]
+	joined  run.Joined[S, A, O]
 	match   *run.Match[S, A, O]
 	rec     *run.Recording[S, A, O]
 	watch   *run.Watcher[S, A, O]
@@ -168,6 +181,20 @@ func (a *app[S, A, O]) gather() error {
 		return err
 	}
 	a.roster = roster
+	if a.opts.Network != nil && a.hosting == nil && a.joined == nil {
+		hosting, joined, err := a.opts.Network.Begin(a.ctx, roster, a.opts.Seed)
+		if err != nil {
+			return err
+		}
+		a.hosting, a.joined = hosting, joined
+		if joined != nil {
+			// Somebody else is gathering. This instance has a seat
+			// already and nothing to fill, so it goes straight to
+			// playing and waits inside the link.
+			a.scene = newRemote(a, joined)
+			return nil
+		}
+	}
 	if a.opts.Scene != nil {
 		a.scene = a.opts.Scene(roster)
 		return nil
@@ -214,10 +241,22 @@ func (a *app[S, A, O]) Start() error {
 		client.Apply(tick, world)
 	}
 
+	if a.hosting != nil {
+		a.hosting.Attach(&cfg)
+	}
+
 	match, err := a.roster.Finalize(cfg)
 	if err != nil {
 		rec.Close()
 		return err
+	}
+	if a.hosting != nil {
+		// Before the first tick: state produced with nobody to send it
+		// to is state a guest would have to resync for.
+		if err := a.hosting.Serve(a.ctx, match); err != nil {
+			rec.Close()
+			return err
+		}
 	}
 	ctx, cancel := context.WithCancel(a.ctx)
 	match.Start(ctx, a.opts.Time)

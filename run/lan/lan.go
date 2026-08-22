@@ -432,6 +432,11 @@ func Browse[S, A, D, O any](ctx context.Context, opts Options[S, A, D, O], windo
 // back is data:player-input.
 type Guest[S, A, D, O any] struct {
 	client *netplay.Client[S, A, D, O]
+	box    mailbox[A]
+
+	mu      sync.Mutex
+	onWorld func(session.Tick, *S)
+	over    bool
 }
 
 // Join takes a seat on a host and waits to be admitted. The wait is
