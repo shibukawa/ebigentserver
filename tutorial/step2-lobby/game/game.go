@@ -103,23 +103,23 @@ var Lines = [8][3]uint8{
 	{0, 4, 8}, {2, 4, 6},
 }
 
-// Simulation is the game's api:simulation-interface. The zero value is
+// RuleSet is the game's api:simulation-interface. The zero value is
 // ready to use.
-type Simulation struct{}
+type RuleSet struct{}
 
-var _ session.TickSimulation[State, Action, Observation] = Simulation{}
+var _ session.TickStageRuleSet[State, Action, Observation] = RuleSet{}
 
 // Start deals an empty board with X to move. Tic-tac-toe is
 // deterministic, so the seed goes unused — it is still recorded, and a
 // game that grows randomness derives it from here rather than the clock.
-func (Simulation) Start(uint64) State {
+func (RuleSet) Start(uint64) State {
 	return State{Cells: make([]uint8, 9), Turn: uint16(SlotX)}
 }
 
 // ActingSlots returns the seat whose turn it is: strict alternation, one
 // decision at a time. It is empty once the game is over, which is legal
 // only because every seat then evaluates terminal.
-func (Simulation) ActingSlots(s *State) []session.SlotID {
+func (RuleSet) ActingSlots(s *State) []session.SlotID {
 	if s.Over || s.Turn == 0 {
 		return nil
 	}
@@ -137,7 +137,7 @@ func Legal(s *State, slot session.SlotID, cell uint8) bool {
 
 // Apply takes the cell for the seat to move. Legality was settled before
 // the call, so this cannot fail.
-func (Simulation) Apply(s *State, slot session.SlotID, a Action) {
+func (RuleSet) Apply(s *State, slot session.SlotID, a Action) {
 	if !Legal(s, slot, a.Cell) {
 		return
 	}
@@ -162,10 +162,10 @@ func (Simulation) Apply(s *State, slot session.SlotID, a Action) {
 // answering "nothing happened" is a real answer rather than a gap — it
 // is what lets the same loop, the same recording, and the same link
 // serve a board game and a shooter.
-func (Simulation) Advance(*State) {}
+func (RuleSet) Advance(*State) {}
 
 // Project builds the observation a seat is allowed to see.
-func (g Simulation) Project(s *State, slot session.SlotID) Observation {
+func (g RuleSet) Project(s *State, slot session.SlotID) Observation {
 	obs := Observation{
 		You:    slot,
 		Mark:   MarkOf(slot),
@@ -189,7 +189,7 @@ func (g Simulation) Project(s *State, slot session.SlotID) Observation {
 
 // Evaluate computes the seat's data:evaluation-signal. The session calls
 // it; a controller never scores itself.
-func (Simulation) Evaluate(s *State, slot session.SlotID) session.EvaluationSignal {
+func (RuleSet) Evaluate(s *State, slot session.SlotID) session.EvaluationSignal {
 	sig := session.EvaluationSignal{Score: int64(s.Moves)}
 	switch {
 	case !s.Over:
@@ -208,13 +208,13 @@ func (Simulation) Evaluate(s *State, slot session.SlotID) session.EvaluationSign
 func Config(id string, seed uint64) session.Config[State, Action, Observation] {
 	tune := Tuning()
 	return session.Config[State, Action, Observation]{
-		ID:         id,
-		Slots:      Slots(),
-		Simulation: Simulation{},
-		Validator:  Validator{},
-		Seed:       seed,
-		Tuning:     &tune,
-		Canonical:  Canonical,
+		ID:        id,
+		Slots:     Slots(),
+		RuleSet:   RuleSet{},
+		Validator: Validator{},
+		Seed:      seed,
+		Tuning:    &tune,
+		Canonical: Canonical,
 	}
 }
 

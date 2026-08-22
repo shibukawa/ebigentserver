@@ -41,7 +41,7 @@ func (v *view) Intake(seating run.Seating[game.Action]) {
 step2-lobby/
 ├── main.go          ウィンドウ・マウス・描画・ネットワークの宣言
 ├── game/
-│   ├── game.go      ルール。session.Simulation の実装
+│   ├── game.go      ルール。session.StageRuleSet の実装
 │   ├── bind.go      Options / Binding の宣言（engine もトランスポートも知らない）
 │   ├── game_test.go ルールとコーデックのテスト
 │   └── net_test.go  2インスタンスがウィンドウなしで1局を通すテスト

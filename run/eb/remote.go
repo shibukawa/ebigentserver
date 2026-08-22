@@ -64,6 +64,6 @@ func (r *remote[S, A, O]) ended() error {
 	// A finished game and a host that went away both arrive here as the
 	// link going quiet, and this side cannot tell them apart — so the
 	// line says what it knows and the board says the rest.
-	r.app.scene = newResult(r.app, "the match ended")
+	r.app.screen = newResult(r.app, "the match ended")
 	return nil
 }

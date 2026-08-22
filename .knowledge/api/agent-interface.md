@@ -14,7 +14,7 @@ operations:
   - name: lifecycle
     covers: join, leave, session end, session abort
     ordering: concept:session-lifecycle
-counterpart: api:simulation-interface, the game side of flow:agent-decision-loop
+counterpart: api:stage-rule-set, the game side of flow:agent-decision-loop
 pacing: two modes supported, see decision:dual-mode-agent-pacing
   - agent driven step: session blocks until decide returns
   - realtime non blocking: no action means no input this tick

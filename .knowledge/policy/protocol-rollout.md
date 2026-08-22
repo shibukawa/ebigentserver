@@ -7,7 +7,7 @@ Deployment policy preserving exact wire version matching while clients, servers,
 
 ```yaml
 endpoint:
-  - each active data:protocol-version has a distinct routable endpoint
+  - each active data:game-version has a distinct routable endpoint
   - data:session-ticket audience and endpoint select that version
 rollout:
   - deploy and ready the new server endpoint

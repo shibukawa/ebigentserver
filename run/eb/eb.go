@@ -28,11 +28,15 @@ import (
 	"github.com/shibukawa/ebigentserver/session"
 )
 
-// Scene is one screen. The wrapper's own ebiten.Game delegates to
-// whichever scene is current, which is the shape Ebitengine games already
-// use to change screens.
-type Scene interface {
-	// Update advances the scene by one frame.
+// Screen is one screen. The wrapper's own ebiten.Game delegates to
+// whichever screen is current, which is the shape Ebitengine games
+// already use to change screens.
+//
+// It is not a Stage. A stage is one rule set — the thing the wider
+// industry calls a scene — and this is the display state in front of it:
+// the lobby is a screen with no rules, and one stage may show several.
+type Screen interface {
+	// Update advances the screen by one frame.
 	Update() error
 	// Draw renders it.
 	Draw(screen *ebiten.Image)
@@ -73,12 +77,12 @@ type Options[S, A, O any] struct {
 	// Client is the play scene.
 	Client Client[S, A, O]
 	// Lobby configures the default ui:lobby-scene. A game that supplies
-	// its own gathering screen sets Scene instead.
+	// its own gathering screen sets Screen instead.
 	Lobby LobbyOptions
-	// Scene, when set, replaces the default lobby with the game's own
+	// Screen, when set, replaces the default lobby with the game's own
 	// gathering screen. It is handed the roster of each new match and
 	// must finalize it; see NewLobby for what the default one does.
-	Scene func(*run.Roster[S, A, O]) Scene
+	Screen func(*run.Roster[S, A, O]) Screen
 	// Time is concept:game-time-control for the session clock. It is
 	// independent of the frame rate: the tick loop runs on its own
 	// goroutine, which is why a replay of this game reproduces exactly
@@ -157,7 +161,7 @@ type app[S, A, O any] struct {
 	opts Options[S, A, O]
 	ctx  context.Context
 
-	scene   Scene
+	screen  Screen
 	roster  *run.Roster[S, A, O]
 	hosting run.Hosting[S, A, O]
 	joined  run.Joined[S, A, O]
@@ -192,11 +196,11 @@ func (a *app[S, A, O]) gather() error {
 		_ = a.joined.Close()
 		a.joined = nil
 	}
-	if a.opts.Scene != nil {
-		a.scene = a.opts.Scene(roster)
+	if a.opts.Screen != nil {
+		a.screen = a.opts.Screen(roster)
 		return nil
 	}
-	a.scene = NewLobby[S, A, O](a, roster)
+	a.screen = NewLobby[S, A, O](a, roster)
 	return nil
 }
 
@@ -224,7 +228,7 @@ func (a *app[S, A, O]) BecomeHost(h run.Hosting[S, A, O]) { a.hosting = h }
 // switches to the scene that renders a link instead of a match.
 func (a *app[S, A, O]) BecomeGuest(j run.Joined[S, A, O]) {
 	a.joined = j
-	a.scene = newRemote(a, j)
+	a.screen = newRemote(a, j)
 }
 
 // Start finalizes the roster and moves to the play scene. A gathering
@@ -286,7 +290,7 @@ func (a *app[S, A, O]) Start() error {
 	match.Start(ctx, a.opts.Time)
 
 	a.match, a.rec, a.cancel = match, rec, cancel
-	a.scene = &play[S, A, O]{app: a, client: client, match: match}
+	a.screen = &play[S, A, O]{app: a, client: client, match: match}
 	return nil
 }
 
@@ -314,7 +318,7 @@ func (a *app[S, A, O]) ended() error {
 	// The board stays up until somebody dismisses it. Going straight
 	// back to the lobby would take the last frame away before they had
 	// seen how it ended.
-	a.scene = newResult(a, outcomeLine(&res))
+	a.screen = newResult(a, outcomeLine(&res))
 	return nil
 }
 
@@ -332,10 +336,10 @@ func (a *app[S, A, O]) stop() {
 }
 
 // Update gives the frame to the current scene.
-func (a *app[S, A, O]) Update() error { return a.scene.Update() }
+func (a *app[S, A, O]) Update() error { return a.screen.Update() }
 
 // Draw gives the screen to the current scene.
-func (a *app[S, A, O]) Draw(screen *ebiten.Image) { a.scene.Draw(screen) }
+func (a *app[S, A, O]) Draw(screen *ebiten.Image) { a.screen.Draw(screen) }
 
 // Layout uses the game's logical resolution for every scene, lobby
 // included, so a game has one coordinate system rather than two.

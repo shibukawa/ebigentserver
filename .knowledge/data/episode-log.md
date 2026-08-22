@@ -13,7 +13,7 @@ streams:
   - outcomes: one row per episode, see metric:episode-outcome
   - world: optional full concept:world-state ground truth for debugging, never joined into behavior analysis by default
 stream_separation_reason: each file keeps a stable column set, which columnar readers handle far better than one mixed record type
-header_row: schema version, data:protocol-version, rng seed of rule:shared-rng-seed, evaluation_version of data:evaluation-signal
+header_row: schema version, data:game-version, rng seed of rule:shared-rng-seed, evaluation_version of data:evaluation-signal
 recording_mode: concept:episode-recording-mode, declared in the header
 compression: gzip or zstd, read directly by system:duckdb without a decompression step
 two_representations:

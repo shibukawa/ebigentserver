@@ -120,7 +120,7 @@ func outcomeLine(res *run.MatchResult) string {
 		return "match ended: " + res.Err.Error()
 	}
 	for _, seat := range res.Seats {
-		if seat.Kind != run.LocalHuman {
+		if !seat.LocalHuman() {
 			continue
 		}
 		if sig, ok := res.Outcome(seat.Slot); ok {

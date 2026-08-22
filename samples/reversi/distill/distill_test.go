@@ -187,7 +187,7 @@ func TestDistilledGreedyPassesAutomatedPlaytest(t *testing.T) {
 	play := func(makeBlack func() session.Agent[reversi.Observation, reversi.Move]) func(int, uint64) (matchloop.Result, error) {
 		return func(match int, seed uint64) (matchloop.Result, error) {
 			s, err := session.New(session.Config[reversi.State, reversi.Move, reversi.Observation]{
-				ID: "playtest", Slots: reversi.Slots(), Simulation: reversi.Simulation{}, Validator: reversi.Validator{},
+				ID: "playtest", Slots: reversi.Slots(), RuleSet: reversi.RuleSet{}, Validator: reversi.Validator{},
 				Seed: seed, Clock: func() int64 { return 0 },
 			})
 			if err != nil {

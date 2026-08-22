@@ -11,10 +11,10 @@ import (
 func newGame(t *testing.T, x, o session.Agent[ttt.Observation, ttt.Move]) *session.Session[ttt.State, ttt.Move, ttt.Observation] {
 	t.Helper()
 	s, err := session.New(session.Config[ttt.State, ttt.Move, ttt.Observation]{
-		ID:         "ttt-test",
-		Slots:      ttt.Slots(),
-		Simulation: ttt.Simulation{},
-		Validator:  ttt.Validator{},
+		ID:        "ttt-test",
+		Slots:     ttt.Slots(),
+		RuleSet:   ttt.RuleSet{},
+		Validator: ttt.Validator{},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -87,8 +87,8 @@ func TestBotVsBotIsDeterministic(t *testing.T) {
 
 func TestIllegalMovesAreRejectedWithoutStateChange(t *testing.T) {
 	v := ttt.Validator{}
-	s := ttt.Simulation{}.Start(0)
-	ttt.Simulation{}.Apply(&s, ttt.SlotX, ttt.Move{Cell: 4})
+	s := ttt.RuleSet{}.Start(0)
+	ttt.RuleSet{}.Apply(&s, ttt.SlotX, ttt.Move{Cell: 4})
 
 	if err := v.Legal(&s, ttt.SlotO, ttt.Move{Cell: 4}); err == nil {
 		t.Error("occupied cell must be illegal")

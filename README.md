@@ -111,7 +111,7 @@
 
 | 項目 | 状態 | 実装 |
 |---|---|---|
-| tickループと権威シミュレーション | 済 | [session/realtime.go](session/realtime.go) — `TickSimulation`(Apply+Advance)、`RunRealtime`。入力は`Inbox`(非ブロッキング、tickごとに最新1件)、遅延agentはそのtick無入力 |
+| tickループと権威シミュレーション | 済 | [session/realtime.go](session/realtime.go) — `TickStageRuleSet`(Apply+Advance)、`RunRealtime`。入力は`Inbox`(非ブロッキング、tickごとに最新1件)、遅延agentはそのtick無入力 |
 | `data:player-input` / `data:snapshot` / `data:state-delta` | 済 | [samples/pong/msg](samples/pong/msg/types.go) — wire/worldプロファイル生成、状態=wire形そのもの |
 | `decision:framework-side-delta-generation` | 済 | [statesync/](statesync/) — 受信者ごとのSender(保持リング+speculative baseline)、Receiver、loopback Hub。baseline喪失→snapshot fallback |
 | `data:session-tuning-profile` | 済 | [session/tuning.go](session/tuning.go) — 宣言必須(デフォルトなし)、整合検査つき |

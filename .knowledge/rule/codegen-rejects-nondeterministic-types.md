@@ -18,7 +18,7 @@ rejected:
   - name: time.Time and wall clock derived values
     reason: not a function of term:tick
   - name: fixed point field with no declared scale
-    reason: scale is part of data:protocol-version and cannot be inferred
+    reason: scale is part of data:game-version and cannot be inferred
 map_alternative: ordered slice, or generated traversal in sorted key order
 failure_mode: build error naming the type and field, not a runtime warning
 enforces: rule:no-float-in-simulation, term:determinism

@@ -26,7 +26,7 @@ flow:
       action: apply policy:realtime-abuse-protection and data:runtime-resource-budget before session allocation
     - id: version_check
       actor: concept:session
-      action: compare data:protocol-version, see rule:protocol-version-must-match
+      action: compare data:game-version, see rule:game-version-must-match
     - id: verify
       actor: concept:session
       action: validate signature and claims locally, see rule:local-ticket-verification

@@ -10,7 +10,7 @@ import (
 // play applies a sequence of cells for whoever is to move.
 func play(t *testing.T, cells ...uint8) game.State {
 	t.Helper()
-	var sim game.Simulation
+	var sim game.RuleSet
 	s := sim.Start(0)
 	for i, cell := range cells {
 		acting := sim.ActingSlots(&s)
@@ -27,7 +27,7 @@ func play(t *testing.T, cells ...uint8) game.State {
 }
 
 func TestXMovesFirstAndTurnsAlternate(t *testing.T) {
-	var sim game.Simulation
+	var sim game.RuleSet
 	s := sim.Start(0)
 	if got := sim.ActingSlots(&s); len(got) != 1 || got[0] != game.SlotX {
 		t.Fatalf("first acting seat = %v, want [X]", got)
@@ -39,7 +39,7 @@ func TestXMovesFirstAndTurnsAlternate(t *testing.T) {
 }
 
 func TestValidatorRefusesTheSeatThatIsNotToMove(t *testing.T) {
-	var sim game.Simulation
+	var sim game.RuleSet
 	s := sim.Start(0)
 	if err := (game.Validator{}).Legal(&s, game.SlotO, game.Action{Cell: 0}); err == nil {
 		t.Fatal("O was allowed to move first")
@@ -64,7 +64,7 @@ func TestRowWinEndsTheGameAndNamesTheLine(t *testing.T) {
 	if len(s.Line) != 3 || s.Line[0] != 0 || s.Line[2] != 2 {
 		t.Fatalf("Line = %v, want the top row", s.Line)
 	}
-	if got := (game.Simulation{}).ActingSlots(&s); len(got) != 0 {
+	if got := (game.RuleSet{}).ActingSlots(&s); len(got) != 0 {
 		t.Fatalf("ActingSlots = %v after the game ended, want none", got)
 	}
 }
@@ -75,7 +75,7 @@ func TestFullBoardWithoutALineIsADraw(t *testing.T) {
 		t.Fatalf("Over=%v Winner=%d, want a draw", s.Over, s.Winner)
 	}
 	for _, slot := range game.Slots() {
-		if got := (game.Simulation{}).Evaluate(&s, slot).Terminal; got != session.Draw {
+		if got := (game.RuleSet{}).Evaluate(&s, slot).Terminal; got != session.Draw {
 			t.Fatalf("seat %d evaluates %v, want draw", slot, got)
 		}
 	}
@@ -86,7 +86,7 @@ func TestFullBoardWithoutALineIsADraw(t *testing.T) {
 // its own.
 func TestObservationCarriesTheLegalMoves(t *testing.T) {
 	s := play(t, 4)
-	obs := (game.Simulation{}).Project(&s, game.SlotO)
+	obs := (game.RuleSet{}).Project(&s, game.SlotO)
 	if obs.You != game.SlotO || obs.Mark != game.O {
 		t.Fatalf("observation identifies %v as %v", obs.You, obs.Mark)
 	}
@@ -99,7 +99,7 @@ func TestObservationCarriesTheLegalMoves(t *testing.T) {
 		}
 	}
 	// The seat that is not to move may take nothing.
-	if idle := (game.Simulation{}).Project(&s, game.SlotX); len(idle.Legal) != 0 {
+	if idle := (game.RuleSet{}).Project(&s, game.SlotX); len(idle.Legal) != 0 {
 		t.Fatalf("the idle seat has %d legal moves, want 0", len(idle.Legal))
 	}
 }
@@ -147,7 +147,7 @@ func TestCodecRoundTripsTheBoard(t *testing.T) {
 func TestCloneDoesNotAliasTheBoard(t *testing.T) {
 	s := play(t, 4)
 	clone := game.Codec().Clone(&s)
-	(game.Simulation{}).Apply(&s, game.SlotO, game.Action{Cell: 0})
+	(game.RuleSet{}).Apply(&s, game.SlotO, game.Action{Cell: 0})
 	if clone.Cells[0] != uint8(game.Empty) {
 		t.Fatal("the clone shares its board with the live state")
 	}

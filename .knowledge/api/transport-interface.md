@@ -8,7 +8,7 @@ Abstraction that carries agent and session messages over any supported protocol.
 ```yaml
 operations:
   - name: connect
-    input: endpoint, data:protocol-version, data:session-ticket
+    input: endpoint, data:game-version, data:session-ticket
     cancellation: caller deadline
   - name: send_reliable
     channel: ordered stream

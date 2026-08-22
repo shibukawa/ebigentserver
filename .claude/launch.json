@@ -4,7 +4,7 @@
     {
       "name": "docs",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev", "--prefix", "website", "--", "--port", "4321"],
+      "runtimeArgs": ["--prefix", "website", "run", "dev"],
       "port": 4321
     }
   ]

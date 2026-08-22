@@ -7,7 +7,7 @@ Saving concept:world-state across process restarts is the game's responsibility;
 
 ```yaml
 decided: yes
-framework_provides: data:snapshot serialization via concept:cbor-world-profile, already versioned by data:protocol-version
+framework_provides: data:snapshot serialization via concept:cbor-world-profile, already versioned by data:game-version
 game_decides: whether to persist, where, how often, and migration between saved versions
 rationale:
   - a match game never needs it, a persistent world always does; no default fits both

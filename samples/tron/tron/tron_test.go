@@ -26,7 +26,7 @@ var testTuning = session.TuningProfile{
 }
 
 func TestRules(t *testing.T) {
-	g := tron.Simulation{SlotIDs: slots(2)}
+	g := tron.RuleSet{SlotIDs: slots(2)}
 	s := g.Start(0)
 	if s.Alive != 2 || len(s.Players) != 2 {
 		t.Fatalf("start: %+v", s)
@@ -64,7 +64,7 @@ func TestRules(t *testing.T) {
 }
 
 func TestTrailGrowsAndBlocks(t *testing.T) {
-	g := tron.Simulation{SlotIDs: slots(2)}
+	g := tron.RuleSet{SlotIDs: slots(2)}
 	s := g.Start(0)
 	for range 5 {
 		g.Advance(&s)
@@ -87,7 +87,7 @@ func TestPlausibilityRejectsFutureInputs(t *testing.T) {
 	s, err := session.New(session.Config[tron.State, tron.Input, tron.Observation]{
 		ID:           "tron-plausibility",
 		Slots:        slots(2),
-		Simulation:   tron.Simulation{SlotIDs: slots(2)},
+		RuleSet:      tron.RuleSet{SlotIDs: slots(2)},
 		Validator:    tron.Validator{},
 		Plausibility: tron.Plausibility{FutureWindow: 120},
 		Canonical:    tron.Canonical,
@@ -142,8 +142,8 @@ func TestEightPlayerDigestPinned(t *testing.T) {
 		tuning := testTuning
 		s, err := session.New(session.Config[tron.State, tron.Input, tron.Observation]{
 			ID: "tron-8", Slots: slots(8),
-			Simulation: tron.Simulation{SlotIDs: slots(8)},
-			Validator:  tron.Validator{}, Canonical: tron.Canonical,
+			RuleSet:   tron.RuleSet{SlotIDs: slots(8)},
+			Validator: tron.Validator{}, Canonical: tron.Canonical,
 			Tuning: &tuning, Clock: func() int64 { return 0 },
 			Recorder: w, Seed: 21, InputSource: patternInput,
 		})

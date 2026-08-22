@@ -62,7 +62,7 @@ func playEpisode(t *testing.T, root string, seed uint64, spec epSpec) {
 	)
 	cfg := session.Config[ttt.State, ttt.Move, ttt.Observation]{
 		ID: spec.id, Slots: ttt.Slots(),
-		Simulation: ttt.Simulation{}, Validator: ttt.Validator{},
+		RuleSet: ttt.RuleSet{}, Validator: ttt.Validator{},
 		Recorder: w, Seed: seed,
 		Clock: func() int64 { return 0 },
 	}

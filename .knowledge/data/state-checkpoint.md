@@ -8,7 +8,7 @@ Deterministic digest proving that independent executions reached the same commit
 ```yaml
 fields:
   - tick
-  - data:protocol-version
+  - data:game-version
   - canonical_world_hash
   - rng_position
   - accepted_action_hash

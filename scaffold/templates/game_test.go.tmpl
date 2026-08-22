@@ -85,7 +85,7 @@ func TestSameSeedProducesTheSameEpisode(t *testing.T) {
 // A different seed lays out different pipes, which is what the seed is
 // for.
 func TestDifferentSeedsLayDifferentPipes(t *testing.T) {
-	a, b := Simulation{}.Start(1), Simulation{}.Start(2)
+	a, b := RuleSet{}.Start(1), RuleSet{}.Start(2)
 	if a.Pipes[0].GapY == b.Pipes[0].GapY {
 		t.Error("two seeds produced the same opening pipe")
 	}
@@ -94,7 +94,7 @@ func TestDifferentSeedsLayDifferentPipes(t *testing.T) {
 // Physics is integer arithmetic, so a flap has an exact effect rather
 // than an approximate one.
 func TestFlapSetsUpwardVelocityExactly(t *testing.T) {
-	g := Simulation{}
+	g := RuleSet{}
 	s := g.Start(1)
 	g.Apply(&s, Slots()[0], Action{Flap: true})
 	if s.Bird[0].VY != flapVY {
@@ -104,7 +104,7 @@ func TestFlapSetsUpwardVelocityExactly(t *testing.T) {
 
 // Legality is decided before Apply, so Apply never has to re-check.
 func TestValidatorRejectsADeadBird(t *testing.T) {
-	s := Simulation{}.Start(1)
+	s := RuleSet{}.Start(1)
 	if err := (Validator{}).Legal(&s, Slots()[0], Action{Flap: true}); err != nil {
 		t.Errorf("a living bird may flap: %v", err)
 	}
@@ -118,7 +118,7 @@ func TestValidatorRejectsADeadBird(t *testing.T) {
 // controller can know. This pins the current scope so widening it is
 // deliberate.
 func TestProjectionGivesEachSlotItsOwnBird(t *testing.T) {
-	g := Simulation{}
+	g := RuleSet{}
 	s := g.Start(1)
 	s.Bird[0].Passed = 3
 

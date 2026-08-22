@@ -48,7 +48,7 @@ func (p *player) intake(seating run.Seating[game.Action]) {
 		if session.SlotID(world.Turn) != seat.Slot {
 			continue
 		}
-		obs := (game.Simulation{}).Project(&world, seat.Slot)
+		obs := (game.RuleSet{}).Project(&world, seat.Slot)
 		if len(obs.Legal) == 0 {
 			continue
 		}
@@ -76,7 +76,7 @@ func lanOptions() lan.Options[game.State, game.Action, msg.TTTStateDelta, game.O
 		Tuning:      game.Tuning(),
 		EncodeInput: game.EncodeAction,
 		DecodeInput: game.DecodeAction,
-		Project:     game.Simulation{}.Project,
+		Project:     game.RuleSet{}.Project,
 	}
 }
 

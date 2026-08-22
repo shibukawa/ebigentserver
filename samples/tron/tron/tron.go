@@ -40,17 +40,17 @@ type Observation struct {
 	Signal session.EvaluationSignal
 }
 
-// Simulation implements session.TickSimulation for a fixed slot set.
-type Simulation struct {
+// RuleSet implements session.TickStageRuleSet for a fixed slot set.
+type RuleSet struct {
 	// SlotIDs is the participating slot set, 1..MaxPlayers.
 	SlotIDs []session.SlotID
 }
 
-var _ session.TickSimulation[State, Input, Observation] = Simulation{}
+var _ session.TickStageRuleSet[State, Input, Observation] = RuleSet{}
 
 // spawns places cycles evenly on the horizontal midline-ish rows facing
 // the field center, deterministic in slot order.
-func (g Simulation) Start(uint64) State {
+func (g RuleSet) Start(uint64) State {
 	s := State{Alive: uint8(len(g.SlotIDs))}
 	for i, slot := range g.SlotIDs {
 		x := uint8((i + 1) * msg.GridW / (len(g.SlotIDs) + 1))
@@ -64,7 +64,7 @@ func (g Simulation) Start(uint64) State {
 }
 
 // ActingSlots reports the living slots (unused in realtime pacing).
-func (g Simulation) ActingSlots(s *State) []session.SlotID {
+func (g RuleSet) ActingSlots(s *State) []session.SlotID {
 	if s.Over {
 		return nil
 	}
@@ -78,7 +78,7 @@ func (g Simulation) ActingSlots(s *State) []session.SlotID {
 }
 
 // Apply turns the (already validated) cycle.
-func (Simulation) Apply(s *State, slot session.SlotID, in Input) {
+func (RuleSet) Apply(s *State, slot session.SlotID, in Input) {
 	if p := player(s, slot); p != nil && p.Alive {
 		p.Dir = in.Dir
 	}
@@ -87,7 +87,7 @@ func (Simulation) Apply(s *State, slot session.SlotID, in Input) {
 // Advance moves every living cycle one cell in slot order, growing trails
 // and resolving crashes (rule:deterministic-tick-commit's stable order is
 // what makes sequential resolution reproducible).
-func (Simulation) Advance(s *State) {
+func (RuleSet) Advance(s *State) {
 	if s.Over {
 		return
 	}
@@ -121,13 +121,13 @@ func (Simulation) Advance(s *State) {
 }
 
 // Project builds a slot's observation.
-func (g Simulation) Project(s *State, slot session.SlotID) Observation {
+func (g RuleSet) Project(s *State, slot session.SlotID) Observation {
 	return Observation{You: slot, State: *s, Signal: g.Evaluate(s, slot)}
 }
 
 // Evaluate: score is survival ticks; terminal win for the sole survivor,
 // draw for mutual crashes and timeouts, lose otherwise.
-func (Simulation) Evaluate(s *State, slot session.SlotID) session.EvaluationSignal {
+func (RuleSet) Evaluate(s *State, slot session.SlotID) session.EvaluationSignal {
 	p := player(s, slot)
 	if p == nil {
 		return session.EvaluationSignal{}

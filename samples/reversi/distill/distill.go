@@ -142,7 +142,7 @@ func Corpus(n int) ([]behavior.Record, error) {
 		)
 		s, err := session.New(session.Config[reversi.State, reversi.Move, reversi.Observation]{
 			ID: fmt.Sprintf("reversi-%03d", i), Slots: reversi.Slots(),
-			Simulation: reversi.Simulation{}, Validator: reversi.Validator{},
+			RuleSet: reversi.RuleSet{}, Validator: reversi.Validator{},
 			Recorder: w, Seed: uint64(i)*2654435761 + 1,
 			Clock: func() int64 { return 0 },
 		})

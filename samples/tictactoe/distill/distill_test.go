@@ -183,7 +183,7 @@ func TestDistilledAgentPassesAutomatedPlaytest(t *testing.T) {
 	play := func(makeX func() session.Agent[ttt.Observation, ttt.Move]) func(int, uint64) (matchloop.Result, error) {
 		return func(match int, seed uint64) (matchloop.Result, error) {
 			s, err := session.New(session.Config[ttt.State, ttt.Move, ttt.Observation]{
-				ID: "playtest", Slots: ttt.Slots(), Simulation: ttt.Simulation{}, Validator: ttt.Validator{},
+				ID: "playtest", Slots: ttt.Slots(), RuleSet: ttt.RuleSet{}, Validator: ttt.Validator{},
 				Seed: seed, Clock: func() int64 { return 0 },
 			})
 			if err != nil {
@@ -278,7 +278,7 @@ func TestLoadoutAssemblesADifferentPersonality(t *testing.T) {
 	// The loadout agent completes real matches.
 	sum, err := matchloop.Run(10, 77, func(match int, seed uint64) (matchloop.Result, error) {
 		s, err := session.New(session.Config[ttt.State, ttt.Move, ttt.Observation]{
-			ID: "loadout", Slots: ttt.Slots(), Simulation: ttt.Simulation{}, Validator: ttt.Validator{},
+			ID: "loadout", Slots: ttt.Slots(), RuleSet: ttt.RuleSet{}, Validator: ttt.Validator{},
 			Seed: seed, Clock: func() int64 { return 0 },
 		})
 		if err != nil {

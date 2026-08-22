@@ -93,7 +93,7 @@ func TestCorpusCarriesBothOutcomes(t *testing.T) {
 // Distilling a mixed corpus of identical behaviors would produce one
 // policy and hide that the kinds never differed.
 func TestEnemiesDisagree(t *testing.T) {
-	g := game.Simulation{}
+	g := game.RuleSet{}
 	state := g.Start(3)
 	_, chaser := game.NewAgent(game.Enemy1)
 	_, flanker := game.NewAgent(game.Enemy2)
@@ -124,7 +124,7 @@ func TestEnemiesDisagree(t *testing.T) {
 // broken or lying, and either way the session counts the rejection
 // instead of applying it.
 func TestValidatorRejectsUndefinedDirection(t *testing.T) {
-	state := game.Simulation{}.Start(1)
+	state := game.RuleSet{}.Start(1)
 	v := game.Validator{}
 	if err := v.Legal(&state, game.Player, game.Action{Move: game.Up}); err != nil {
 		t.Fatalf("a legal move was rejected: %v", err)

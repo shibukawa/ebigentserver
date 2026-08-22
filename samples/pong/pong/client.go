@@ -36,7 +36,7 @@ func (c *Client) Run(ctx context.Context, wg *sync.WaitGroup) {
 	if err != nil {
 		panic(err) // static misconfiguration, not a runtime condition
 	}
-	var sim Simulation
+	var sim RuleSet
 	for {
 		select {
 		case <-ctx.Done():

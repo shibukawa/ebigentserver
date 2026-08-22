@@ -40,17 +40,17 @@ type Observation struct {
 	Annotation session.VisibilityAnnotation
 }
 
-// Simulation implements session.TickSimulation.
-type Simulation struct {
+// RuleSet implements session.TickStageRuleSet.
+type RuleSet struct {
 	Players   int
 	TickLimit uint32
 }
 
-var _ session.TickSimulation[State, Input, Observation] = Simulation{}
+var _ session.TickStageRuleSet[State, Input, Observation] = RuleSet{}
 
 // Start deploys each player's army in its own corner block,
 // deterministically from the seed (jittered formation).
-func (g Simulation) Start(seed uint64) State {
+func (g RuleSet) Start(seed uint64) State {
 	rng := fixmath.NewRand(seed | 1)
 	s := State{TickLimit: g.TickLimit}
 	if s.TickLimit == 0 {
@@ -75,7 +75,7 @@ func (g Simulation) Start(seed uint64) State {
 }
 
 // ActingSlots reports players with an army (step-paced use only).
-func (g Simulation) ActingSlots(s *State) []session.SlotID {
+func (g RuleSet) ActingSlots(s *State) []session.SlotID {
 	if s.Over {
 		return nil
 	}
@@ -83,7 +83,7 @@ func (g Simulation) ActingSlots(s *State) []session.SlotID {
 }
 
 // Apply books one validated order: the unit's standing move target.
-func (Simulation) Apply(s *State, slot session.SlotID, in Input) {
+func (RuleSet) Apply(s *State, slot session.SlotID, in Input) {
 	for i := range s.Units {
 		u := &s.Units[i]
 		if u.ID == in.Unit && u.Alive {
@@ -96,7 +96,7 @@ func (Simulation) Apply(s *State, slot session.SlotID, in Input) {
 // Advance moves every unit one step toward its target and resolves
 // combat, in unit-id order — deterministic because ids are
 // owner-namespaced and stable.
-func (Simulation) Advance(s *State) {
+func (RuleSet) Advance(s *State) {
 	if s.Over {
 		return
 	}
@@ -214,7 +214,7 @@ func ProjectPlayer(s *State, slot session.SlotID) msg.PlayerView {
 }
 
 // Project builds the session observation.
-func (g Simulation) Project(s *State, slot session.SlotID) Observation {
+func (g RuleSet) Project(s *State, slot session.SlotID) Observation {
 	v := ProjectPlayer(s, slot)
 	return Observation{
 		You: slot, View: &v, Signal: g.Evaluate(s, slot),
@@ -242,7 +242,7 @@ func Annotation(v *msg.PlayerView) session.VisibilityAnnotation {
 
 // Evaluate is scoped to view-visible facts: army sizes are announced in
 // this game, positions are not (rule:evaluation-respects-visibility-scope).
-func (g Simulation) Evaluate(s *State, slot session.SlotID) session.EvaluationSignal {
+func (g RuleSet) Evaluate(s *State, slot session.SlotID) session.EvaluationSignal {
 	own, enemies := 0, 0
 	for _, u := range s.Units {
 		if !u.Alive {

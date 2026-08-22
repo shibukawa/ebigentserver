@@ -1,9 +1,9 @@
 ---
 id: decision:simulation-not-game
 type: decision
-title: The Game Side Contract Is Named Simulation
+title: The Game Side Contract Is Not Named Game
 ---
-api:simulation-interface is named Simulation, not Game, because a client entry point already links a Game.
+api:stage-rule-set carries any name but Game, because a client entry point already links one.
 
 ```yaml
 problem: >
@@ -11,10 +11,14 @@ problem: >
   Layout. A client entry links both it and the framework contract, so two
   unrelated interfaces named Game meet in one file, and neither name says
   which one advances the world.
-choice: Simulation for the contract and for the type a game declares to implement it
+choice: StageRuleSet for the contract and RuleSet for the type a game declares to implement it, per the stage level of concept:configuration-scope
 also_renamed:
-  - TickGame becomes TickSimulation, the realtime extension adding advance
-  - the session Config field becomes Simulation
+  - TickGame becomes TickStageRuleSet, the realtime extension adding advance
+  - the session Config field becomes RuleSet
+earlier_name: >
+  the contract was called Simulation before the four levels of
+  concept:configuration-scope were settled. Stage rule set says the same
+  thing and says which level owns it.
 displaced_meaning: >
   simulation already named the headless run mode, which is now
   concept:training-mode and concept:training-farm. That word moved because

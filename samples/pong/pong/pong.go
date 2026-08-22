@@ -54,14 +54,14 @@ type Observation struct {
 	Signal session.EvaluationSignal
 }
 
-// Simulation implements session.TickSimulation. The zero value is ready to use.
-type Simulation struct{}
+// RuleSet implements session.TickStageRuleSet. The zero value is ready to use.
+type RuleSet struct{}
 
-var _ session.TickSimulation[State, Input, Observation] = Simulation{}
+var _ session.TickStageRuleSet[State, Input, Observation] = RuleSet{}
 
 // Start serves the first ball to the right; the shared seed is unused —
 // pong's serve pattern is score-driven, not random.
-func (Simulation) Start(uint64) State {
+func (RuleSet) Start(uint64) State {
 	s := State{}
 	center(&s, true)
 	s.LeftY = msg.Fixed1024FromF64(height.Div(fixmath.FromInt32(2)))
@@ -71,7 +71,7 @@ func (Simulation) Start(uint64) State {
 
 // ActingSlots is unused in realtime pacing; it reports the open slots so
 // the step-paced loop would not spin.
-func (Simulation) ActingSlots(s *State) []session.SlotID {
+func (RuleSet) ActingSlots(s *State) []session.SlotID {
 	if s.Over {
 		return nil
 	}
@@ -79,7 +79,7 @@ func (Simulation) ActingSlots(s *State) []session.SlotID {
 }
 
 // Apply moves the slot's paddle by one validated input.
-func (Simulation) Apply(s *State, slot session.SlotID, in Input) {
+func (RuleSet) Apply(s *State, slot session.SlotID, in Input) {
 	step := paddleStep.Mul(fixmath.FromInt32(int32(in.MoveY)))
 	lo, hi := paddleHalf, height.Sub(paddleHalf)
 	if slot == SlotLeft {
@@ -90,7 +90,7 @@ func (Simulation) Apply(s *State, slot session.SlotID, in Input) {
 }
 
 // Advance runs one tick of authoritative physics in fixed point.
-func (Simulation) Advance(s *State) {
+func (RuleSet) Advance(s *State) {
 	if s.Over {
 		return
 	}
@@ -141,12 +141,12 @@ func (Simulation) Advance(s *State) {
 }
 
 // Project builds a slot's observation (global visibility).
-func (g Simulation) Project(s *State, slot session.SlotID) Observation {
+func (g RuleSet) Project(s *State, slot session.SlotID) Observation {
 	return Observation{You: slot, State: *s, Signal: g.Evaluate(s, slot)}
 }
 
 // Evaluate computes the slot's data:evaluation-signal.
-func (Simulation) Evaluate(s *State, slot session.SlotID) session.EvaluationSignal {
+func (RuleSet) Evaluate(s *State, slot session.SlotID) session.EvaluationSignal {
 	own, opp := int64(s.ScoreL), int64(s.ScoreR)
 	if slot == SlotRight {
 		own, opp = opp, own

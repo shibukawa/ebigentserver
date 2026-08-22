@@ -113,7 +113,7 @@ func Corpus(n int) ([]behavior.Record, error) {
 		)
 		s, err := session.New(session.Config[ttt.State, ttt.Move, ttt.Observation]{
 			ID: fmt.Sprintf("ttt-%03d", i), Slots: ttt.Slots(),
-			Simulation: ttt.Simulation{}, Validator: ttt.Validator{},
+			RuleSet: ttt.RuleSet{}, Validator: ttt.Validator{},
 			Recorder: w, Seed: uint64(i)*2654435761 + 1,
 			Clock: func() int64 { return 0 },
 		})
@@ -242,7 +242,7 @@ func ExportCorpus(root string, n int) ([]behavior.Record, error) {
 func playMatch(i int, w *episode.Writer[ttt.State, ttt.Move, ttt.Observation]) error {
 	s, err := session.New(session.Config[ttt.State, ttt.Move, ttt.Observation]{
 		ID: fmt.Sprintf("ttt-%03d", i), Slots: ttt.Slots(),
-		Simulation: ttt.Simulation{}, Validator: ttt.Validator{},
+		RuleSet: ttt.RuleSet{}, Validator: ttt.Validator{},
 		Recorder: w, Seed: uint64(i)*2654435761 + 1,
 		Clock: func() int64 { return 0 },
 	})

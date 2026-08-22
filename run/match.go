@@ -34,7 +34,7 @@ type driver[S, A, O any] struct {
 	slot  session.SlotID
 	agent session.Agent[O, A]
 	inbox *session.Inbox[A]
-	game  session.Simulation[S, A, O]
+	game  session.StageRuleSet[S, A, O]
 	ctx   context.Context
 }
 
@@ -81,7 +81,7 @@ func (r *Roster[S, A, O]) Finalize(cfg session.Config[S, A, O]) (*Match[S, A, O]
 		done:    make(chan struct{}),
 	}
 
-	game := cfg.Simulation
+	game := cfg.RuleSet
 	appBroadcast := cfg.Broadcast
 	cfg.Broadcast = func(tick session.Tick, world *S) {
 		// Local controllers decide against the world that just
@@ -126,7 +126,7 @@ func (r *Roster[S, A, O]) Finalize(cfg session.Config[S, A, O]) (*Match[S, A, O]
 			return nil, err
 		}
 		m.inboxes[seat.Slot] = inbox
-		if seat.Kind == LocalBot {
+		if seat.LocalBot() {
 			m.drivers = append(m.drivers, &driver[S, A, O]{
 				slot:  seat.Slot,
 				agent: agent,
@@ -162,7 +162,7 @@ func (m *Match[S, A, O]) Seats() []Seat { return slices.Clone(m.seats) }
 func (m *Match[S, A, O]) LocalSeats() []Seat {
 	out := make([]Seat, 0, len(m.seats))
 	for _, seat := range m.seats {
-		if seat.Kind == LocalHuman {
+		if seat.LocalHuman() {
 			out = append(out, seat)
 		}
 	}

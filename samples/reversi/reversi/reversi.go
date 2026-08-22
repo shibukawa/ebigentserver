@@ -79,12 +79,12 @@ type Observation struct {
 	Signal session.EvaluationSignal
 }
 
-// Simulation implements session.Simulation. The zero value is ready to use.
-type Simulation struct{}
+// RuleSet implements session.StageRuleSet. The zero value is ready to use.
+type RuleSet struct{}
 
 // Start deals the standard opening position; reversi is deterministic, so
 // the shared seed is unused.
-func (Simulation) Start(uint64) State {
+func (RuleSet) Start(uint64) State {
 	s := State{Next: SlotBlack}
 	s.Board[27], s.Board[36] = White, White // d4, e5
 	s.Board[28], s.Board[35] = Black, Black // e4, d5
@@ -93,7 +93,7 @@ func (Simulation) Start(uint64) State {
 
 // ActingSlots returns the slot to move: strict alternation with forced
 // passes represented as actions, so every step has exactly one decision.
-func (Simulation) ActingSlots(s *State) []session.SlotID {
+func (RuleSet) ActingSlots(s *State) []session.SlotID {
 	if s.Over {
 		return nil
 	}
@@ -101,7 +101,7 @@ func (Simulation) ActingSlots(s *State) []session.SlotID {
 }
 
 // Apply plays the (already validated) move.
-func (Simulation) Apply(s *State, slot session.SlotID, m Move) {
+func (RuleSet) Apply(s *State, slot session.SlotID, m Move) {
 	if m.Pass {
 		s.Passes++
 	} else {
@@ -123,7 +123,7 @@ func (Simulation) Apply(s *State, slot session.SlotID, m Move) {
 
 // Project builds a slot's observation, including the enumerated legal
 // moves when it is the slot's turn.
-func (g Simulation) Project(s *State, slot session.SlotID) Observation {
+func (g RuleSet) Project(s *State, slot session.SlotID) Observation {
 	obs := Observation{
 		You:      slot,
 		Disc:     disc(slot),
@@ -140,7 +140,7 @@ func (g Simulation) Project(s *State, slot session.SlotID) Observation {
 // Evaluate computes the slot's data:evaluation-signal: score is the
 // slot's disc count, evaluation the signed disc difference, progress the
 // board fill.
-func (Simulation) Evaluate(s *State, slot session.SlotID) session.EvaluationSignal {
+func (RuleSet) Evaluate(s *State, slot session.SlotID) session.EvaluationSignal {
 	own, opp := count(&s.Board, disc(slot)), count(&s.Board, disc(opponent(slot)))
 	sig := session.EvaluationSignal{
 		Score:      int64(own),

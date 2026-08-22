@@ -19,7 +19,7 @@
 {"category": "interface", "id": "api:run-wrapper", "path": ".knowledge/api/run-wrapper.md", "role": "primary", "title": "Run Wrapper", "type": "api"}
 {"category": "interface", "id": "api:runtime-observability", "path": ".knowledge/api/runtime-observability.md", "role": "primary", "title": "Runtime Observability", "type": "api"}
 {"category": "interface", "id": "api:sequence-ack-layer", "path": ".knowledge/api/sequence-ack-layer.md", "role": "primary", "title": "Sequence And Ack Layer", "type": "api"}
-{"category": "interface", "id": "api:simulation-interface", "path": ".knowledge/api/simulation-interface.md", "role": "primary", "title": "Simulation Interface", "type": "api"}
+{"category": "interface", "id": "api:stage-rule-set", "path": ".knowledge/api/stage-rule-set.md", "role": "primary", "title": "Stage Rule Set", "type": "api"}
 {"category": "interface", "id": "api:tick-hooks", "path": ".knowledge/api/tick-hooks.md", "role": "primary", "title": "Tick Hooks", "type": "api"}
 {"category": "interface", "id": "api:transport-interface", "path": ".knowledge/api/transport-interface.md", "role": "primary", "title": "Transport Interface", "type": "api"}
 {"category": "concept", "id": "concept:ack-transmission-policy", "path": ".knowledge/concept/ack-transmission-policy.md", "role": "supporting", "title": "Ack Transmission Policy", "type": "concept"}
@@ -35,6 +35,8 @@
 {"category": "concept", "id": "concept:cbor-wire-profile", "path": ".knowledge/concept/cbor-wire-profile.md", "role": "supporting", "title": "CBOR Wire Profile", "type": "concept"}
 {"category": "concept", "id": "concept:cbor-world-profile", "path": ".knowledge/concept/cbor-world-profile.md", "role": "supporting", "title": "CBOR World Profile", "type": "concept"}
 {"category": "concept", "id": "concept:client-prediction", "path": ".knowledge/concept/client-prediction.md", "role": "supporting", "title": "Client Prediction", "type": "concept"}
+{"category": "concept", "id": "concept:config-redundancy", "path": ".knowledge/concept/config-redundancy.md", "role": "supporting", "title": "Config Redundancy", "type": "concept"}
+{"category": "concept", "id": "concept:configuration-scope", "path": ".knowledge/concept/configuration-scope.md", "role": "supporting", "title": "Configuration Scope", "type": "concept"}
 {"category": "concept", "id": "concept:continuous-match-loop", "path": ".knowledge/concept/continuous-match-loop.md", "role": "supporting", "title": "Continuous Match Loop", "type": "concept"}
 {"category": "concept", "id": "concept:control-plane", "path": ".knowledge/concept/control-plane.md", "role": "supporting", "title": "Control Plane", "type": "concept"}
 {"category": "concept", "id": "concept:coverage-matrix", "path": ".knowledge/concept/coverage-matrix.md", "role": "supporting", "title": "Coverage Matrix", "type": "concept"}
@@ -78,16 +80,17 @@
 {"category": "structure", "id": "data:behavior-chip", "path": ".knowledge/data/behavior-chip.md", "role": "supporting", "title": "Behavior Chip", "type": "data"}
 {"category": "structure", "id": "data:behavior-tree", "path": ".knowledge/data/behavior-tree.md", "role": "supporting", "title": "Behavior Tree Artifact", "type": "data"}
 {"category": "structure", "id": "data:build-config", "path": ".knowledge/data/build-config.md", "role": "supporting", "title": "Build Config", "type": "data"}
+{"category": "structure", "id": "data:configuration-surface", "path": ".knowledge/data/configuration-surface.md", "role": "supporting", "title": "Configuration Surface", "type": "data"}
 {"category": "structure", "id": "data:decision-record", "path": ".knowledge/data/decision-record.md", "role": "supporting", "title": "Decision Record", "type": "data"}
 {"category": "structure", "id": "data:derived-predicate", "path": ".knowledge/data/derived-predicate.md", "role": "supporting", "title": "Derived Predicate", "type": "data"}
 {"category": "structure", "id": "data:episode-log", "path": ".knowledge/data/episode-log.md", "role": "supporting", "title": "Episode Log", "type": "data"}
 {"category": "structure", "id": "data:evaluation-signal", "path": ".knowledge/data/evaluation-signal.md", "role": "supporting", "title": "Evaluation Signal", "type": "data"}
 {"category": "structure", "id": "data:game-event", "path": ".knowledge/data/game-event.md", "role": "supporting", "title": "Game Event Message", "type": "data"}
+{"category": "structure", "id": "data:game-version", "path": ".knowledge/data/game-version.md", "role": "supporting", "title": "Game Version", "type": "data"}
 {"category": "structure", "id": "data:identity-token", "path": ".knowledge/data/identity-token.md", "role": "supporting", "title": "Identity Token", "type": "data"}
 {"category": "structure", "id": "data:player-input", "path": ".knowledge/data/player-input.md", "role": "supporting", "title": "Player Input Message", "type": "data"}
 {"category": "structure", "id": "data:presence-message", "path": ".knowledge/data/presence-message.md", "role": "supporting", "title": "Presence Message", "type": "data"}
 {"category": "structure", "id": "data:progress-report", "path": ".knowledge/data/progress-report.md", "role": "supporting", "title": "Progress Report", "type": "data"}
-{"category": "structure", "id": "data:protocol-version", "path": ".knowledge/data/protocol-version.md", "role": "supporting", "title": "Protocol Version ID", "type": "data"}
 {"category": "structure", "id": "data:run-config", "path": ".knowledge/data/run-config.md", "role": "supporting", "title": "Run Config", "type": "data"}
 {"category": "structure", "id": "data:runtime-resource-budget", "path": ".knowledge/data/runtime-resource-budget.md", "role": "supporting", "title": "Runtime Resource Budget", "type": "data"}
 {"category": "structure", "id": "data:session-ticket", "path": ".knowledge/data/session-ticket.md", "role": "supporting", "title": "Session Ticket", "type": "data"}
@@ -100,6 +103,7 @@
 {"category": "constraint", "id": "decision:ai-pipeline-always-scaffolded", "path": ".knowledge/decision/ai-pipeline-always-scaffolded.md", "role": "supporting", "title": "AI Pipeline Always Scaffolded", "type": "decision"}
 {"category": "constraint", "id": "decision:behavior-tree-compiled-to-go", "path": ".knowledge/decision/behavior-tree-compiled-to-go.md", "role": "supporting", "title": "Behavior Tree Compiled To Go", "type": "decision"}
 {"category": "constraint", "id": "decision:cbor-for-realtime-wire", "path": ".knowledge/decision/cbor-for-realtime-wire.md", "role": "supporting", "title": "CBOR For Realtime Wire Format", "type": "decision"}
+{"category": "constraint", "id": "decision:codec-set-per-stage", "path": ".knowledge/decision/codec-set-per-stage.md", "role": "supporting", "title": "Codec Set Per Stage", "type": "decision"}
 {"category": "constraint", "id": "decision:combined-local-dev-process", "path": ".knowledge/decision/combined-local-dev-process.md", "role": "supporting", "title": "Combined Local Development Process", "type": "decision"}
 {"category": "constraint", "id": "decision:configbind-for-all-config", "path": ".knowledge/decision/configbind-for-all-config.md", "role": "supporting", "title": "Configbind For All Config", "type": "decision"}
 {"category": "constraint", "id": "decision:control-plane-features-out-of-scope", "path": ".knowledge/decision/control-plane-features-out-of-scope.md", "role": "supporting", "title": "Control Plane Features Out Of Scope", "type": "decision"}
@@ -114,6 +118,7 @@
 {"category": "constraint", "id": "decision:input-timing-owned-by-sync-mode", "path": ".knowledge/decision/input-timing-owned-by-sync-mode.md", "role": "supporting", "title": "Input Timing Owned By Synchronization Mode", "type": "decision"}
 {"category": "constraint", "id": "decision:jwt-session-ticket", "path": ".knowledge/decision/jwt-session-ticket.md", "role": "supporting", "title": "JWT Encoded Session Ticket", "type": "decision"}
 {"category": "constraint", "id": "decision:mirror-popcornweb-dx", "path": ".knowledge/decision/mirror-popcornweb-dx.md", "role": "supporting", "title": "Mirror Popcorn Developer Experience", "type": "decision"}
+{"category": "constraint", "id": "decision:module-path-is-game-identity", "path": ".knowledge/decision/module-path-is-game-identity.md", "role": "supporting", "title": "Game Identity Pair", "type": "decision"}
 {"category": "constraint", "id": "decision:no-ai-game-mode", "path": ".knowledge/decision/no-ai-game-mode.md", "role": "supporting", "title": "No AI Branch In Game Rules", "type": "decision"}
 {"category": "constraint", "id": "decision:no-auth-on-lan", "path": ".knowledge/decision/no-auth-on-lan.md", "role": "supporting", "title": "No Authentication On LAN", "type": "decision"}
 {"category": "constraint", "id": "decision:no-framework-tuning-defaults", "path": ".knowledge/decision/no-framework-tuning-defaults.md", "role": "supporting", "title": "No Framework Tuning Defaults", "type": "decision"}
@@ -127,7 +132,7 @@
 {"category": "constraint", "id": "decision:separate-topology-from-synchronization", "path": ".knowledge/decision/separate-topology-from-synchronization.md", "role": "supporting", "title": "Separate Topology From Synchronization", "type": "decision"}
 {"category": "constraint", "id": "decision:shared-chip-library", "path": ".knowledge/decision/shared-chip-library.md", "role": "supporting", "title": "Shared Chip Library", "type": "decision"}
 {"category": "constraint", "id": "decision:shared-tree-with-level-gates", "path": ".knowledge/decision/shared-tree-with-level-gates.md", "role": "supporting", "title": "Shared Tree With Level Gates", "type": "decision"}
-{"category": "constraint", "id": "decision:simulation-not-game", "path": ".knowledge/decision/simulation-not-game.md", "role": "supporting", "title": "The Game Side Contract Is Named Simulation", "type": "decision"}
+{"category": "constraint", "id": "decision:simulation-not-game", "path": ".knowledge/decision/simulation-not-game.md", "role": "supporting", "title": "The Game Side Contract Is Not Named Game", "type": "decision"}
 {"category": "constraint", "id": "decision:single-dev-console-ui", "path": ".knowledge/decision/single-dev-console-ui.md", "role": "supporting", "title": "Single Dev Console UI", "type": "decision"}
 {"category": "constraint", "id": "decision:split-realtime-and-control-plane-processes", "path": ".knowledge/decision/split-realtime-and-control-plane-processes.md", "role": "supporting", "title": "Split Realtime And Control Plane Processes", "type": "decision"}
 {"category": "constraint", "id": "decision:vm-host-not-for-servers", "path": ".knowledge/decision/vm-host-not-for-servers.md", "role": "supporting", "title": "Engine Virtual Machine Host Not Used For Servers", "type": "decision"}
@@ -157,7 +162,10 @@
 {"category": "constraint", "id": "policy:realtime-abuse-protection", "path": ".knowledge/policy/realtime-abuse-protection.md", "role": "supporting", "title": "Realtime Abuse Protection", "type": "policy"}
 {"category": "objective", "id": "requirement:ai-autoplay-testing", "path": ".knowledge/requirement/ai-autoplay-testing.md", "role": "primary", "title": "AI Autoplay Testing", "type": "requirement"}
 {"category": "objective", "id": "requirement:behavior-learning-from-logs", "path": ".knowledge/requirement/behavior-learning-from-logs.md", "role": "primary", "title": "Behavior Learning From Play Logs", "type": "requirement"}
+{"category": "objective", "id": "requirement:cborbind-migration", "path": ".knowledge/requirement/cborbind-migration.md", "role": "primary", "title": "Cborbind Migration", "type": "requirement"}
 {"category": "objective", "id": "requirement:compact-binary-protocol", "path": ".knowledge/requirement/compact-binary-protocol.md", "role": "primary", "title": "Compact Binary Wire Protocol", "type": "requirement"}
+{"category": "objective", "id": "requirement:config-codegen", "path": ".knowledge/requirement/config-codegen.md", "role": "primary", "title": "Config Code Generation", "type": "requirement"}
+{"category": "objective", "id": "requirement:config-file-shape", "path": ".knowledge/requirement/config-file-shape.md", "role": "primary", "title": "Config File Shape", "type": "requirement"}
 {"category": "objective", "id": "requirement:control-plane-decoupling", "path": ".knowledge/requirement/control-plane-decoupling.md", "role": "primary", "title": "Control Plane Decoupling", "type": "requirement"}
 {"category": "objective", "id": "requirement:dedicated-game-toolchain", "path": ".knowledge/requirement/dedicated-game-toolchain.md", "role": "primary", "title": "Dedicated Game Toolchain", "type": "requirement"}
 {"category": "objective", "id": "requirement:dev-time-inspection", "path": ".knowledge/requirement/dev-time-inspection.md", "role": "primary", "title": "Development Time Inspection", "type": "requirement"}
@@ -165,12 +173,14 @@
 {"category": "objective", "id": "requirement:genre-agnostic-framework", "path": ".knowledge/requirement/genre-agnostic-framework.md", "role": "primary", "title": "Genre Agnostic Framework", "type": "requirement"}
 {"category": "objective", "id": "requirement:layered-configuration", "path": ".knowledge/requirement/layered-configuration.md", "role": "primary", "title": "Layered Configuration", "type": "requirement"}
 {"category": "objective", "id": "requirement:live-dev-loop", "path": ".knowledge/requirement/live-dev-loop.md", "role": "primary", "title": "Live Development Loop", "type": "requirement"}
+{"category": "objective", "id": "requirement:match-stage-vocabulary", "path": ".knowledge/requirement/match-stage-vocabulary.md", "role": "primary", "title": "Match And Stage Vocabulary", "type": "requirement"}
 {"category": "objective", "id": "requirement:multi-execution-mode", "path": ".knowledge/requirement/multi-execution-mode.md", "role": "primary", "title": "Multi Execution Mode Support", "type": "requirement"}
 {"category": "objective", "id": "requirement:native-and-wasm-targets", "path": ".knowledge/requirement/native-and-wasm-targets.md", "role": "primary", "title": "Native And WebAssembly Targets", "type": "requirement"}
 {"category": "objective", "id": "requirement:offline-simulation", "path": ".knowledge/requirement/offline-simulation.md", "role": "primary", "title": "Offline Simulation", "type": "requirement"}
 {"category": "objective", "id": "requirement:production-runtime-safety", "path": ".knowledge/requirement/production-runtime-safety.md", "role": "primary", "title": "Production Runtime Safety", "type": "requirement"}
 {"category": "objective", "id": "requirement:project-scaffolding", "path": ".knowledge/requirement/project-scaffolding.md", "role": "primary", "title": "Project Scaffolding", "type": "requirement"}
 {"category": "objective", "id": "requirement:replay-and-episode-recording", "path": ".knowledge/requirement/replay-and-episode-recording.md", "role": "primary", "title": "Replay And Episode Recording", "type": "requirement"}
+{"category": "objective", "id": "requirement:runtime-config-cleanup", "path": ".knowledge/requirement/runtime-config-cleanup.md", "role": "primary", "title": "Runtime Config Cleanup", "type": "requirement"}
 {"category": "objective", "id": "requirement:sample-suite-proves-capabilities", "path": ".knowledge/requirement/sample-suite-proves-capabilities.md", "role": "primary", "title": "Sample Suite Proves Capabilities", "type": "requirement"}
 {"category": "objective", "id": "requirement:selectable-synchronization", "path": ".knowledge/requirement/selectable-synchronization.md", "role": "primary", "title": "Selectable Synchronization", "type": "requirement"}
 {"category": "objective", "id": "requirement:token-based-identity", "path": ".knowledge/requirement/token-based-identity.md", "role": "primary", "title": "Token Based Identity", "type": "requirement"}
@@ -183,6 +193,7 @@
 {"category": "constraint", "id": "rule:build-tag-only-for-linkage", "path": ".knowledge/rule/build-tag-only-for-linkage.md", "role": "supporting", "title": "Build Tag Only For Linkage", "type": "rule"}
 {"category": "constraint", "id": "rule:codegen-rejects-nondeterministic-types", "path": ".knowledge/rule/codegen-rejects-nondeterministic-types.md", "role": "supporting", "title": "Codegen Rejects Nondeterministic Types", "type": "rule"}
 {"category": "constraint", "id": "rule:config-precedence-fixed", "path": ".knowledge/rule/config-precedence-fixed.md", "role": "supporting", "title": "Config Precedence Is Fixed", "type": "rule"}
+{"category": "constraint", "id": "rule:config-tier-placement", "path": ".knowledge/rule/config-tier-placement.md", "role": "supporting", "title": "Config Tier Placement", "type": "rule"}
 {"category": "constraint", "id": "rule:debug-endpoint-excluded-from-release", "path": ".knowledge/rule/debug-endpoint-excluded-from-release.md", "role": "supporting", "title": "Debug Endpoint Excluded From Release", "type": "rule"}
 {"category": "constraint", "id": "rule:delta-baseline-must-be-retained", "path": ".knowledge/rule/delta-baseline-must-be-retained.md", "role": "supporting", "title": "Delta Baseline Must Be Retained And Named", "type": "rule"}
 {"category": "constraint", "id": "rule:deterministic-simulation-required-for-rollback", "path": ".knowledge/rule/deterministic-simulation-required-for-rollback.md", "role": "supporting", "title": "Determinism Required For Input Synchronization", "type": "rule"}
@@ -191,6 +202,7 @@
 {"category": "constraint", "id": "rule:evaluation-computed-by-session", "path": ".knowledge/rule/evaluation-computed-by-session.md", "role": "supporting", "title": "Evaluation Computed By The Session", "type": "rule"}
 {"category": "constraint", "id": "rule:evaluation-respects-visibility-scope", "path": ".knowledge/rule/evaluation-respects-visibility-scope.md", "role": "supporting", "title": "Evaluation Respects Visibility Scope", "type": "rule"}
 {"category": "constraint", "id": "rule:fixed-point-on-wire", "path": ".knowledge/rule/fixed-point-on-wire.md", "role": "supporting", "title": "Fixed Point On Wire", "type": "rule"}
+{"category": "constraint", "id": "rule:game-version-must-match", "path": ".knowledge/rule/game-version-must-match.md", "role": "supporting", "title": "Game Version Must Match Exactly", "type": "rule"}
 {"category": "constraint", "id": "rule:generated-agent-code-is-deterministic", "path": ".knowledge/rule/generated-agent-code-is-deterministic.md", "role": "supporting", "title": "Generated Agent Code Is Deterministic", "type": "rule"}
 {"category": "constraint", "id": "rule:generated-behavior-requires-approval", "path": ".knowledge/rule/generated-behavior-requires-approval.md", "role": "supporting", "title": "Generated Behavior Requires Approval", "type": "rule"}
 {"category": "constraint", "id": "rule:identity-token-not-accepted-by-session", "path": ".knowledge/rule/identity-token-not-accepted-by-session.md", "role": "supporting", "title": "Identity Token Not Accepted By Session", "type": "rule"}
@@ -204,7 +216,6 @@
 {"category": "constraint", "id": "rule:presence-excluded-from-simulation-and-analysis", "path": ".knowledge/rule/presence-excluded-from-simulation-and-analysis.md", "role": "supporting", "title": "Presence Excluded From Simulation And Analysis", "type": "rule"}
 {"category": "constraint", "id": "rule:presence-superseded-not-retransmitted", "path": ".knowledge/rule/presence-superseded-not-retransmitted.md", "role": "supporting", "title": "Presence Is Superseded Not Retransmitted", "type": "rule"}
 {"category": "constraint", "id": "rule:profile-selection-by-message-kind", "path": ".knowledge/rule/profile-selection-by-message-kind.md", "role": "supporting", "title": "Encoding Profile Selection By Message Kind", "type": "rule"}
-{"category": "constraint", "id": "rule:protocol-version-must-match", "path": ".knowledge/rule/protocol-version-must-match.md", "role": "supporting", "title": "Protocol Version Must Match Exactly", "type": "rule"}
 {"category": "constraint", "id": "rule:regeneration-preserves-approved-nodes", "path": ".knowledge/rule/regeneration-preserves-approved-nodes.md", "role": "supporting", "title": "Regeneration Preserves Approved Nodes", "type": "rule"}
 {"category": "constraint", "id": "rule:sample-adds-one-capability", "path": ".knowledge/rule/sample-adds-one-capability.md", "role": "supporting", "title": "Sample Adds One Capability", "type": "rule"}
 {"category": "constraint", "id": "rule:server-hooks-avoid-rendering-work", "path": ".knowledge/rule/server-hooks-avoid-rendering-work.md", "role": "supporting", "title": "Server Hooks Avoid Rendering Work", "type": "rule"}

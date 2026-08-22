@@ -193,7 +193,7 @@ func Connect(ctx context.Context, conn transport.Conn, ticket string, tuning ses
 // Decide → input datagram. Acks flush per the declared policy so a
 // silent agent still confirms baselines.
 func (c *NetClient) Run(ctx context.Context, agent session.Agent[Observation, Input]) error {
-	var sim Simulation
+	var sim RuleSet
 	agent.Joined(c.Slot)
 	for {
 		m, err := c.conn.Receive(ctx)

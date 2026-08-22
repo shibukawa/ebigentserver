@@ -7,7 +7,19 @@ Mutable list of who will play, filled before a concept:session exists and frozen
 
 ```yaml
 holds: one entry per prospective concept:player-slot, carrying seat id, controller kind, and identity
-controller_kinds: local human, remote human, local bot, remote bot, matching concept:participant-shape
+seat_state: empty, human, or bot — the three a roster distinguishes
+local_and_remote_are_results: >
+  whether a human or a bot sits locally or across a link follows from
+  concept:execution-topology and from which process took the host part, so it
+  is reported rather than declared. A declaration says bot; where the bot runs
+  is not its business.
+where_a_bot_runs: the process holding the host part, or the dedicated server when there is one
+seat_composition_is_declared_at_build: >
+  how many seats, how they divide into teams, whether a seat admits a human, a
+  bot, or either, and whether an empty seat is refused or filled with a bot —
+  all of it is the game's contract and fixed at build in the protocol level of
+  concept:configuration-scope. A roster fills the seats it was given; it never
+  invents one.
 local_operations:
   - join a local seat from a device press, bounded by the accepted devices of api:run-wrapper
   - add a bot seat

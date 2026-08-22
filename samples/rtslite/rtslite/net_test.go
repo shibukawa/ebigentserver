@@ -54,8 +54,8 @@ func TestHybridExchangeOverTheWire(t *testing.T) {
 	}
 	s, err = session.New(session.Config[rtslite.State, rtslite.Input, rtslite.Observation]{
 		ID: "rts-1", Slots: rtslite.Slots(2),
-		Simulation: rtslite.Simulation{Players: 2, TickLimit: 3600},
-		Validator:  rtslite.Validator{}, Canonical: rtslite.Canonical,
+		RuleSet:   rtslite.RuleSet{Players: 2, TickLimit: 3600},
+		Validator: rtslite.Validator{}, Canonical: rtslite.Canonical,
 		Tuning: &tuning, Seed: 9, Broadcast: server.Broadcast,
 	})
 	if err != nil {

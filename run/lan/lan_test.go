@@ -50,7 +50,7 @@ type Delta struct{ To State }
 
 type rules struct{}
 
-var _ session.TickSimulation[State, Action, Observation] = rules{}
+var _ session.TickStageRuleSet[State, Action, Observation] = rules{}
 
 func (rules) Start(uint64) State                  { return State{} }
 func (rules) ActingSlots(*State) []session.SlotID { return []session.SlotID{slotHost, slotGuest} }
@@ -264,17 +264,17 @@ func TestTwoInstancesPlayOverTheLink(t *testing.T) {
 		time.Sleep(10 * time.Millisecond)
 	}
 	seats := roster.Seats()
-	if seats[1].Kind != run.RemoteHuman {
-		t.Fatalf("seat 2 kind = %v, want RemoteHuman", seats[1].Kind)
+	if seats[1].Kind != run.Human || seats[1].Local {
+		t.Fatalf("seat 2 is %v (local=%v), want a human across the link", seats[1].Kind, seats[1].Local)
 	}
 
 	tune := tuning()
 	cfg := session.Config[State, Action, Observation]{
-		ID:         "lan-test-0000",
-		Slots:      []session.SlotID{slotHost, slotGuest},
-		Simulation: rules{},
-		Tuning:     &tune,
-		Seed:       7,
+		ID:      "lan-test-0000",
+		Slots:   []session.SlotID{slotHost, slotGuest},
+		RuleSet: rules{},
+		Tuning:  &tune,
+		Seed:    7,
 	}
 	host.Attach(&cfg)
 
@@ -625,7 +625,7 @@ func TestGuestLearnsTheMatchEnded(t *testing.T) {
 	tune := tuning()
 	cfg := session.Config[State, Action, Observation]{
 		ID: "lan-end", Slots: []session.SlotID{slotHost, slotGuest},
-		Simulation: rules{}, Tuning: &tune, Seed: 7,
+		RuleSet: rules{}, Tuning: &tune, Seed: 7,
 	}
 	host.Attach(&cfg)
 	match, err := roster.Finalize(cfg)

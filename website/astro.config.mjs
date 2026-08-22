@@ -36,6 +36,12 @@ export default defineConfig({
 					],
 				},
 				{
+					label: 'アーキテクチャ',
+					items: [
+						{ label: '用語の整理', slug: 'architecture/terms' },
+					],
+				},
+				{
 					label: '接続方法',
 					items: [
 						{ label: '接続の選び方', slug: 'connection' },

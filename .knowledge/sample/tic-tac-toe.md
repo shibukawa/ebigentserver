@@ -15,7 +15,7 @@ exercises:
   - concept:player-slot and seat assignment
   - flow:session-admission end to end
   - api:agent-interface in blocking step pacing
-  - data:protocol-version handshake
+  - data:game-version handshake
 ai: trivial bot, present only to prove decision:no-ai-game-mode from the first sample
 deliberately_absent: ticks, deltas, partial visibility, unreliable transport
 ```

@@ -7,7 +7,7 @@ Composed host and guest calls that let two instances of one binary find each oth
 
 ```yaml
 composes: api:lan-discovery for finding, flow:session-admission for seating, api:transport-interface over system:websocket for carrying, concept:state-synchronization for the downstream
-game_supplies: data:protocol-version, the generated codec of concept:cbor-world-profile, an input encoder pair, and the projection; this preset encodes nothing itself
+game_supplies: data:game-version, the generated codec of concept:cbor-world-profile, an input encoder pair, and the projection; this preset encodes nothing itself
 host_operations:
   - open: listen, mint from a key generated at startup, and announce
   - attach: install the downstream hook into the session config before concept:session exists

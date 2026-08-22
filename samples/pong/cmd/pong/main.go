@@ -42,13 +42,13 @@ func main() {
 	}
 
 	cfg := session.Config[pong.State, pong.Input, pong.Observation]{
-		ID:         "pong-cli",
-		Slots:      pong.Slots(),
-		Simulation: pong.Simulation{},
-		Validator:  pong.Validator{},
-		Canonical:  pong.Canonical,
-		Tuning:     &tuning,
-		Broadcast:  hub.Broadcast,
+		ID:        "pong-cli",
+		Slots:     pong.Slots(),
+		RuleSet:   pong.RuleSet{},
+		Validator: pong.Validator{},
+		Canonical: pong.Canonical,
+		Tuning:    &tuning,
+		Broadcast: hub.Broadcast,
 	}
 	if *record != "" {
 		streams, closeAll, err := openStreams(*record)

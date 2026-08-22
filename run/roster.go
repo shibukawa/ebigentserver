@@ -104,12 +104,15 @@ func (r *Roster[S, A, O]) notify(seats []Seat) {
 // agent is the controller for a bot seat. A human seat passes nil: its
 // actions arrive through the slot's inbox, which is the same path a
 // remote peer uses, so the session sees session.Detached either way.
-func (r *Roster[S, A, O]) Take(slot session.SlotID, kind SeatKind, id string, agent session.Agent[O, A]) error {
+// local says the occupant decides inside this process. It is the one
+// thing a caller knows that the roster cannot work out for itself, and it
+// is reported on the seat rather than folded into the kind.
+func (r *Roster[S, A, O]) Take(slot session.SlotID, kind SeatKind, local bool, id string, agent session.Agent[O, A]) error {
 	if kind == Empty {
 		return fmt.Errorf("run: cannot take slot %d as %v", slot, kind)
 	}
-	if (kind == LocalBot || kind == RemoteBot) && agent == nil {
-		return fmt.Errorf("run: %v seat %d needs an agent", kind, slot)
+	if kind == Bot && local && agent == nil {
+		return fmt.Errorf("run: local %v seat %d needs an agent", kind, slot)
 	}
 	r.mu.Lock()
 	seat, ok := r.seats[slot]
@@ -121,11 +124,11 @@ func (r *Roster[S, A, O]) Take(slot session.SlotID, kind SeatKind, id string, ag
 		r.mu.Unlock()
 		return fmt.Errorf("%w: %d held by %v", ErrSeatTaken, slot, seat.Kind)
 	}
-	if kind == LocalHuman && r.localHumans() >= r.opts.localSeatLimit() {
+	if kind == Human && local && r.localHumans() >= r.opts.localSeatLimit() {
 		r.mu.Unlock()
 		return fmt.Errorf("%w: %d local seats", ErrLocalSeatLimit, r.opts.localSeatLimit())
 	}
-	r.seats[slot] = Seat{Slot: slot, Kind: kind, ID: id}
+	r.seats[slot] = Seat{Slot: slot, Kind: kind, Local: local, ID: id}
 	if agent != nil {
 		r.agents[slot] = agent
 	}
@@ -144,7 +147,7 @@ func (r *Roster[S, A, O]) Take(slot session.SlotID, kind SeatKind, id string, ag
 func (r *Roster[S, A, O]) localHumans() int {
 	n := 0
 	for _, seat := range r.seats {
-		if seat.Kind == LocalHuman {
+		if seat.LocalHuman() {
 			n++
 		}
 	}
@@ -154,13 +157,13 @@ func (r *Roster[S, A, O]) localHumans() int {
 // JoinLocal seats a person at this machine in the lowest free slot — what
 // a start button, a click, or a key press does in ui:lobby-scene.
 func (r *Roster[S, A, O]) JoinLocal(id string) (session.SlotID, error) {
-	return r.joinFree(LocalHuman, id, nil)
+	return r.joinFree(Human, true, id, nil)
 }
 
 // JoinRemote seats a person arriving over a link. flow:session-admission
 // calls it after the ticket verifies; no screen is involved.
 func (r *Roster[S, A, O]) JoinRemote(slot session.SlotID, id string) error {
-	return r.Take(slot, RemoteHuman, id, nil)
+	return r.Take(slot, Human, false, id, nil)
 }
 
 // AddBot seats a controller in the lowest free slot. The enemies of a
@@ -168,11 +171,11 @@ func (r *Roster[S, A, O]) JoinRemote(slot session.SlotID, id string) error {
 // player left behind are all this call (concept:agent-proxy-designation:
 // takeover needs no mechanism beyond seating an agent).
 func (r *Roster[S, A, O]) AddBot(id string, agent session.Agent[O, A]) (session.SlotID, error) {
-	return r.joinFree(LocalBot, id, agent)
+	return r.joinFree(Bot, true, id, agent)
 }
 
 // joinFree claims the lowest free slot.
-func (r *Roster[S, A, O]) joinFree(kind SeatKind, id string, agent session.Agent[O, A]) (session.SlotID, error) {
+func (r *Roster[S, A, O]) joinFree(kind SeatKind, local bool, id string, agent session.Agent[O, A]) (session.SlotID, error) {
 	r.mu.Lock()
 	var target session.SlotID
 	found := false
@@ -186,7 +189,7 @@ func (r *Roster[S, A, O]) joinFree(kind SeatKind, id string, agent session.Agent
 	if !found {
 		return 0, ErrNoFreeSeat
 	}
-	if err := r.Take(target, kind, id, agent); err != nil {
+	if err := r.Take(target, kind, local, id, agent); err != nil {
 		return 0, err
 	}
 	return target, nil
@@ -230,7 +233,7 @@ func (r *Roster[S, A, O]) AgentKinds() map[session.SlotID]string {
 	defer r.mu.Unlock()
 	out := make(map[session.SlotID]string, len(r.seats))
 	for slot, seat := range r.seats {
-		out[slot] = seat.Kind.AgentKind()
+		out[slot] = seat.AgentKind()
 	}
 	return out
 }
@@ -278,7 +281,7 @@ func (r *Roster[S, A, O]) FillBots(newAgent func(slot session.SlotID) (id string
 			continue
 		}
 		id, agent := newAgent(slot)
-		if err := r.Take(slot, LocalBot, id, agent); err != nil {
+		if err := r.Take(slot, Bot, true, id, agent); err != nil {
 			return err
 		}
 	}

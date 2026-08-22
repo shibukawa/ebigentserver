@@ -9,6 +9,6 @@ Deterministic message payloads carry integers only; float is rejected in concept
 allowed: sized integers with declared scale, bool, bytes, string, nested array
 forbidden: float, unscaled real numbers
 scale_source: schema declaration, not runtime negotiation
-mismatch: scale change is a protocol change, see rule:protocol-version-must-match
+mismatch: scale change is a protocol change, see rule:game-version-must-match
 decision: decision:fixed-point-numeric-representation
 ```

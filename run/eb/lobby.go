@@ -263,7 +263,7 @@ func (l *Lobby[S, A, O]) canJoin() bool {
 	local := 0
 	free := false
 	for _, seat := range l.roster.Seats() {
-		if seat.Kind == run.LocalHuman {
+		if seat.LocalHuman() {
 			local++
 		}
 		if !seat.Filled() {
@@ -416,7 +416,7 @@ func (l *Lobby[S, A, O]) previous() string {
 		return ""
 	}
 	for _, seat := range last.Seats {
-		if seat.Kind != run.LocalHuman {
+		if !seat.LocalHuman() {
 			continue
 		}
 		if sig, ok := last.Outcome(seat.Slot); ok {

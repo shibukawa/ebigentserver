@@ -88,7 +88,7 @@ func network() run.Networking[game.State, game.Action, game.Observation] {
 		Tuning:      game.Tuning(),
 		EncodeInput: game.EncodeAction,
 		DecodeInput: game.DecodeAction,
-		Project:     game.Simulation{}.Project,
+		Project:     game.RuleSet{}.Project,
 	})
 }
 

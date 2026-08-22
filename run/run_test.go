@@ -84,12 +84,12 @@ func (*stepper) Ended(session.Result)                    {}
 func config(id string, seed uint64) session.Config[state, action, observation] {
 	tuning := session.TuningProfile{TickRate: 60, SendRate: 60, HistoryDepth: 1}
 	return session.Config[state, action, observation]{
-		ID:         id,
-		Slots:      []session.SlotID{1, 2},
-		Simulation: rules{},
-		Seed:       seed,
-		Tuning:     &tuning,
-		Canonical:  func(s *state) []byte { b, _ := json.Marshal(s); return b },
+		ID:        id,
+		Slots:     []session.SlotID{1, 2},
+		RuleSet:   rules{},
+		Seed:      seed,
+		Tuning:    &tuning,
+		Canonical: func(s *state) []byte { b, _ := json.Marshal(s); return b },
 	}
 }
 
@@ -138,7 +138,7 @@ func TestSeatingRules(t *testing.T) {
 	if err := r.JoinRemote(1, "someone"); err == nil {
 		t.Error("an occupied seat was taken again")
 	}
-	if err := r.Take(2, run.LocalBot, "no agent", nil); err == nil {
+	if err := r.Take(2, run.Bot, true, "no agent", nil); err == nil {
 		t.Error("a bot seat was accepted without a controller")
 	}
 	if err := r.JoinRemote(9, "elsewhere"); err == nil {
@@ -245,8 +245,8 @@ func TestLocalHumanSeatTakesInputFromSubmit(t *testing.T) {
 	if err := r.FillBots(newAgent); err != nil {
 		t.Fatal(err)
 	}
-	if seats := r.Seats(); seats[0].Kind != run.LocalHuman {
-		t.Fatalf("the joined seat is %v", seats[0].Kind)
+	if seats := r.Seats(); !seats[0].LocalHuman() {
+		t.Fatalf("the joined seat is %v (local=%v)", seats[0].Kind, seats[0].Local)
 	}
 
 	cfg := config("submitting", 1)

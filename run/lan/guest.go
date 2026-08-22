@@ -69,7 +69,7 @@ func (l *local[S, A, D, O]) Ended(session.Result) {}
 // the seat grant, so a guest can draw and take input while the handshake
 // is still waiting on the host.
 func (g *Guest[S, A, D, O]) LocalSeats() []run.Seat {
-	return []run.Seat{{Slot: g.seat, Kind: run.LocalHuman, ID: "you", Ready: true}}
+	return []run.Seat{{Slot: g.seat, Kind: run.Human, Local: true, ID: "you", Ready: true}}
 }
 
 // Submit hands this frame's action to the link.

@@ -8,13 +8,13 @@ import (
 	"time"
 )
 
-// TickSimulation extends Simulation with a per-tick simulation step for realtime play
+// TickStageRuleSet extends StageRuleSet with a per-tick step for realtime play
 // (decision:dual-mode-agent-pacing, realtime_nonblocking). Apply consumes
 // validated player inputs; Advance then moves the authoritative world one
 // tick forward. ActingSlots is not consulted in realtime pacing — every
 // slot may submit every tick and a silent slot simply contributes nothing.
-type TickSimulation[S, A, O any] interface {
-	Simulation[S, A, O]
+type TickStageRuleSet[S, A, O any] interface {
+	StageRuleSet[S, A, O]
 	// Advance runs one simulation step after this tick's inputs were
 	// applied.
 	Advance(state *S)
@@ -98,8 +98,8 @@ func (s *Session[S, A, O]) Inbox(slot SlotID) (*Inbox[A], error) {
 
 // RunRealtime moves admitting → running and drives the tick loop until
 // the game reaches a terminal position or the context is cancelled
-// (operator stop; unfinished slots end Abandoned). The configured Simulation
-// must implement TickSimulation and Config.Tuning must be declared.
+// (operator stop; unfinished slots end Abandoned). The configured rule set
+// must implement TickStageRuleSet and Config.Tuning must be declared.
 //
 // Input intake per tick, in commit order per slot: Config.InputSource
 // when set (deterministic schedules — replays and tests), otherwise the
@@ -108,9 +108,9 @@ func (s *Session[S, A, O]) Inbox(slot SlotID) (*Inbox[A], error) {
 // never touches a transport (rule:session-independent-of-transport-and-
 // agent-kind).
 func (s *Session[S, A, O]) RunRealtime(ctx context.Context, tc TimeControl) error {
-	game, ok := s.cfg.Simulation.(TickSimulation[S, A, O])
+	game, ok := s.cfg.RuleSet.(TickStageRuleSet[S, A, O])
 	if !ok {
-		return fmt.Errorf("session: RunRealtime requires the game to implement TickSimulation")
+		return fmt.Errorf("session: RunRealtime requires the game to implement TickStageRuleSet")
 	}
 	if s.cfg.Tuning == nil {
 		return fmt.Errorf("session: RunRealtime requires a declared TuningProfile (decision:no-framework-tuning-defaults)")
