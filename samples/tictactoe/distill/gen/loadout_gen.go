@@ -59,7 +59,7 @@ type TacticAgent struct {
 	has  bool
 }
 
-func (*TacticAgent) Joined(session.SlotID) {}
+func (*TacticAgent) Guest(session.SlotID) {}
 
 func (a *TacticAgent) Observe(obs ttt.Observation) { a.last, a.has = obs, true }
 

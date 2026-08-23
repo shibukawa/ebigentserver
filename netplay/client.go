@@ -83,7 +83,7 @@ func Connect[S, A, D, O any](ctx context.Context, conn transport.Conn, ticket st
 // whose Decide never returns an action — or any agent: its actions are
 // simply never sent.
 func (c *Client[S, A, D, O]) Run(ctx context.Context, agent session.Agent[O, A]) error {
-	agent.Joined(c.Slot)
+	agent.Guest(c.Slot)
 	for {
 		m, err := c.conn.Receive(ctx)
 		if err != nil {

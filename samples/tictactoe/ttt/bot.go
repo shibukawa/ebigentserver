@@ -16,8 +16,8 @@ type Bot struct {
 
 var _ session.Agent[Observation, Move] = (*Bot)(nil)
 
-// Joined records nothing; the bot learns its slot from observations.
-func (*Bot) Joined(session.SlotID) {}
+// Guest records nothing; the bot learns its slot from observations.
+func (*Bot) Guest(session.SlotID) {}
 
 // Observe retains the latest observation; policy runs in Decide.
 func (b *Bot) Observe(obs Observation) { b.last = obs }
@@ -51,8 +51,8 @@ type Script struct {
 
 var _ session.Agent[Observation, Move] = (*Script)(nil)
 
-// Joined records the assigned slot.
-func (s *Script) Joined(slot session.SlotID) { s.slot = slot }
+// Guest records the assigned slot.
+func (s *Script) Guest(slot session.SlotID) { s.slot = slot }
 
 // Slot returns the slot assigned at admission.
 func (s *Script) Slot() session.SlotID { return s.slot }

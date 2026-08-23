@@ -63,7 +63,7 @@ type script struct {
 
 type Observation = dungeon.Observation
 
-func (*script) Joined(session.SlotID)   {}
+func (*script) Guest(session.SlotID)    {}
 func (s *script) Observe(o Observation) { s.last = o }
 func (*script) Ended(session.Result)    {}
 func (s *script) Decide(context.Context) (dungeon.Input, bool) {

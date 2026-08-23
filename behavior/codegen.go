@@ -81,7 +81,7 @@ func GenerateAgent(spec CodegenSpec, v *Vocabulary, lib *Library) ([]byte, error
 	fmt.Fprintf(&b, "// %s seats the compiled policy behind api:agent-interface: an\n", spec.AgentName)
 	b.WriteString("// ordinary agent, indistinguishable from a hand-written bot.\n")
 	fmt.Fprintf(&b, "type %s struct {\n\tlast %s\n\thas  bool\n}\n\n", spec.AgentName, spec.ObsType)
-	fmt.Fprintf(&b, "func (*%s) Joined(session.SlotID) {}\n\n", spec.AgentName)
+	fmt.Fprintf(&b, "func (*%s) Guest(session.SlotID) {}\n\n", spec.AgentName)
 	fmt.Fprintf(&b, "func (a *%s) Observe(obs %s) { a.last, a.has = obs, true }\n\n", spec.AgentName, spec.ObsType)
 	fmt.Fprintf(&b, "func (a *%s) Decide(context.Context) (%s, bool) {\n\tif !a.has {\n\t\tvar zero %s\n\t\treturn zero, false\n\t}\n\treturn Decide(a.last)\n}\n\n",
 		spec.AgentName, spec.ActionType, spec.ActionType)

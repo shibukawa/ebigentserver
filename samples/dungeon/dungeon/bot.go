@@ -16,7 +16,7 @@ type DMBot struct {
 
 var _ session.Agent[Observation, Input] = (*DMBot)(nil)
 
-func (*DMBot) Joined(session.SlotID)     {}
+func (*DMBot) Guest(session.SlotID)      {}
 func (b *DMBot) Observe(obs Observation) { b.last = obs }
 func (*DMBot) Ended(session.Result)      {}
 
@@ -67,7 +67,7 @@ type AdventurerBot struct {
 
 var _ session.Agent[Observation, Input] = (*AdventurerBot)(nil)
 
-func (*AdventurerBot) Joined(session.SlotID)     {}
+func (*AdventurerBot) Guest(session.SlotID)      {}
 func (b *AdventurerBot) Observe(obs Observation) { b.last = obs }
 func (*AdventurerBot) Ended(session.Result)      {}
 

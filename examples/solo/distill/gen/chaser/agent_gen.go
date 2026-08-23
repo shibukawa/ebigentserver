@@ -39,7 +39,7 @@ type Chaser struct {
 	has  bool
 }
 
-func (*Chaser) Joined(session.SlotID) {}
+func (*Chaser) Guest(session.SlotID) {}
 
 func (a *Chaser) Observe(obs game.Observation) { a.last, a.has = obs, true }
 

@@ -20,7 +20,7 @@ type Bot struct {
 
 var _ session.Agent[Observation, Input] = (*Bot)(nil)
 
-func (*Bot) Joined(session.SlotID)     {}
+func (*Bot) Guest(session.SlotID)      {}
 func (b *Bot) Observe(obs Observation) { b.last = obs; b.plan() }
 func (*Bot) Ended(session.Result)      {}
 

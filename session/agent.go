@@ -11,13 +11,13 @@ import "context"
 // An agent reads only its observation O, never the world state.
 //
 // Call order per session (concept:session-lifecycle):
-// Joined once, before the first Observe; then Observe once per step
+// Guest once, before the first Observe; then Observe once per step
 // followed by Decide when the slot is acting; then a final Observe of the
 // terminal position and Ended exactly once.
 type Agent[O, A any] interface {
-	// Joined tells the agent which slot it controls. It completes
+	// Guest tells the agent which slot it controls. It completes
 	// before the first Observe.
-	Joined(slot SlotID)
+	Guest(slot SlotID)
 	// Observe delivers the slot's projection of the current step
 	// (concept:observation). It never blocks the session for long: in
 	// step pacing the session waits in Decide, not here.

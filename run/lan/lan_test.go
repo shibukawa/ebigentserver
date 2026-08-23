@@ -168,7 +168,7 @@ type raiser struct {
 	seen int
 }
 
-func (*raiser) Joined(session.SlotID) {}
+func (*raiser) Guest(session.SlotID) {}
 
 func (r *raiser) Observe(obs Observation) {
 	r.mu.Lock()
@@ -208,7 +208,7 @@ func TestTwoInstancesPlayOverTheLink(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := roster.JoinLocal("host-player"); err != nil {
+	if _, err := roster.SitLocal("host-player"); err != nil {
 		t.Fatal(err)
 	}
 
@@ -377,7 +377,7 @@ func TestBrowseFindsTheHost(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := roster.JoinLocal("host-player"); err != nil {
+	if _, err := roster.SitLocal("host-player"); err != nil {
 		t.Fatal(err)
 	}
 	host, err := lan.Open(ctx, opts, roster, 7)
@@ -491,7 +491,7 @@ func TestPresetDiscoversThenJoins(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer hosting.Close()
-	if _, err := first.JoinLocal("host-player"); err != nil {
+	if _, err := first.SitLocal("host-player"); err != nil {
 		t.Fatal(err)
 	}
 
@@ -510,7 +510,7 @@ func TestPresetDiscoversThenJoins(t *testing.T) {
 	}
 
 	// Only now does anybody join — because a person chose to.
-	guest, err := preset.Join(ctx, found[0])
+	guest, err := preset.Match(ctx, found[0])
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -604,7 +604,7 @@ func TestGuestLearnsTheMatchEnded(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := roster.JoinLocal("host-player"); err != nil {
+	if _, err := roster.SitLocal("host-player"); err != nil {
 		t.Fatal(err)
 	}
 	host, err := lan.Open(ctx, opts, roster, 7)

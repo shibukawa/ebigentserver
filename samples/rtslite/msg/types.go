@@ -104,23 +104,26 @@ type PlayerView struct {
 // state is a map, so a decoder can skip a key it does not know and the two
 // ends may ship apart, which is concept:cbor-world-profile.
 
-
 // AppendCommand writes one command in the array shape.
 func AppendCommand(dst []byte, v Command) []byte { return cborbind.AppendCBORInArrayTo(dst, v) }
 
 // DecodeCommand reads one command.
-func DecodeCommand(data []byte) (Command, error) { return cborbind.DecodeCBORInArrayFrom[Command](data) }
-
+func DecodeCommand(data []byte) (Command, error) {
+	return cborbind.DecodeCBORInArrayFrom[Command](data)
+}
 
 // AppendRTSState writes one rtsstate in the map shape.
 func AppendRTSState(dst []byte, v RTSState) []byte { return cborbind.AppendCBORInMapTo(dst, v) }
 
 // DecodeRTSState reads one rtsstate.
-func DecodeRTSState(data []byte) (RTSState, error) { return cborbind.DecodeCBORInMapFrom[RTSState](data) }
-
+func DecodeRTSState(data []byte) (RTSState, error) {
+	return cborbind.DecodeCBORInMapFrom[RTSState](data)
+}
 
 // AppendPlayerView writes one playerview in the map shape.
 func AppendPlayerView(dst []byte, v PlayerView) []byte { return cborbind.AppendCBORInMapTo(dst, v) }
 
 // DecodePlayerView reads one playerview.
-func DecodePlayerView(data []byte) (PlayerView, error) { return cborbind.DecodeCBORInMapFrom[PlayerView](data) }
+func DecodePlayerView(data []byte) (PlayerView, error) {
+	return cborbind.DecodeCBORInMapFrom[PlayerView](data)
+}

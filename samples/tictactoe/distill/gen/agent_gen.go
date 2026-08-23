@@ -54,7 +54,7 @@ type DistilledAgent struct {
 	has  bool
 }
 
-func (*DistilledAgent) Joined(session.SlotID) {}
+func (*DistilledAgent) Guest(session.SlotID) {}
 
 func (a *DistilledAgent) Observe(obs ttt.Observation) { a.last, a.has = obs, true }
 

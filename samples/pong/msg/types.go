@@ -105,16 +105,18 @@ type PongState struct {
 // state is a map, so a decoder can skip a key it does not know and the two
 // ends may ship apart, which is concept:cbor-world-profile.
 
-
 // AppendPaddleInput writes one paddleinput in the array shape.
 func AppendPaddleInput(dst []byte, v PaddleInput) []byte { return cborbind.AppendCBORInArrayTo(dst, v) }
 
 // DecodePaddleInput reads one paddleinput.
-func DecodePaddleInput(data []byte) (PaddleInput, error) { return cborbind.DecodeCBORInArrayFrom[PaddleInput](data) }
-
+func DecodePaddleInput(data []byte) (PaddleInput, error) {
+	return cborbind.DecodeCBORInArrayFrom[PaddleInput](data)
+}
 
 // AppendPongState writes one pongstate in the map shape.
 func AppendPongState(dst []byte, v PongState) []byte { return cborbind.AppendCBORInMapTo(dst, v) }
 
 // DecodePongState reads one pongstate.
-func DecodePongState(data []byte) (PongState, error) { return cborbind.DecodeCBORInMapFrom[PongState](data) }
+func DecodePongState(data []byte) (PongState, error) {
+	return cborbind.DecodeCBORInMapFrom[PongState](data)
+}

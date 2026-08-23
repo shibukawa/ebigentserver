@@ -51,7 +51,7 @@ type Flanker struct {
 	has  bool
 }
 
-func (*Flanker) Joined(session.SlotID) {}
+func (*Flanker) Guest(session.SlotID) {}
 
 func (a *Flanker) Observe(obs game.Observation) { a.last, a.has = obs, true }
 

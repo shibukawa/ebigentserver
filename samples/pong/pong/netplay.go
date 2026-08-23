@@ -194,7 +194,7 @@ func Connect(ctx context.Context, conn transport.Conn, ticket string, tuning ses
 // silent agent still confirms baselines.
 func (c *NetClient) Run(ctx context.Context, agent session.Agent[Observation, Input]) error {
 	var sim RuleSet
-	agent.Joined(c.Slot)
+	agent.Guest(c.Slot)
 	for {
 		m, err := c.conn.Receive(ctx)
 		if err != nil {

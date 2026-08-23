@@ -52,10 +52,10 @@ func main() {
 	defer stop()
 
 	err := eb.Run(ctx, eb.Options[game.State, game.Action, game.Observation]{
-		Options: game.Options(),
-		Binding: game.Binding(),
-		Client:  &view{hover: noCell},
-		Network: network(),
+		Options:     game.Options(),
+		Binding:     game.Binding(),
+		Client:      &view{hover: noCell},
+		Matchmaking: matchmaking(),
 		Lobby: eb.LobbyOptions{
 			// The other seat belongs to a person, so leave it empty
 			// and let their arrival be what starts the match.
@@ -73,14 +73,14 @@ func main() {
 	}
 }
 
-// network is the LAN preset. The lobby asks it who is out there; if
+// matchmaking is the LAN preset. The lobby asks it who is out there; if
 // somebody answers, the player picks, and if nobody does this instance
-// hosts and waits.
+// opens a room and waits.
 //
 // It lives here rather than beside the rules because which transport
 // reaches the other player is a property of where this build runs. A
 // browser build of the same rules would name a different one.
-func network() run.Networking[game.State, game.Action, game.Observation] {
+func matchmaking() run.Matchmaking[game.State, game.Action, game.Observation] {
 	return lan.Preset(lan.Options[game.State, game.Action, msg.TTTStateDelta, game.Observation]{
 		Name:        "tictactoe",
 		Protocol:    game.Protocol,
@@ -116,7 +116,7 @@ func cellAt(x, y int) (uint8, bool) {
 // Intake turns this frame's click into an action for the seat this
 // machine plays. Where the action goes — an inbox one goroutine away or
 // a socket one machine away — is the seating's business, not this file's.
-func (v *view) Intake(seating run.Seating[game.Action]) {
+func (v *view) Intake(seating run.Controls[game.Action]) {
 	seats := seating.LocalSeats()
 
 	// Which seat this machine plays is known from the first frame, not

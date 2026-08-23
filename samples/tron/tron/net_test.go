@@ -51,7 +51,7 @@ type watcher struct {
 	last tron.Observation
 }
 
-func (*watcher) Joined(session.SlotID) {}
+func (*watcher) Guest(session.SlotID) {}
 func (w *watcher) Observe(o tron.Observation) {
 	w.mu.Lock()
 	w.last = o

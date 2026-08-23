@@ -73,7 +73,7 @@ func newRandomAgent(seed uint64) *randomAgent {
 	return &randomAgent{rng: fixmath.NewRand(seed | 1)}
 }
 
-func (*randomAgent) Joined(session.SlotID)       {}
+func (*randomAgent) Guest(session.SlotID)        {}
 func (a *randomAgent) Observe(o ttt.Observation) { a.last = o }
 func (*randomAgent) Ended(session.Result)        {}
 

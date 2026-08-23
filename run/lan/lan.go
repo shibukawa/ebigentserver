@@ -316,7 +316,7 @@ func (h *Host[S, A, D, O]) claimFreeSeat(roster *run.Roster[S, A, O], id string)
 		if seat.Filled() {
 			continue
 		}
-		if err := roster.JoinRemote(seat.Slot, id); err == nil {
+		if err := roster.SitRemote(seat.Slot, id); err == nil {
 			return seat.Slot, nil
 		}
 	}

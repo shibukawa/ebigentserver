@@ -111,16 +111,18 @@ type WorldState struct {
 // state is a map, so a decoder can skip a key it does not know and the two
 // ends may ship apart, which is concept:cbor-world-profile.
 
-
 // AppendPlayerInput writes one playerinput in the array shape.
 func AppendPlayerInput(dst []byte, v PlayerInput) []byte { return cborbind.AppendCBORInArrayTo(dst, v) }
 
 // DecodePlayerInput reads one playerinput.
-func DecodePlayerInput(data []byte) (PlayerInput, error) { return cborbind.DecodeCBORInArrayFrom[PlayerInput](data) }
-
+func DecodePlayerInput(data []byte) (PlayerInput, error) {
+	return cborbind.DecodeCBORInArrayFrom[PlayerInput](data)
+}
 
 // AppendWorldState writes one worldstate in the map shape.
 func AppendWorldState(dst []byte, v WorldState) []byte { return cborbind.AppendCBORInMapTo(dst, v) }
 
 // DecodeWorldState reads one worldstate.
-func DecodeWorldState(data []byte) (WorldState, error) { return cborbind.DecodeCBORInMapFrom[WorldState](data) }
+func DecodeWorldState(data []byte) (WorldState, error) {
+	return cborbind.DecodeCBORInMapFrom[WorldState](data)
+}

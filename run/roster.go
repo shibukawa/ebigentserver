@@ -97,9 +97,13 @@ func (r *Roster[S, A, O]) notify(seats []Seat) {
 	}
 }
 
-// Take claims a specific slot. It is the raw seating call every other one
-// is written in terms of, and what a game's own scene uses when it wants
-// to decide the arrangement itself.
+// Sit claims a specific slot. It is the raw seating call every other one
+// is written in terms of, and what a game's own gathering screen uses
+// when it wants to decide the arrangement itself.
+//
+// Sitting is one act wherever the occupant is. A person at this keyboard
+// and a person across a link take a seat the same way, and which of the
+// two it was is reported on the seat rather than being a different verb.
 //
 // agent is the controller for a bot seat. A human seat passes nil: its
 // actions arrive through the slot's inbox, which is the same path a
@@ -107,9 +111,9 @@ func (r *Roster[S, A, O]) notify(seats []Seat) {
 // local says the occupant decides inside this process. It is the one
 // thing a caller knows that the roster cannot work out for itself, and it
 // is reported on the seat rather than folded into the kind.
-func (r *Roster[S, A, O]) Take(slot session.SlotID, kind SeatKind, local bool, id string, agent session.Agent[O, A]) error {
+func (r *Roster[S, A, O]) Sit(slot session.SlotID, kind SeatKind, local bool, id string, agent session.Agent[O, A]) error {
 	if kind == Empty {
-		return fmt.Errorf("run: cannot take slot %d as %v", slot, kind)
+		return fmt.Errorf("run: cannot sit slot %d as %v", slot, kind)
 	}
 	if kind == Bot && local && agent == nil {
 		return fmt.Errorf("run: local %v seat %d needs an agent", kind, slot)
@@ -154,23 +158,23 @@ func (r *Roster[S, A, O]) localHumans() int {
 	return n
 }
 
-// JoinLocal seats a person at this machine in the lowest free slot — what
+// SitLocal seats a person at this machine in the lowest free slot — what
 // a start button, a click, or a key press does in ui:lobby-scene.
-func (r *Roster[S, A, O]) JoinLocal(id string) (session.SlotID, error) {
+func (r *Roster[S, A, O]) SitLocal(id string) (session.SlotID, error) {
 	return r.joinFree(Human, true, id, nil)
 }
 
-// JoinRemote seats a person arriving over a link. flow:session-admission
+// SitRemote seats a person arriving over a link. flow:session-admission
 // calls it after the ticket verifies; no screen is involved.
-func (r *Roster[S, A, O]) JoinRemote(slot session.SlotID, id string) error {
-	return r.Take(slot, Human, false, id, nil)
+func (r *Roster[S, A, O]) SitRemote(slot session.SlotID, id string) error {
+	return r.Sit(slot, Human, false, id, nil)
 }
 
-// AddBot seats a controller in the lowest free slot. The enemies of a
+// SitBot seats a controller in the lowest free slot. The enemies of a
 // solo game, the opponent of a practice match, and a seat a departed
 // player left behind are all this call (concept:agent-proxy-designation:
 // takeover needs no mechanism beyond seating an agent).
-func (r *Roster[S, A, O]) AddBot(id string, agent session.Agent[O, A]) (session.SlotID, error) {
+func (r *Roster[S, A, O]) SitBot(id string, agent session.Agent[O, A]) (session.SlotID, error) {
 	return r.joinFree(Bot, true, id, agent)
 }
 
@@ -189,7 +193,7 @@ func (r *Roster[S, A, O]) joinFree(kind SeatKind, local bool, id string, agent s
 	if !found {
 		return 0, ErrNoFreeSeat
 	}
-	if err := r.Take(target, kind, local, id, agent); err != nil {
+	if err := r.Sit(target, kind, local, id, agent); err != nil {
 		return 0, err
 	}
 	return target, nil
@@ -281,7 +285,7 @@ func (r *Roster[S, A, O]) FillBots(newAgent func(slot session.SlotID) (id string
 			continue
 		}
 		id, agent := newAgent(slot)
-		if err := r.Take(slot, Bot, true, id, agent); err != nil {
+		if err := r.Sit(slot, Bot, true, id, agent); err != nil {
 			return err
 		}
 	}

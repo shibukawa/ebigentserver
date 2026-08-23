@@ -159,27 +159,31 @@ type DMView struct {
 // state is a map, so a decoder can skip a key it does not know and the two
 // ends may ship apart, which is concept:cbor-world-profile.
 
-
 // AppendActionInput writes one actioninput in the array shape.
 func AppendActionInput(dst []byte, v ActionInput) []byte { return cborbind.AppendCBORInArrayTo(dst, v) }
 
 // DecodeActionInput reads one actioninput.
-func DecodeActionInput(data []byte) (ActionInput, error) { return cborbind.DecodeCBORInArrayFrom[ActionInput](data) }
-
+func DecodeActionInput(data []byte) (ActionInput, error) {
+	return cborbind.DecodeCBORInArrayFrom[ActionInput](data)
+}
 
 // AppendDungeonState writes one dungeonstate in the map shape.
 func AppendDungeonState(dst []byte, v DungeonState) []byte { return cborbind.AppendCBORInMapTo(dst, v) }
 
 // DecodeDungeonState reads one dungeonstate.
-func DecodeDungeonState(data []byte) (DungeonState, error) { return cborbind.DecodeCBORInMapFrom[DungeonState](data) }
-
+func DecodeDungeonState(data []byte) (DungeonState, error) {
+	return cborbind.DecodeCBORInMapFrom[DungeonState](data)
+}
 
 // AppendAdventurerView writes one adventurerview in the map shape.
-func AppendAdventurerView(dst []byte, v AdventurerView) []byte { return cborbind.AppendCBORInMapTo(dst, v) }
+func AppendAdventurerView(dst []byte, v AdventurerView) []byte {
+	return cborbind.AppendCBORInMapTo(dst, v)
+}
 
 // DecodeAdventurerView reads one adventurerview.
-func DecodeAdventurerView(data []byte) (AdventurerView, error) { return cborbind.DecodeCBORInMapFrom[AdventurerView](data) }
-
+func DecodeAdventurerView(data []byte) (AdventurerView, error) {
+	return cborbind.DecodeCBORInMapFrom[AdventurerView](data)
+}
 
 // AppendDMView writes one dmview in the map shape.
 func AppendDMView(dst []byte, v DMView) []byte { return cborbind.AppendCBORInMapTo(dst, v) }

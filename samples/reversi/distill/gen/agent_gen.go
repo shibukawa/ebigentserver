@@ -211,7 +211,7 @@ type DistilledGreedy struct {
 	has  bool
 }
 
-func (*DistilledGreedy) Joined(session.SlotID) {}
+func (*DistilledGreedy) Guest(session.SlotID) {}
 
 func (a *DistilledGreedy) Observe(obs reversi.Observation) { a.last, a.has = obs, true }
 

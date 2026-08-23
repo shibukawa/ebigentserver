@@ -71,16 +71,18 @@ type TronState struct {
 // state is a map, so a decoder can skip a key it does not know and the two
 // ends may ship apart, which is concept:cbor-world-profile.
 
-
 // AppendTurnInput writes one turninput in the array shape.
 func AppendTurnInput(dst []byte, v TurnInput) []byte { return cborbind.AppendCBORInArrayTo(dst, v) }
 
 // DecodeTurnInput reads one turninput.
-func DecodeTurnInput(data []byte) (TurnInput, error) { return cborbind.DecodeCBORInArrayFrom[TurnInput](data) }
-
+func DecodeTurnInput(data []byte) (TurnInput, error) {
+	return cborbind.DecodeCBORInArrayFrom[TurnInput](data)
+}
 
 // AppendTronState writes one tronstate in the map shape.
 func AppendTronState(dst []byte, v TronState) []byte { return cborbind.AppendCBORInMapTo(dst, v) }
 
 // DecodeTronState reads one tronstate.
-func DecodeTronState(data []byte) (TronState, error) { return cborbind.DecodeCBORInMapFrom[TronState](data) }
+func DecodeTronState(data []byte) (TronState, error) {
+	return cborbind.DecodeCBORInMapFrom[TronState](data)
+}

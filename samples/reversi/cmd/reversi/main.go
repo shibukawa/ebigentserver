@@ -144,7 +144,7 @@ type watchedAgent struct {
 	result session.Result
 }
 
-func (w *watchedAgent) Joined(slot session.SlotID) { w.inner.Joined(slot) }
+func (w *watchedAgent) Guest(slot session.SlotID) { w.inner.Guest(slot) }
 
 func (w *watchedAgent) Observe(obs reversi.Observation) {
 	w.last = obs
@@ -167,7 +167,7 @@ type consoleAgent struct {
 	slot  session.SlotID
 }
 
-func (c *consoleAgent) Joined(slot session.SlotID) {
+func (c *consoleAgent) Guest(slot session.SlotID) {
 	c.slot = slot
 	fmt.Printf("You are %s\n", discName(slot))
 }

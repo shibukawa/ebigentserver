@@ -96,7 +96,7 @@ var _ eb.Client[game.State, game.Action, game.Observation] = (*client)(nil)
 // It submits every frame, including the direction "stay": under the
 // newest-input intake policy a later submission supersedes the earlier
 // one, so releasing a key stops rather than coasting.
-func (c *client) Intake(seating run.Seating[game.Action]) {
+func (c *client) Intake(seating run.Controls[game.Action]) {
 	for _, seat := range seating.LocalSeats() {
 		c.you = seat.Slot
 		seating.Submit(seat.Slot, game.Action{Move: readDir()})

@@ -47,16 +47,16 @@ type appHost[S, A, O any] interface {
 	// Roster is the one being gathered.
 	Roster() *run.Roster[S, A, O]
 	// Network is the preset, or nil when this build plays offline.
-	Network() run.Networking[S, A, O]
-	// Hosting is the offer this instance already makes, or nil. An
+	Matchmaking() run.Matchmaking[S, A, O]
+	// Host is the offer this instance already makes, or nil. An
 	// instance that hosted the last match still holds the listener and
 	// is still announcing, so a second lobby must not go looking — it
 	// would find itself.
-	Hosting() run.Hosting[S, A, O]
+	Host() run.Host[S, A, O]
 	// BecomeHost and BecomeGuest tell the wrapper which part this
 	// instance took.
-	BecomeHost(run.Hosting[S, A, O])
-	BecomeGuest(run.Joined[S, A, O])
+	BecomeHost(run.Host[S, A, O])
+	BecomeGuest(run.Guest[S, A, O])
 	// Context bounds the work a scene starts.
 	Context() context.Context
 	// Options is the framework declaration.
@@ -77,7 +77,7 @@ const (
 	phaseSeated
 )
 
-// Lobby is the default gathering screen. With a Networking it asks the
+// Lobby is the default gathering screen. With a Matchmaking it asks the
 // network first and lets the player pick; without one it goes straight
 // to seating people at this machine.
 //
@@ -113,11 +113,11 @@ func NewLobby[S, A, O any](a appHost[S, A, O], roster *run.Roster[S, A, O]) *Lob
 		phase: phaseSeated,
 	}
 	switch {
-	case a.Hosting() != nil:
+	case a.Host() != nil:
 		// Already offering: the next match gathers on the same terms
 		// as the last one, so sit down and wait again.
 		l.seatHost()
-	case a.Network() != nil:
+	case a.Matchmaking() != nil:
 		l.phase = phaseAsking
 		go l.ask()
 	}
@@ -128,7 +128,7 @@ func NewLobby[S, A, O any](a appHost[S, A, O], roster *run.Roster[S, A, O]) *Lob
 // from hostAlone because the offer may already exist.
 func (l *Lobby[S, A, O]) seatHost() {
 	l.phase = phaseSeated
-	if _, err := l.roster.JoinLocal("player"); err != nil {
+	if _, err := l.roster.SitLocal("player"); err != nil {
 		l.err = err
 		return
 	}
@@ -138,7 +138,7 @@ func (l *Lobby[S, A, O]) seatHost() {
 // ask puts the discovery on its own goroutine: it takes about as long as
 // a beacon interval, and a frozen window is not a lobby.
 func (l *Lobby[S, A, O]) ask() {
-	found, err := l.app.Network().Discover(l.app.Context())
+	found, err := l.app.Matchmaking().Discover(l.app.Context())
 	l.mu.Lock()
 	l.found, l.asked = found, true
 	if err != nil {
@@ -183,7 +183,7 @@ func (l *Lobby[S, A, O]) updateAsking() error {
 // on offer. So the press is spent later, on the choice that has two
 // sides: whether to join somebody.
 func (l *Lobby[S, A, O]) hostAlone() error {
-	hosting, err := l.app.Network().Host(l.app.Context(), l.roster, 0)
+	hosting, err := l.app.Matchmaking().Host(l.app.Context(), l.roster, 0)
 	if err != nil {
 		l.err = err
 		l.phase = phaseSeated
@@ -211,7 +211,7 @@ func (l *Lobby[S, A, O]) updateChoosing() error {
 	if row == len(found) {
 		return l.hostAlone()
 	}
-	guest, err := l.app.Network().Join(l.app.Context(), found[row])
+	guest, err := l.app.Matchmaking().Match(l.app.Context(), found[row])
 	if err != nil {
 		// That host filled up or went away between the beacon and the
 		// click. Say so and let them pick again.
@@ -239,7 +239,7 @@ func (l *Lobby[S, A, O]) updateSeated() error {
 		return nil
 	}
 	if l.canJoin() {
-		if _, err := l.roster.JoinLocal("player"); err != nil {
+		if _, err := l.roster.SitLocal("player"); err != nil {
 			l.err = err
 			return nil
 		}

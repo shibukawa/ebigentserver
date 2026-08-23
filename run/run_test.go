@@ -76,7 +76,7 @@ func (rules) Evaluate(s *state, slot session.SlotID) session.EvaluationSignal {
 // seat it was given rather than by anything random.
 type stepper struct{ by int }
 
-func (*stepper) Joined(session.SlotID)                   {}
+func (*stepper) Guest(session.SlotID)                    {}
 func (*stepper) Observe(observation)                     {}
 func (s *stepper) Decide(context.Context) (action, bool) { return action{Step: s.by}, true }
 func (*stepper) Ended(session.Result)                    {}
@@ -129,19 +129,19 @@ func newRoster(t *testing.T, opts run.Options) *run.Roster[state, action, observ
 func TestSeatingRules(t *testing.T) {
 	r := newRoster(t, options())
 
-	if _, err := r.JoinLocal("me"); err != nil {
+	if _, err := r.SitLocal("me"); err != nil {
 		t.Fatalf("first join: %v", err)
 	}
-	if _, err := r.JoinLocal("also me"); err == nil {
+	if _, err := r.SitLocal("also me"); err == nil {
 		t.Error("a second person joined a game declaring one local seat")
 	}
-	if err := r.JoinRemote(1, "someone"); err == nil {
+	if err := r.SitRemote(1, "someone"); err == nil {
 		t.Error("an occupied seat was taken again")
 	}
-	if err := r.Take(2, run.Bot, true, "no agent", nil); err == nil {
+	if err := r.Sit(2, run.Bot, true, "no agent", nil); err == nil {
 		t.Error("a bot seat was accepted without a controller")
 	}
-	if err := r.JoinRemote(9, "elsewhere"); err == nil {
+	if err := r.SitRemote(9, "elsewhere"); err == nil {
 		t.Error("a slot the rules never declared was seated")
 	}
 
@@ -170,7 +170,7 @@ func TestSharedScreenAllowsSeveralPeople(t *testing.T) {
 	r := newRoster(t, opts)
 
 	for i := range 2 {
-		if _, err := r.JoinLocal("p"); err != nil {
+		if _, err := r.SitLocal("p"); err != nil {
 			t.Fatalf("join %d: %v", i, err)
 		}
 	}
@@ -196,7 +196,7 @@ func TestOptionsRejectSharedSeatsWithoutSharedScreen(t *testing.T) {
 // before a session exists (concept:match-lifecycle).
 func TestFinalizeRejectsAnIncompleteRoster(t *testing.T) {
 	r := newRoster(t, options())
-	if _, err := r.JoinLocal("me"); err != nil {
+	if _, err := r.SitLocal("me"); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := r.Finalize(config("x", 1)); err == nil {
@@ -238,7 +238,7 @@ func TestLocalAgentsAreDrivenByTheWrapper(t *testing.T) {
 // is whatever Submit queued — the same path a remote peer uses.
 func TestLocalHumanSeatTakesInputFromSubmit(t *testing.T) {
 	r := newRoster(t, options())
-	slot, err := r.JoinLocal("me")
+	slot, err := r.SitLocal("me")
 	if err != nil {
 		t.Fatal(err)
 	}

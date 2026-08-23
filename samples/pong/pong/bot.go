@@ -19,8 +19,8 @@ var _ session.Agent[Observation, Input] = (*Bot)(nil)
 
 var deadZone = fixmath.FromInt32(4)
 
-// Joined does nothing.
-func (*Bot) Joined(session.SlotID) {}
+// Guest does nothing.
+func (*Bot) Guest(session.SlotID) {}
 
 // Observe retains the latest observation.
 func (b *Bot) Observe(obs Observation) { b.last = obs }

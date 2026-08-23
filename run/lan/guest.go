@@ -12,7 +12,7 @@ import (
 	"github.com/shibukawa/ebigentserver/session"
 )
 
-// This file is the guest's side of run.Joined: the small amount of state
+// This file is the guest's side of run.Guest: the small amount of state
 // that turns a link into something a play scene can treat exactly like a
 // local match.
 
@@ -47,7 +47,7 @@ type local[S, A, D, O any] struct {
 	g *Guest[S, A, D, O]
 }
 
-func (l *local[S, A, D, O]) Joined(session.SlotID) {}
+func (l *local[S, A, D, O]) Guest(session.SlotID) {}
 
 // Observe runs on the link goroutine, immediately after the receiver
 // reconstructed this world — which is the only place it is safe to read.
@@ -114,7 +114,7 @@ func (g *Guest[S, A, D, O]) Over() bool {
 // protocol, these wire types. The wrapper asks it what is out there and
 // the player decides — which is why hosting and joining are separate
 // calls rather than one that picks for them.
-func Preset[S, A, D, O any](opts Options[S, A, D, O]) run.Networking[S, A, O] {
+func Preset[S, A, D, O any](opts Options[S, A, D, O]) run.Matchmaking[S, A, O] {
 	return &preset[S, A, D, O]{opts: opts, window: opts.browseWindow()}
 }
 
@@ -137,18 +137,18 @@ func (p *preset[S, A, D, O]) Discover(ctx context.Context) ([]run.Found, error) 
 }
 
 // Host offers this instance's match.
-func (p *preset[S, A, D, O]) Host(ctx context.Context, r *run.Roster[S, A, O], seed uint64) (run.Hosting[S, A, O], error) {
+func (p *preset[S, A, D, O]) Host(ctx context.Context, r *run.Roster[S, A, O], seed uint64) (run.Host[S, A, O], error) {
 	return Open(ctx, p.opts, r, seed)
 }
 
 // Join takes a seat on one of the games Discover reported.
-func (p *preset[S, A, D, O]) Join(ctx context.Context, f run.Found) (run.Joined[S, A, O], error) {
+func (p *preset[S, A, D, O]) Match(ctx context.Context, f run.Found) (run.Guest[S, A, O], error) {
 	return JoinAt(ctx, p.opts, f.Address)
 }
 
-// The two halves of run.Networking, checked here so a signature drift in
+// The two halves of run.Matchmaking, checked here so a signature drift in
 // either package fails at build time rather than at a player's keyboard.
 var (
-	_ run.Hosting[int, int, int] = (*Host[int, int, int, int])(nil)
-	_ run.Joined[int, int, int]  = (*Guest[int, int, int, int])(nil)
+	_ run.Host[int, int, int]  = (*Host[int, int, int, int])(nil)
+	_ run.Guest[int, int, int] = (*Guest[int, int, int, int])(nil)
 )

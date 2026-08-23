@@ -19,14 +19,14 @@ import (
 type remote[S, A, O any] struct {
 	app    *app[S, A, O]
 	client Client[S, A, O]
-	joined run.Joined[S, A, O]
+	joined run.Guest[S, A, O]
 	cancel context.CancelFunc
 	done   bool
 }
 
 // newRemote starts the link's own goroutine and hands the frame loop a
 // scene that only reads and submits.
-func newRemote[S, A, O any](a *app[S, A, O], joined run.Joined[S, A, O]) *remote[S, A, O] {
+func newRemote[S, A, O any](a *app[S, A, O], joined run.Guest[S, A, O]) *remote[S, A, O] {
 	r := &remote[S, A, O]{app: a, client: a.opts.Client, joined: joined}
 	// The sink runs on the link's goroutine, which is where the
 	// reconstructed world is safe to read — the same contract a local

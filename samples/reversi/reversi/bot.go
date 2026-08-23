@@ -20,8 +20,8 @@ type FirstBot struct {
 
 var _ session.Agent[Observation, Move] = (*FirstBot)(nil)
 
-// Joined does nothing.
-func (*FirstBot) Joined(session.SlotID) {}
+// Guest does nothing.
+func (*FirstBot) Guest(session.SlotID) {}
 
 // Observe retains the latest observation.
 func (b *FirstBot) Observe(obs Observation) { b.last = obs }
@@ -47,8 +47,8 @@ type GreedyBot struct {
 
 var _ session.Agent[Observation, Move] = (*GreedyBot)(nil)
 
-// Joined does nothing.
-func (*GreedyBot) Joined(session.SlotID) {}
+// Guest does nothing.
+func (*GreedyBot) Guest(session.SlotID) {}
 
 // Observe retains the latest observation.
 func (b *GreedyBot) Observe(obs Observation) { b.last = obs }

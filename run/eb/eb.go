@@ -53,7 +53,7 @@ type Client[S, A, O any] interface {
 	// The seating is this machine's match when it hosts and its link
 	// when it joined somebody else's. A play scene never learns which,
 	// because from here the difference is only where Submit ends up.
-	Intake(seating run.Seating[A])
+	Intake(seating run.Controls[A])
 	// Apply receives each committed world. It runs on the session's
 	// goroutine, not Ebitengine's, so it must copy what Draw will read
 	// rather than retaining the pointer — the session keeps mutating
@@ -94,7 +94,7 @@ type Options[S, A, O any] struct {
 	//
 	// A guest never sees the lobby. It has nothing to gather — the
 	// roster it would fill belongs to the host.
-	Network run.Networking[S, A, O]
+	Matchmaking run.Matchmaking[S, A, O]
 	// Record is where data:episode-log goes. A zero Root records
 	// nothing; setting it is what turns ordinary play into a corpus.
 	Record run.RecordOptions
@@ -163,8 +163,8 @@ type app[S, A, O any] struct {
 
 	screen  Screen
 	roster  *run.Roster[S, A, O]
-	hosting run.Hosting[S, A, O]
-	joined  run.Joined[S, A, O]
+	hosting run.Host[S, A, O]
+	joined  run.Guest[S, A, O]
 	match   *run.Match[S, A, O]
 	rec     *run.Recording[S, A, O]
 	watch   *run.Watcher[S, A, O]
@@ -208,7 +208,7 @@ func (a *app[S, A, O]) gather() error {
 func (a *app[S, A, O]) Roster() *run.Roster[S, A, O] { return a.roster }
 
 // Network is the preset, or nil when this build plays offline.
-func (a *app[S, A, O]) Network() run.Networking[S, A, O] { return a.opts.Network }
+func (a *app[S, A, O]) Matchmaking() run.Matchmaking[S, A, O] { return a.opts.Matchmaking }
 
 // Context bounds the work a scene starts.
 func (a *app[S, A, O]) Context() context.Context { return a.ctx }
@@ -218,15 +218,15 @@ func (a *app[S, A, O]) Declared() (run.Options, LobbyOptions, run.Binding[S, A, 
 	return a.opts.Options, a.opts.Lobby, a.opts.Binding
 }
 
-// Hosting is the offer this instance already makes, or nil.
-func (a *app[S, A, O]) Hosting() run.Hosting[S, A, O] { return a.hosting }
+// Host is the offer this instance already makes, or nil.
+func (a *app[S, A, O]) Host() run.Host[S, A, O] { return a.hosting }
 
 // BecomeHost records that this instance is offering its match.
-func (a *app[S, A, O]) BecomeHost(h run.Hosting[S, A, O]) { a.hosting = h }
+func (a *app[S, A, O]) BecomeHost(h run.Host[S, A, O]) { a.hosting = h }
 
 // BecomeGuest records that this instance took a seat elsewhere, and
 // switches to the scene that renders a link instead of a match.
-func (a *app[S, A, O]) BecomeGuest(j run.Joined[S, A, O]) {
+func (a *app[S, A, O]) BecomeGuest(j run.Guest[S, A, O]) {
 	a.joined = j
 	a.screen = newRemote(a, j)
 }

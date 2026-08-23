@@ -49,8 +49,8 @@ type Chaser struct {
 
 var _ session.Agent[Observation, Action] = (*Chaser)(nil)
 
-// Joined does nothing; the observation carries the slot.
-func (*Chaser) Joined(session.SlotID) {}
+// Guest does nothing; the observation carries the slot.
+func (*Chaser) Guest(session.SlotID) {}
 
 // Observe retains the latest observation.
 func (c *Chaser) Observe(obs Observation) { c.last = obs }
@@ -77,8 +77,8 @@ type Flanker struct {
 
 var _ session.Agent[Observation, Action] = (*Flanker)(nil)
 
-// Joined does nothing.
-func (*Flanker) Joined(session.SlotID) {}
+// Guest does nothing.
+func (*Flanker) Guest(session.SlotID) {}
 
 // Observe retains the latest observation.
 func (f *Flanker) Observe(obs Observation) { f.last = obs }
@@ -112,8 +112,8 @@ type Runner struct {
 
 var _ session.Agent[Observation, Action] = (*Runner)(nil)
 
-// Joined does nothing.
-func (*Runner) Joined(session.SlotID) {}
+// Guest does nothing.
+func (*Runner) Guest(session.SlotID) {}
 
 // Observe retains the latest observation.
 func (r *Runner) Observe(obs Observation) { r.last = obs }

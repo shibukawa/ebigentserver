@@ -75,7 +75,7 @@ type addAgent struct {
 	slot   session.SlotID
 }
 
-func (a *addAgent) Joined(slot session.SlotID) {
+func (a *addAgent) Guest(slot session.SlotID) {
 	a.slot = slot
 	a.events = append(a.events, "joined")
 }

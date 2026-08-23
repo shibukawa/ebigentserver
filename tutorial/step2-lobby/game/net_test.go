@@ -15,7 +15,7 @@ import (
 
 // player is what the window does, with the mouse replaced by a rule: it
 // waits to be told the board, and when it is this seat's turn it claims
-// the lowest cell it was told is legal. It runs against run.Seating, so
+// the lowest cell it was told is legal. It runs against run.Controls, so
 // the same code drives the host's match and the guest's link.
 type player struct {
 	mu    sync.Mutex
@@ -34,7 +34,7 @@ func (p *player) apply(_ session.Tick, world *game.State) {
 }
 
 // intake is the play scene's Intake, called every frame.
-func (p *player) intake(seating run.Seating[game.Action]) {
+func (p *player) intake(seating run.Controls[game.Action]) {
 	p.mu.Lock()
 	world, got := p.world, p.got
 	p.mu.Unlock()
@@ -95,7 +95,7 @@ func TestTwoInstancesPlayOneBoard(t *testing.T) {
 		t.Fatal(err)
 	}
 	// The host player sits down, exactly as a click would seat them.
-	if _, err := roster.JoinLocal("host"); err != nil {
+	if _, err := roster.SitLocal("host"); err != nil {
 		t.Fatal(err)
 	}
 	host, err := lan.Open(ctx, opts, roster, 1)
@@ -218,7 +218,7 @@ func TestTwoInstancesPlayOneBoard(t *testing.T) {
 }
 
 // pump is the frame loop: intake, over and over, at no particular rate.
-func pump(ctx context.Context, p *player, seating run.Seating[game.Action]) {
+func pump(ctx context.Context, p *player, seating run.Controls[game.Action]) {
 	tick := time.NewTicker(8 * time.Millisecond)
 	defer tick.Stop()
 	for {

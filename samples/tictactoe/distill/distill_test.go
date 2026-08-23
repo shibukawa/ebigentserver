@@ -248,7 +248,7 @@ type outcomeAgent struct {
 	term  session.Terminal
 }
 
-func (a *outcomeAgent) Joined(s session.SlotID)                     { a.inner.Joined(s) }
+func (a *outcomeAgent) Guest(s session.SlotID)                      { a.inner.Guest(s) }
 func (a *outcomeAgent) Observe(o ttt.Observation)                   { a.inner.Observe(o) }
 func (a *outcomeAgent) Decide(ctx context.Context) (ttt.Move, bool) { return a.inner.Decide(ctx) }
 func (a *outcomeAgent) Ended(r session.Result) {
