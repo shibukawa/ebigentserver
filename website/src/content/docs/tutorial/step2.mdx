@@ -65,14 +65,14 @@ step 1 の `Update` は盤面に印を置いていた。こちらは行動を提
 step 1 の約束どおり、`Legal` はそのまま残った。その周りに5つ増えただけだ。
 
 ```go
-type Simulation struct{}
+type RuleSet struct{}
 
-func (Simulation) Start(uint64) State { ... }
-func (Simulation) ActingSlots(s *State) []session.SlotID { ... }
-func (Simulation) Apply(s *State, slot session.SlotID, a Action) { ... }
-func (Simulation) Advance(*State) {}
-func (g Simulation) Project(s *State, slot session.SlotID) Observation { ... }
-func (Simulation) Evaluate(s *State, slot session.SlotID) session.EvaluationSignal { ... }
+func (RuleSet) Start(uint64) State { ... }
+func (RuleSet) ActingSlots(s *State) []session.SlotID { ... }
+func (RuleSet) Apply(s *State, slot session.SlotID, a Action) { ... }
+func (RuleSet) Advance(*State) {}
+func (g RuleSet) Project(s *State, slot session.SlotID) Observation { ... }
+func (RuleSet) Evaluate(s *State, slot session.SlotID) session.EvaluationSignal { ... }
 ```
 
 `Advance` が空なのは手抜きではない。リアルタイムループは全てのゲームに毎 tick の前進を尋ねるが、

@@ -54,7 +54,7 @@ step2-lobby/
 
 ## 足したもの
 
-**ルールが `Simulation` になった。** step 1 の README で「移すのではなくメソッドを足すだけ」と
+**ルールが `StageRuleSet` になった。** step 1 の README で「移すのではなくメソッドを足すだけ」と
 書いたとおりです。`Legal` はそのまま残り、`Start` / `ActingSlots` / `Apply` / `Project` /
 `Evaluate` がその周りに増えました。
 

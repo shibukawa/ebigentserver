@@ -12,7 +12,7 @@
 | ステップ | 内容 | 状態 |
 |---|---|---|
 | [step1-hotseat](step1-hotseat/) | マウス1つで交互に指す。framework を一切使わない | 済 |
-| [step2-lobby](step2-lobby/) | ルールを `Simulation` に。ロビーが相手を待ち、LAN 上の2インスタンスで対人戦 | 済 |
+| [step2-lobby](step2-lobby/) | ルールを `StageRuleSet` に。ロビーが相手を待ち、LAN 上の2インスタンスで対人戦 | 済 |
 | step3-bot | 相手が来ないときのボット。対局を記録してコーパスにする | 未 |
 | step4-distill | 記録から行動チップを蒸留し、生成されたエージェントを座らせる | 未 |
 

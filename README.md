@@ -134,7 +134,7 @@
 | `concept:episode-recording-mode` | 済 | replay_complete / analysis_sampled。sampledはworld+checkpointを落とし、replay readerが拒否 |
 | `data:decision-record` | 済 | 配信された観測そのものを記録、action/evaluation/agent_kind/latency付き |
 | `actor:replay-agent` | 済 | [session/replay.go](session/replay.go) + [episode/reader.go](episode/reader.go) — 記録から着席する通常のagent |
-| `rule:shared-rng-seed` | 済 | `Config.Seed` → `Simulation.Start(seed)`、ヘッダに記録 |
+| `rule:shared-rng-seed` | 済 | `Config.Seed` → `StageRuleSet.Start(seed)`、ヘッダに記録 |
 | `data:state-checkpoint` | 済 | [session/record.go](session/record.go) — tick + world hash + accepted action hash、毎tick発行 |
 
 ### 完了条件の対応
@@ -151,7 +151,7 @@
 | `concept:session-lifecycle` 状態機械 | 済 | [session/lifecycle.go](session/lifecycle.go) — created → admitting → running → draining → ended / aborted、遷移表をテストで全列挙 |
 | `rule:deterministic-tick-commit` | 済 | acting slots をステップ冒頭でスナップショット、slot ID 順にコミット |
 | `decision:owner-namespaced-entity-ids` | 済 | [entity/](entity/) — 上位16bit=owner、下位48bit=連番 |
-| `concept:observation`（global scope） | 済 | `Simulation.Project` — WorldState とは別型（Phase 5 への継ぎ目） |
+| `concept:observation`（global scope） | 済 | `StageRuleSet.Project` — WorldState とは別型（Phase 5 への継ぎ目） |
 | `data:evaluation-signal` | 済 | [session/evaluation.go](session/evaluation.go) — 全フィールドを最初から確保、Phase 1 は terminal のみ使用 |
 | `api:action-validator`（legality フック） | 済 | [session/validator.go](session/validator.go) — 位置を確保、retry budget 超過で abort |
 | `data:progress-report` 発行点 | 済 | [session/report.go](session/report.go) — terminal 発行のみ、Seq が冪等キー |

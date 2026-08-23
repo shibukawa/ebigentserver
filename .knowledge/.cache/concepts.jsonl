@@ -164,6 +164,7 @@
 {"category": "objective", "id": "requirement:behavior-learning-from-logs", "path": ".knowledge/requirement/behavior-learning-from-logs.md", "role": "primary", "title": "Behavior Learning From Play Logs", "type": "requirement"}
 {"category": "objective", "id": "requirement:cborbind-migration", "path": ".knowledge/requirement/cborbind-migration.md", "role": "primary", "title": "Cborbind Migration", "type": "requirement"}
 {"category": "objective", "id": "requirement:compact-binary-protocol", "path": ".knowledge/requirement/compact-binary-protocol.md", "role": "primary", "title": "Compact Binary Wire Protocol", "type": "requirement"}
+{"category": "objective", "id": "requirement:conditional-matchmaking", "path": ".knowledge/requirement/conditional-matchmaking.md", "role": "primary", "title": "Conditional Matchmaking", "type": "requirement"}
 {"category": "objective", "id": "requirement:config-codegen", "path": ".knowledge/requirement/config-codegen.md", "role": "primary", "title": "Config Code Generation", "type": "requirement"}
 {"category": "objective", "id": "requirement:config-file-shape", "path": ".knowledge/requirement/config-file-shape.md", "role": "primary", "title": "Config File Shape", "type": "requirement"}
 {"category": "objective", "id": "requirement:control-plane-decoupling", "path": ".knowledge/requirement/control-plane-decoupling.md", "role": "primary", "title": "Control Plane Decoupling", "type": "requirement"}
@@ -174,6 +175,7 @@
 {"category": "objective", "id": "requirement:layered-configuration", "path": ".knowledge/requirement/layered-configuration.md", "role": "primary", "title": "Layered Configuration", "type": "requirement"}
 {"category": "objective", "id": "requirement:live-dev-loop", "path": ".knowledge/requirement/live-dev-loop.md", "role": "primary", "title": "Live Development Loop", "type": "requirement"}
 {"category": "objective", "id": "requirement:match-stage-vocabulary", "path": ".knowledge/requirement/match-stage-vocabulary.md", "role": "primary", "title": "Match And Stage Vocabulary", "type": "requirement"}
+{"category": "objective", "id": "requirement:match-then-sit", "path": ".knowledge/requirement/match-then-sit.md", "role": "primary", "title": "Match Then Sit", "type": "requirement"}
 {"category": "objective", "id": "requirement:multi-execution-mode", "path": ".knowledge/requirement/multi-execution-mode.md", "role": "primary", "title": "Multi Execution Mode Support", "type": "requirement"}
 {"category": "objective", "id": "requirement:native-and-wasm-targets", "path": ".knowledge/requirement/native-and-wasm-targets.md", "role": "primary", "title": "Native And WebAssembly Targets", "type": "requirement"}
 {"category": "objective", "id": "requirement:offline-simulation", "path": ".knowledge/requirement/offline-simulation.md", "role": "primary", "title": "Offline Simulation", "type": "requirement"}

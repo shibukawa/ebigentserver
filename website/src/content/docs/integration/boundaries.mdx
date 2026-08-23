@@ -30,7 +30,7 @@ type Ball struct {
 ## RNG はシードからしか引けない
 
 ```go
-func (Simulation) Start(seed uint64) State {
+func (RuleSet) Start(seed uint64) State {
 	return State{Rand: fixmath.NewRand(seed | 1)}
 }
 ```

@@ -1,6 +1,6 @@
 ---
 title: 接点は4つしかない
-description: Simulation、Agent、ActionValidator、Recorder。ゲームが framework に触れる場所をすべて並べる。
+description: StageRuleSet、Agent、ActionValidator、Recorder。ゲームが framework に触れる場所をすべて並べる。
 ---
 
 import { Aside, Card, CardGrid, LinkCard } from '@astrojs/starlight/components';
@@ -11,7 +11,7 @@ import { Aside, Card, CardGrid, LinkCard } from '@astrojs/starlight/components';
 ここで合わせる先は4つのインターフェースだけだ。しかも、そのうち必須なのは1つしかない。
 
 <CardGrid>
-	<Card title="Simulation[S, A, O]" icon="puzzle">
+	<Card title="StageRuleSet[S, A, O]" icon="puzzle">
 		必須。世界を進め、観測を作り、評価する。5メソッド。
 	</Card>
 	<Card title="Agent[O, A]" icon="rocket">
@@ -82,6 +82,6 @@ Start(seed)
 `Apply` が失敗してはいけないのは、合法性がその前に確定しているからだ。判定と適用を分けて
 おくと、判定の方だけを rollback で全ピアが走らせられる。
 
-<LinkCard title="Simulation インターフェース" href="/integration/simulation/" description="5つのメソッドと、それぞれが何を保証しなければならないか。" />
+<LinkCard title="StageRuleSet インターフェース" href="/integration/stage-rule-set/" description="5つのメソッドと、それぞれが何を保証しなければならないか。" />
 
 <LinkCard title="Ebitengine への統合" href="/integration/ebitengine/" description="窓・入力・描画をどう配線するか。同じディレクトリから描画ビルドとヘッドレスビルドを出す。" />

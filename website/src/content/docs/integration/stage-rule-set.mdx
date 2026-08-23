@@ -1,12 +1,12 @@
 ---
-title: Simulation インターフェース
+title: StageRuleSet インターフェース
 description: 5つのメソッドと、それぞれが守らなければならない約束。ActingSlots が空になる意味、Apply が失敗してはいけない理由。
 ---
 
 import { Aside, LinkCard } from '@astrojs/starlight/components';
 
 ```go
-type Simulation[S, A, O any] interface {
+type StageRuleSet[S, A, O any] interface {
 	Start(seed uint64) S
 	ActingSlots(state *S) []SlotID
 	Apply(state *S, slot SlotID, action A)
@@ -26,7 +26,7 @@ type Simulation[S, A, O any] interface {
 壁時計や、シードされていない生成器から引いてはいけない。決定的なゲームは無視してよい。
 
 ```go
-func (Simulation) Start(seed uint64) State {
+func (RuleSet) Start(seed uint64) State {
 	return State{Rand: fixmath.NewRand(seed), Next: SlotX}
 }
 ```
@@ -58,7 +58,7 @@ terminal になっているときにだけ合法になる。まだ勝負が付�
 
 ```go
 // samples/tictactoe/ttt/ttt.go
-func (g Simulation) Project(s *State, slot session.SlotID) Observation {
+func (g RuleSet) Project(s *State, slot session.SlotID) Observation {
 	return Observation{
 		You:      slot,
 		Mark:     mark(slot),
@@ -104,7 +104,7 @@ type EvaluationSignal struct {
 cfg := session.Config[State, Move, Observation]{
 	ID:         "match-1",
 	Slots:      ttt.Slots(),
-	Simulation: ttt.Simulation{},
+	RuleSet: ttt.RuleSet{},
 	Seed:       42,
 	Validator:  ttt.Validator{}, // nil なら全部通る
 	Recorder:   writer,          // nil なら記録しない

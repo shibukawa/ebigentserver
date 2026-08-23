@@ -55,7 +55,7 @@ export default defineConfig({
 					label: 'ゲームとの接点',
 					items: [
 						{ label: '接点は4つしかない', slug: 'integration' },
-						{ label: 'Simulation インターフェース', slug: 'integration/simulation' },
+						{ label: 'StageRuleSet インターフェース', slug: 'integration/stage-rule-set' },
 						{ label: 'Agent インターフェース', slug: 'integration/agent' },
 						{ label: '観測と可視性', slug: 'integration/observation' },
 						{ label: '越えてはいけない境界', slug: 'integration/boundaries' },
