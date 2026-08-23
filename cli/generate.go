@@ -162,8 +162,13 @@ func generateProtocol(b *buildconf.Config) ([]byte, error) {
 			Occupant: b.SeatOccupant(i),
 		})
 	}
+	axes := make([]axisFact, 0, len(b.Protocol.Condition))
+	for _, a := range b.Protocol.Condition {
+		axes = append(axes, axisFact{Name: a.Name, Band: a.Match == "band"})
+	}
 	var buf bytes.Buffer
 	err := protocolTemplate.Execute(&buf, protocolFacts{
+		Axes:     axes,
 		Package:  pkg,
 		Title:    b.GameTitle(),
 		Shape:    b.Protocol.Shape,
@@ -197,6 +202,14 @@ type protocolFacts struct {
 	Seats    []seatFact
 	Fill     string
 	Teamed   bool
+	Axes     []axisFact
+}
+
+// axisFact is one condition axis, flattened to what matchmaking compares
+// on rather than how it was declared.
+type axisFact struct {
+	Name string
+	Band bool
 }
 
 // seatFact is one declared seat, resolved through the team division so
@@ -276,6 +289,25 @@ type Seat struct {
 var Seats = []Seat{
 {{- range .Seats}}
 	{Slot: {{.Slot}}, Team: {{quote .Team}}, Occupant: {{quote .Occupant}}},
+{{- end}}
+}
+
+// Axis is one term matchmaking may filter on. Band marks the asymmetric
+// comparison: the room states a range and a joiner brings their own
+// value, since a rank is something a player has rather than something
+// they pick.
+type Axis struct {
+	Name string
+	Band bool
+}
+
+// Axes is the condition set this game declares
+// (requirement:conditional-matchmaking). Both ends compare the same axes
+// because both were built from this table, which is what lets a refusal
+// name the term it failed.
+var Axes = []Axis{
+{{- range .Axes}}
+	{Name: {{quote .Name}}, Band: {{.Band}}},
 {{- end}}
 }
 `))

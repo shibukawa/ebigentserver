@@ -6,6 +6,7 @@ title: Conditional Matchmaking
 A room states its terms when it opens, and a joiner is matched by the conjunction of them — never by a host judging each arrival.
 
 ```yaml
+status: done for api:lan-preset — [[protocol.condition]] declares the axes, generate emits them, the beacon carries a room's terms, and both the browse filter and the seat request run the conjunction
 who_decides: >
   the host opens a room with its terms stated and judges nobody after that.
   The decision belongs to whoever arrives, which is how a lobby actually
@@ -29,10 +30,14 @@ matching:
     fall inside it. Asymmetric on purpose: a rank is an attribute of the
     player, not a filter they choose, so there is no unset case on their side.
   unset_is_any: an axis a room says nothing about constrains nothing
-enforced_where: the three places rule:game-version-must-match already runs
-  - the discovery beacon, where a room that cannot be joined is not listed — display, and not the control
+enforced_where: the places rule:game-version-must-match already runs
+  - the discovery beacon, where a room whose terms are not met is left out — display, and not the control
   - the seat request, which is the real gate
-  - the admission handshake
+refusal_names_the_term: >
+  the seat request answers 409 with the axis that failed, and the guest
+  surfaces that body rather than the status. A refusal that only says
+  conflict defeats the reason for declaring terms at all — the joiner
+  cannot tell a full room from a rank band they miss by ten.
 not_a_secret: >
   a password is authentication rather than a term, and it collides with
   decision:no-auth-on-lan where scope is the whole of the control. If rooms

@@ -41,6 +41,9 @@ type Protocol struct {
 	// Team is the division of the seats. No entry means no teams; the
 	// seat counts must add up to Seats.Count when there are any.
 	Team []Team `help:"Team is the division of the seats. No entry means no teams; the seat counts must add up to Seats.Count when there are any"`
+	// Condition is the axis set matchmaking may filter on. No entry
+	// means a room states nothing beyond its identity and version.
+	Condition []Condition `help:"Condition is the axis set matchmaking may filter on. No entry means a room states nothing beyond its identity and version"`
 }
 
 // Seats is the [protocol.seats] table: how many seats there are and what
@@ -66,4 +69,36 @@ type Team struct {
 	// Occupant narrows Seats.Occupant for this team alone. Empty takes
 	// the table's value.
 	Occupant string `default:"" help:"who may take a seat on this team: any, human, or bot; empty takes protocol.seats.occupant"`
+}
+
+// Condition is one [[protocol.condition]] block: an axis matchmaking may
+// filter on.
+//
+// The axes are declared at build and the values are chosen per room
+// (requirement:conditional-matchmaking). Two ends that disagree about
+// which axes exist cannot explain a refusal to each other, which is the
+// same reason a schema is settled at build rather than per launch.
+//
+// Element of an array of tables, so it carries no enum tag and Validate
+// checks Match instead.
+type Condition struct {
+	// Name is the axis, and the key a room states a value under.
+	Name string `default:"" help:"axis name, such as mode or rank"`
+	// Match is how the two sides are compared.
+	//
+	// exact: both name a value and they must be equal; either naming
+	// none is no constraint.
+	//
+	// band: the room names a range and the joiner brings their own
+	// value, which must fall inside it. Asymmetric on purpose — a rank
+	// is an attribute of the player rather than a filter they pick, so
+	// there is no unset case on their side.
+	Match string `default:"exact" help:"exact or band"`
+	// Values is the allowed set for an exact axis. Empty accepts any
+	// string, which suits a free-form tag and not much else.
+	Values []string `help:"allowed values for an exact axis; empty accepts anything"`
+	// Low and High bound a band axis, and bound what a room may ask for
+	// on it.
+	Low  int `default:"0" help:"lowest value a band axis admits"`
+	High int `default:"0" help:"highest value a band axis admits"`
 }

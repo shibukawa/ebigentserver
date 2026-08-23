@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -857,4 +858,125 @@ func hostRoster(t *testing.T) *run.Roster[State, Action, Sight] {
 		t.Fatal(err)
 	}
 	return roster
+}
+
+// rankedRoom is a room stating both kinds of term: a mode you pick and a
+// rank band you have to fall inside.
+func rankedRoom(t *testing.T) (lan.Options[State, Action, Delta, Sight], *run.Roster[State, Action, Sight]) {
+	t.Helper()
+	opts := options()
+	opts.Axes = []run.Axis{{Name: "mode"}, {Name: "rank", Band: true}}
+	opts.Terms = run.Terms{
+		Exact: map[string]string{"mode": "ranked"},
+		Low:   map[string]int{"rank": 1200},
+		High:  map[string]int{"rank": 1600},
+	}
+	return opts, hostRoster(t)
+}
+
+// TestTermsGateTheSeat covers requirement:conditional-matchmaking end to
+// end: the room states its terms once, and every arrival is checked
+// against them rather than judged.
+func TestTermsGateTheSeat(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+
+	opts, roster := rankedRoom(t)
+	host, err := lan.Open(ctx, opts, roster, 7)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer host.Close()
+
+	// Outside the band: reaching the room still works, because reading
+	// it costs nothing and refusing to show it would hide why.
+	tooStrong := opts
+	tooStrong.Wants = run.Wants{
+		Exact: map[string]string{"mode": "ranked"},
+		Value: map[string]int{"rank": 2000},
+	}
+	guest, err := lan.MatchAt(ctx, tooStrong, host.Endpoint())
+	if err != nil {
+		t.Fatalf("reaching a room whose terms are not met: %v", err)
+	}
+	err = guest.Sit(ctx)
+	if err == nil {
+		t.Fatal("a peer outside the band took a seat")
+	}
+	if !strings.Contains(err.Error(), "rank") {
+		t.Errorf("refusal %q does not name the axis", err)
+	}
+	_ = guest.Close()
+	if roster.Complete() {
+		t.Fatal("a refused peer still filled the roster")
+	}
+
+	// Wrong mode, same treatment.
+	wrongMode := opts
+	wrongMode.Wants = run.Wants{
+		Exact: map[string]string{"mode": "casual"},
+		Value: map[string]int{"rank": 1400},
+	}
+	g2, err := lan.MatchAt(ctx, wrongMode, host.Endpoint())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := g2.Sit(ctx); err == nil || !strings.Contains(err.Error(), "mode") {
+		t.Errorf("sitting with the wrong mode gave %v, want a refusal naming mode", err)
+	}
+	_ = g2.Close()
+
+	// Inside both: seated.
+	fits := opts
+	fits.Wants = run.Wants{
+		Exact: map[string]string{"mode": "ranked"},
+		Value: map[string]int{"rank": 1400},
+	}
+	ok, err := sitAt(ctx, fits, host.Endpoint())
+	if err != nil {
+		t.Fatalf("a peer meeting every term was refused: %v", err)
+	}
+	defer ok.Close()
+	if !ok.Seated() {
+		t.Error("Sit returned without a seat")
+	}
+}
+
+// TestBrowseLeavesOutRoomsItCannotSitIn keeps the list to entries a player
+// can act on, the same way a version that does not match is hidden.
+func TestBrowseLeavesOutRoomsItCannotSitIn(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+
+	opts, roster := rankedRoom(t)
+	addr := freeUDPPort(t)
+	opts.BeaconAddr, opts.DiscoveryAddr = addr, addr
+	host, err := lan.Open(ctx, opts, roster, 7)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer host.Close()
+
+	looking := opts
+	looking.BrowseWindow = 3 * time.Second
+	looking.Wants = run.Wants{Exact: map[string]string{"mode": "ranked"}, Value: map[string]int{"rank": 2000}}
+	found, err := lan.Preset(looking).Discover(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(found) != 0 {
+		t.Fatalf("a room this peer cannot sit in was listed: %+v", found)
+	}
+
+	looking.Wants = run.Wants{Exact: map[string]string{"mode": "ranked"}, Value: map[string]int{"rank": 1400}}
+	found, err = lan.Preset(looking).Discover(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(found) != 1 {
+		t.Fatalf("discovered %+v, want the one room this peer fits", found)
+	}
+	if !strings.Contains(found[0].Terms, "mode ranked") || !strings.Contains(found[0].Terms, "rank 1200..1600") {
+		t.Errorf("the listing reads %q, want it to carry the room's terms", found[0].Terms)
+	}
 }

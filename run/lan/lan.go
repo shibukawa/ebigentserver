@@ -31,9 +31,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
+	neturl "net/url"
 	"strconv"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -81,6 +84,18 @@ type Options[W, A, D, S any] struct {
 	// Project builds a slot's sight on the guest side, from the
 	// world the guest reconstructed.
 	Project func(world *W, slot session.SlotID) S
+	// Axes is the condition set this game declares, from the generated
+	// protocol constants. Empty means matchmaking asks nothing beyond
+	// identity and version.
+	Axes []run.Axis
+	// Terms are what a room opened with these options states about
+	// itself. Ignored when this instance joins rather than hosts.
+	Terms run.Terms
+	// Wants are what this instance brings when it sits somewhere: what
+	// it is looking for on the exact axes, and its own reading on the
+	// band ones.
+	Wants run.Wants
+
 	// Port is the host's listening port; 0 picks a free one.
 	Port int
 
@@ -156,6 +171,9 @@ type Host[W, A, D, S any] struct {
 	priv     ed25519.PrivateKey
 	verifier *admission.Verifier
 	seed     uint64
+	// terms is opts.Terms encoded once, since the beacon repeats every
+	// second and the room's terms never change while it is open.
+	terms json.RawMessage
 
 	listener net.Listener
 	http     *http.Server
@@ -207,9 +225,22 @@ func Open[W, A, D, S any](ctx context.Context, opts Options[W, A, D, S], roster 
 		ln.Close()
 		return nil, err
 	}
+	// A room with no axes states nothing, and an empty object on every
+	// beacon would be a byte a second for no reader.
+	var terms json.RawMessage
+	if len(opts.Axes) > 0 {
+		encoded, err := json.Marshal(opts.Terms)
+		if err != nil {
+			_ = ln.Close()
+			return nil, fmt.Errorf("lan: encoding this room's terms: %w", err)
+		}
+		terms = encoded
+	}
+
 	h := &Host[W, A, D, S]{
 		opts:     opts,
 		roster:   roster,
+		terms:    terms,
 		endpoint: endpoint,
 		priv:     priv,
 		seed:     seed,
@@ -276,6 +307,7 @@ func (h *Host[W, A, D, S]) announce(ctx context.Context) {
 				ProtocolVersion: h.opts.Protocol,
 				PlayerCount:     seated,
 				TicketRequired:  true,
+				Terms:           h.terms,
 			}
 		},
 	}
@@ -307,6 +339,19 @@ func (h *Host[W, A, D, S]) handleRoom(w http.ResponseWriter, r *http.Request) {
 func (h *Host[W, A, D, S]) handleSit(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Query().Get("protocol") != h.opts.Protocol {
 		http.Error(w, "protocol mismatch: host speaks "+h.opts.Protocol, http.StatusConflict)
+		return
+	}
+	// The room stated its terms when it opened; this is the check
+	// against them, and the whole of what happens to an arrival.
+	var wants run.Wants
+	if raw := r.URL.Query().Get("wants"); raw != "" {
+		if err := json.Unmarshal([]byte(raw), &wants); err != nil {
+			http.Error(w, "unreadable wants", http.StatusBadRequest)
+			return
+		}
+	}
+	if err := h.opts.Terms.Satisfies(h.opts.Axes, wants); err != nil {
+		http.Error(w, "the room's terms are not met: "+err.Error(), http.StatusConflict)
 		return
 	}
 	roster := h.currentRoster()
@@ -637,7 +682,7 @@ func (g *Guest[W, A, D, S]) Sit(ctx context.Context) error {
 	}
 	g.mu.Unlock()
 
-	grant, err := requestSeat(ctx, g.endpoint, g.opts.Protocol)
+	grant, err := requestSeat(ctx, g.endpoint, g.opts.Protocol, g.opts.Wants)
 	if err != nil {
 		return err
 	}
@@ -661,10 +706,15 @@ func fetchRoom(ctx context.Context, endpoint, protocol string) (run.Room, error)
 	return room, nil
 }
 
-// requestSeat asks the host's own control plane for a seat.
-func requestSeat(ctx context.Context, endpoint, protocol string) (grant, error) {
+// requestSeat asks the host's own control plane for a seat, carrying what
+// this instance brings to the room's terms.
+func requestSeat(ctx context.Context, endpoint, protocol string, wants run.Wants) (grant, error) {
+	url := "http://" + endpoint + "/sit?protocol=" + protocol
+	if encoded, err := json.Marshal(wants); err == nil && string(encoded) != "{}" {
+		url += "&wants=" + neturl.QueryEscape(string(encoded))
+	}
 	var g grant
-	if err := getJSON(ctx, "http://"+endpoint+"/sit?protocol="+protocol, &g); err != nil {
+	if err := getJSON(ctx, url, &g); err != nil {
 		return grant{}, fmt.Errorf("lan: asking %s for a seat: %w", endpoint, err)
 	}
 	return g, nil
@@ -682,6 +732,12 @@ func getJSON(ctx context.Context, url string, into any) error {
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
+		// The body says which term was not met, and a refusal that only
+		// says "conflict" defeats the point of stating terms at all.
+		why, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<10))
+		if reason := strings.TrimSpace(string(why)); reason != "" {
+			return errors.New(reason)
+		}
 		return errors.New(resp.Status)
 	}
 	return json.NewDecoder(resp.Body).Decode(into)

@@ -4,6 +4,7 @@ package lan
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"sync"
 	"time"
@@ -136,7 +137,13 @@ type preset[W, A, D, S any] struct {
 	window time.Duration
 }
 
-// Discover lists the games answering on this network.
+// Discover lists the rooms answering on this network that this instance
+// could actually sit in.
+//
+// A room whose terms are not met is left out rather than shown and
+// refused: an entry a player cannot act on is worse than no entry, which
+// is the same reasoning api:lan-discovery already applies to a version
+// that does not match.
 func (p *preset[W, A, D, S]) Discover(ctx context.Context) ([]run.Found, error) {
 	beacons, err := Browse(ctx, p.opts, p.window)
 	if err != nil && !errors.Is(err, context.DeadlineExceeded) {
@@ -144,9 +151,34 @@ func (p *preset[W, A, D, S]) Discover(ctx context.Context) ([]run.Found, error) 
 	}
 	out := make([]run.Found, 0, len(beacons))
 	for _, b := range beacons {
-		out = append(out, run.Found{Name: b.Session, Address: b.Endpoint, Players: b.PlayerCount})
+		terms, ok := decodeTerms(b.Terms)
+		if !ok {
+			continue // a beacon whose terms will not parse is not ours
+		}
+		if err := terms.Satisfies(p.opts.Axes, p.opts.Wants); err != nil {
+			continue
+		}
+		out = append(out, run.Found{
+			Name:    b.Session,
+			Address: b.Endpoint,
+			Players: b.PlayerCount,
+			Terms:   terms.Describe(p.opts.Axes),
+		})
 	}
 	return out, nil
+}
+
+// decodeTerms reads a beacon's terms. An absent field is a room that
+// states nothing, which is every room of a game declaring no axes.
+func decodeTerms(raw json.RawMessage) (run.Terms, bool) {
+	if len(raw) == 0 {
+		return run.Terms{}, true
+	}
+	var t run.Terms
+	if err := json.Unmarshal(raw, &t); err != nil {
+		return run.Terms{}, false
+	}
+	return t, true
 }
 
 // Host offers this instance's match.

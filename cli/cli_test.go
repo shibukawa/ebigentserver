@@ -330,6 +330,40 @@ occupant = "bot"
 		}
 	}
 
+	// The condition axes reach the artifact the same way, so both ends
+	// compare the same set and a refusal can name the term it failed.
+	withAxes := divided + `
+[[protocol.condition]]
+name = "mode"
+match = "exact"
+values = ["ranked", "casual"]
+
+[[protocol.condition]]
+name = "rank"
+match = "band"
+low = 0
+high = 3000
+`
+	if err := os.WriteFile(toml, []byte(withAxes), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	code, _, errOut = run(t, dir, "generate")
+	if code != 0 {
+		t.Fatalf("generate with conditions: exit %d\nstderr:\n%s", code, errOut)
+	}
+	gen, err = os.ReadFile(filepath.Join(dir, "internal", "ebigentgen", "protocol_gen.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{
+		`{Name: "mode", Band: false},`,
+		`{Name: "rank", Band: true},`,
+	} {
+		if !strings.Contains(string(gen), want) {
+			t.Errorf("generated source lacks %s:\n%s", want, gen)
+		}
+	}
+
 	// Teams that do not account for every seat are refused before they
 	// can become a constant.
 	short := strings.Replace(divided, "seats = 3", "seats = 2", 1)

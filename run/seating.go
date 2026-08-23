@@ -31,6 +31,9 @@ type Found struct {
 	Address string
 	// Players is how many seats were taken when the host last said so.
 	Players int
+	// Terms is what the room stated about itself, rendered for a browse
+	// list. Empty when the game declares no axes.
+	Terms string
 }
 
 // Host is this instance offering its own match to others. The calls are separated because the session does not exist

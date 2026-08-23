@@ -45,6 +45,10 @@ type Beacon struct {
 	ProtocolVersion string `json:"protocol_version"`
 	// PlayerCount is the current occupancy.
 	PlayerCount int `json:"player_count"`
+	// Terms are what this room stated when it opened
+	// (requirement:conditional-matchmaking), so a browser can leave out
+	// a room it cannot sit in rather than showing a row that refuses.
+	Terms json.RawMessage `json:"terms,omitempty"`
 	// TicketRequired says whether admission needs a
 	// data:session-ticket; false is only legitimate under this
 	// package's link-local scope.

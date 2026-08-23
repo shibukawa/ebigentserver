@@ -88,6 +88,7 @@ var (
 	protocolDevices   = []string{"keyboard", "mouse", "gamepad"}
 	seatFills         = []string{"bots", "empty"}
 	seatOccupants     = []string{"any", "human", "bot"}
+	conditionMatches  = []string{"exact", "band"}
 )
 
 // seatsForShape reports the seat count a concept:participant-shape fixes,
@@ -156,6 +157,7 @@ func (c *Config) validateProtocol() []error {
 	}
 
 	errs = append(errs, c.validateTeams()...)
+	errs = append(errs, c.validateConditions()...)
 	return errs
 }
 
@@ -188,6 +190,41 @@ func (c *Config) validateTeams() []error {
 	}
 	if total != p.Seats.Count {
 		errs = append(errs, fmt.Errorf("the teams account for %d seats and protocol.seats.count declares %d", total, p.Seats.Count))
+	}
+	return errs
+}
+
+// validateConditions checks the axes matchmaking filters on. An axis that
+// cannot be satisfied by any room is worse than no axis: it refuses
+// everybody and says the terms were not met.
+func (c *Config) validateConditions() []error {
+	var errs []error
+	names := map[string]bool{}
+	for i, a := range c.Protocol.Condition {
+		switch {
+		case a.Name == "":
+			errs = append(errs, fmt.Errorf("protocol.condition[%d].name is required", i))
+		case names[a.Name]:
+			errs = append(errs, fmt.Errorf("protocol.condition[%d] repeats the axis %q", i, a.Name))
+		}
+		names[a.Name] = true
+		if !slices.Contains(conditionMatches, a.Match) {
+			errs = append(errs, fmt.Errorf("protocol.condition[%d] (%s) match %q is not one of %v", i, a.Name, a.Match, conditionMatches))
+			continue
+		}
+		switch a.Match {
+		case "exact":
+			if a.Low != 0 || a.High != 0 {
+				errs = append(errs, fmt.Errorf("protocol.condition[%d] (%s) is exact, so low and high mean nothing", i, a.Name))
+			}
+		case "band":
+			if len(a.Values) > 0 {
+				errs = append(errs, fmt.Errorf("protocol.condition[%d] (%s) is a band, so values mean nothing", i, a.Name))
+			}
+			if a.High <= a.Low {
+				errs = append(errs, fmt.Errorf("protocol.condition[%d] (%s) spans %d..%d, which admits nothing", i, a.Name, a.Low, a.High))
+			}
+		}
 	}
 	return errs
 }
