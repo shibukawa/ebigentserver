@@ -8,18 +8,18 @@ import "context"
 // controller receives its sights through the downstream state
 // stream and submits actions through the slot's Inbox, so delivering
 // them here too would duplicate (and race with) the real path.
-type Detached[O, A any] struct{}
+type Detached[S, A any] struct{}
 
 var _ Agent[struct{}, struct{}] = Detached[struct{}, struct{}]{}
 
 // Joined does nothing.
-func (Detached[O, A]) Joined(SlotID) {}
+func (Detached[S, A]) Joined(SlotID) {}
 
 // Observe does nothing; sights travel the state stream.
-func (Detached[O, A]) Observe(O) {}
+func (Detached[S, A]) Observe(S) {}
 
 // Decide reports no action; realtime intake reads the Inbox instead.
-func (Detached[O, A]) Decide(context.Context) (a A, ok bool) { return a, false }
+func (Detached[S, A]) Decide(context.Context) (a A, ok bool) { return a, false }
 
 // Ended does nothing; the link closing tells the controller.
-func (Detached[O, A]) Ended(Result) {}
+func (Detached[S, A]) Ended(Result) {}

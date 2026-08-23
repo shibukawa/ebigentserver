@@ -44,7 +44,7 @@ type Screen interface {
 
 // Client is the game's play scene: an ebiten.Game with the session
 // already attached, split so that each of api:tick-hooks has a place.
-type Client[S, A, O any] interface {
+type Client[W, A, S any] interface {
 	// Intake reads this frame's devices and submits an action for each
 	// local seat (rule:no-engine-input-in-game-logic: a raw key becomes
 	// a concept:action here, and only here). It runs on Ebitengine's
@@ -58,7 +58,7 @@ type Client[S, A, O any] interface {
 	// goroutine, not Ebitengine's, so it must copy what Draw will read
 	// rather than retaining the pointer — the session keeps mutating
 	// what it handed over.
-	Apply(tick session.Tick, world *S)
+	Apply(tick session.Tick, world *W)
 	// Draw renders the world the last Apply produced. Nothing here
 	// decides anything: if the picture is wrong, the rules are wrong.
 	Draw(screen *ebiten.Image)
@@ -68,21 +68,21 @@ type Client[S, A, O any] interface {
 
 // Options is everything the wrapper needs to run a game: the framework
 // declaration, the rules, the play scene, and the engine's own options.
-type Options[S, A, O any] struct {
+type Options[W, A, S any] struct {
 	// Options is the framework declaration — name, accepted devices,
 	// shared screen (api:run-wrapper).
 	Options run.Options
 	// Binding is the game's rules seam.
-	Binding run.Binding[S, A, O]
+	Binding run.Binding[W, A, S]
 	// Client is the play scene.
-	Client Client[S, A, O]
+	Client Client[W, A, S]
 	// Lobby configures the default ui:lobby-scene. A game that supplies
 	// its own gathering screen sets Screen instead.
 	Lobby LobbyOptions
 	// Screen, when set, replaces the default lobby with the game's own
 	// gathering screen. It is handed the roster of each new match and
 	// must finalize it; see NewLobby for what the default one does.
-	Screen func(*run.Roster[S, A, O]) Screen
+	Screen func(*run.Roster[W, A, S]) Screen
 	// Time is concept:game-time-control for the session clock. It is
 	// independent of the frame rate: the tick loop runs on its own
 	// goroutine, which is why a replay of this game reproduces exactly
@@ -94,7 +94,7 @@ type Options[S, A, O any] struct {
 	//
 	// A guest never sees the lobby. It has nothing to gather — the
 	// roster it would fill belongs to the host.
-	Matchmaking run.Matchmaking[S, A, O]
+	Matchmaking run.Matchmaking[W, A, S]
 	// Record is where data:episode-log goes. A zero Root records
 	// nothing; setting it is what turns ordinary play into a corpus.
 	Record run.RecordOptions
@@ -118,7 +118,7 @@ type Options[S, A, O any] struct {
 //
 // It gives the main goroutine to Ebitengine, which insists on it, and
 // runs each session on its own.
-func Run[S, A, O any](ctx context.Context, opts Options[S, A, O]) error {
+func Run[W, A, S any](ctx context.Context, opts Options[W, A, S]) error {
 	if err := opts.Options.Validate(); err != nil {
 		return err
 	}
@@ -132,7 +132,7 @@ func Run[S, A, O any](ctx context.Context, opts Options[S, A, O]) error {
 		ctx = context.Background()
 	}
 
-	a := &app[S, A, O]{opts: opts, ctx: ctx}
+	a := &app[W, A, S]{opts: opts, ctx: ctx}
 	if err := a.gather(); err != nil {
 		return err
 	}
@@ -157,17 +157,17 @@ func Run[S, A, O any](ctx context.Context, opts Options[S, A, O]) error {
 
 // app is the wrapper's ebiten.Game. It holds no rules: it owns the
 // lifecycle and hands every frame to the current scene.
-type app[S, A, O any] struct {
-	opts Options[S, A, O]
+type app[W, A, S any] struct {
+	opts Options[W, A, S]
 	ctx  context.Context
 
 	screen  Screen
-	roster  *run.Roster[S, A, O]
-	hosting run.Host[S, A, O]
-	guest   run.Guest[S, A, O]
-	match   *run.Match[S, A, O]
-	rec     *run.Recording[S, A, O]
-	watch   *run.Watcher[S, A, O]
+	roster  *run.Roster[W, A, S]
+	hosting run.Host[W, A, S]
+	guest   run.Guest[W, A, S]
+	match   *run.Match[W, A, S]
+	rec     *run.Recording[W, A, S]
+	watch   *run.Watcher[W, A, S]
 	cancel  context.CancelFunc
 	matches int
 	last    *run.MatchResult
@@ -175,12 +175,12 @@ type app[S, A, O any] struct {
 
 // Last reports the previous match's result, so a gathering scene can show
 // how the last one went. Nil before the first match ends.
-func (a *app[S, A, O]) Last() *run.MatchResult { return a.last }
+func (a *app[W, A, S]) Last() *run.MatchResult { return a.last }
 
 // gather enters the gathering state: a fresh roster and the scene that
 // fills it. A roster is per match, so this runs again after every match.
-func (a *app[S, A, O]) gather() error {
-	roster, err := run.NewRoster[S, A, O](a.opts.Options, a.opts.Binding.Slots)
+func (a *app[W, A, S]) gather() error {
+	roster, err := run.NewRoster[W, A, S](a.opts.Options, a.opts.Binding.Slots)
 	if err != nil {
 		return err
 	}
@@ -200,33 +200,33 @@ func (a *app[S, A, O]) gather() error {
 		a.screen = a.opts.Screen(roster)
 		return nil
 	}
-	a.screen = NewLobby[S, A, O](a, roster)
+	a.screen = NewLobby[W, A, S](a, roster)
 	return nil
 }
 
 // Roster is the one being gathered.
-func (a *app[S, A, O]) Roster() *run.Roster[S, A, O] { return a.roster }
+func (a *app[W, A, S]) Roster() *run.Roster[W, A, S] { return a.roster }
 
 // Network is the preset, or nil when this build plays offline.
-func (a *app[S, A, O]) Matchmaking() run.Matchmaking[S, A, O] { return a.opts.Matchmaking }
+func (a *app[W, A, S]) Matchmaking() run.Matchmaking[W, A, S] { return a.opts.Matchmaking }
 
 // Context bounds the work a scene starts.
-func (a *app[S, A, O]) Context() context.Context { return a.ctx }
+func (a *app[W, A, S]) Context() context.Context { return a.ctx }
 
 // Declared hands a gathering scene the framework declaration.
-func (a *app[S, A, O]) Declared() (run.Options, LobbyOptions, run.Binding[S, A, O]) {
+func (a *app[W, A, S]) Declared() (run.Options, LobbyOptions, run.Binding[W, A, S]) {
 	return a.opts.Options, a.opts.Lobby, a.opts.Binding
 }
 
 // Host is the offer this instance already makes, or nil.
-func (a *app[S, A, O]) Host() run.Host[S, A, O] { return a.hosting }
+func (a *app[W, A, S]) Host() run.Host[W, A, S] { return a.hosting }
 
 // BecomeHost records that this instance is offering its match.
-func (a *app[S, A, O]) BecomeHost(h run.Host[S, A, O]) { a.hosting = h }
+func (a *app[W, A, S]) BecomeHost(h run.Host[W, A, S]) { a.hosting = h }
 
 // BecomeGuest records that this instance took a seat elsewhere, and
 // switches to the scene that renders a link instead of a match.
-func (a *app[S, A, O]) BecomeGuest(j run.Guest[S, A, O]) {
+func (a *app[W, A, S]) BecomeGuest(j run.Guest[W, A, S]) {
 	a.guest = j
 	a.screen = newRemote(a, j)
 }
@@ -234,11 +234,11 @@ func (a *app[S, A, O]) BecomeGuest(j run.Guest[S, A, O]) {
 // Start finalizes the roster and moves to the play scene. A gathering
 // scene calls it when it decides the roster is ready; the default lobby
 // does so on a start press, and a game's own scene may do so on anything.
-func (a *app[S, A, O]) Start() error {
+func (a *app[W, A, S]) Start() error {
 	index := a.matches
 	id := fmt.Sprintf("%s-%04d", a.opts.Options.Name, index)
 
-	rec, err := run.OpenRecording[S, A, O](run.RecordOptions{
+	rec, err := run.OpenRecording[W, A, S](run.RecordOptions{
 		Root:              a.opts.Record.Root,
 		EpisodeID:         id,
 		Mode:              a.opts.Record.Mode,
@@ -262,7 +262,7 @@ func (a *app[S, A, O]) Start() error {
 	// renderer here, on the session's goroutine.
 	appBroadcast := cfg.Broadcast
 	client := a.opts.Client
-	cfg.Broadcast = func(tick session.Tick, world *S) {
+	cfg.Broadcast = func(tick session.Tick, world *W) {
 		if appBroadcast != nil {
 			appBroadcast(tick, world)
 		}
@@ -290,12 +290,12 @@ func (a *app[S, A, O]) Start() error {
 	match.Start(ctx, a.opts.Time)
 
 	a.match, a.rec, a.cancel = match, rec, cancel
-	a.screen = &play[S, A, O]{app: a, client: client, match: match}
+	a.screen = &play[W, A, S]{app: a, client: client, match: match}
 	return nil
 }
 
 // ended closes out a finished match and returns to gathering.
-func (a *app[S, A, O]) ended() error {
+func (a *app[W, A, S]) ended() error {
 	res := run.MatchResult{
 		Index: a.matches,
 		Seed:  a.opts.Seed + uint64(a.matches),
@@ -323,7 +323,7 @@ func (a *app[S, A, O]) ended() error {
 }
 
 // stop releases the running match, if any.
-func (a *app[S, A, O]) stop() {
+func (a *app[W, A, S]) stop() {
 	if a.cancel != nil {
 		a.cancel()
 		a.cancel = nil
@@ -336,25 +336,25 @@ func (a *app[S, A, O]) stop() {
 }
 
 // Update gives the frame to the current scene.
-func (a *app[S, A, O]) Update() error { return a.screen.Update() }
+func (a *app[W, A, S]) Update() error { return a.screen.Update() }
 
 // Draw gives the screen to the current scene.
-func (a *app[S, A, O]) Draw(screen *ebiten.Image) { a.screen.Draw(screen) }
+func (a *app[W, A, S]) Draw(screen *ebiten.Image) { a.screen.Draw(screen) }
 
 // Layout uses the game's logical resolution for every scene, lobby
 // included, so a game has one coordinate system rather than two.
-func (a *app[S, A, O]) Layout(w, h int) (int, int) { return a.opts.Client.Layout(w, h) }
+func (a *app[W, A, S]) Layout(w, h int) (int, int) { return a.opts.Client.Layout(w, h) }
 
 // play is the scene of a running match. It is thin on purpose: intake,
 // then let the session tick on its own clock.
-type play[S, A, O any] struct {
-	app    *app[S, A, O]
-	client Client[S, A, O]
-	match  *run.Match[S, A, O]
+type play[W, A, S any] struct {
+	app    *app[W, A, S]
+	client Client[W, A, S]
+	match  *run.Match[W, A, S]
 }
 
 // Update runs the intake hook, then checks whether the match is over.
-func (p *play[S, A, O]) Update() error {
+func (p *play[W, A, S]) Update() error {
 	if p.match.Over() {
 		return p.app.ended()
 	}
@@ -363,7 +363,7 @@ func (p *play[S, A, O]) Update() error {
 }
 
 // Draw renders the world the client retained.
-func (p *play[S, A, O]) Draw(screen *ebiten.Image) { p.client.Draw(screen) }
+func (p *play[W, A, S]) Draw(screen *ebiten.Image) { p.client.Draw(screen) }
 
 func pick(a, b string) string {
 	if a != "" {

@@ -13,11 +13,11 @@ import (
 // validated player inputs; Advance then moves the authoritative world one
 // tick forward. ActingSlots is not consulted in realtime pacing — every
 // slot may submit every tick and a silent slot simply contributes nothing.
-type TickStageRuleSet[S, A, O any] interface {
-	StageRuleSet[S, A, O]
+type TickStageRuleSet[W, A, S any] interface {
+	StageRuleSet[W, A, S]
 	// Advance runs one simulation step after this tick's inputs were
 	// applied.
-	Advance(state *S)
+	Advance(state *W)
 }
 
 // TimeControl selects how the realtime loop paces (concept:game-time-
@@ -88,7 +88,7 @@ func (in *Inbox[A]) takeAll() []A {
 }
 
 // Inbox returns the slot's mailbox for realtime input submission.
-func (s *Session[S, A, O]) Inbox(slot SlotID) (*Inbox[A], error) {
+func (s *Session[W, A, S]) Inbox(slot SlotID) (*Inbox[A], error) {
 	in, ok := s.inboxes[slot]
 	if !ok {
 		return nil, fmt.Errorf("%w: %d", ErrUnknownSlot, slot)
@@ -107,8 +107,8 @@ func (s *Session[S, A, O]) Inbox(slot SlotID) (*Inbox[A], error) {
 // Config.Broadcast at the profile's send cadence; the session itself
 // never touches a transport (rule:session-independent-of-transport-and-
 // agent-kind).
-func (s *Session[S, A, O]) RunRealtime(ctx context.Context, tc TimeControl) error {
-	game, ok := s.cfg.RuleSet.(TickStageRuleSet[S, A, O])
+func (s *Session[W, A, S]) RunRealtime(ctx context.Context, tc TimeControl) error {
+	game, ok := s.cfg.RuleSet.(TickStageRuleSet[W, A, S])
 	if !ok {
 		return fmt.Errorf("session: RunRealtime requires the game to implement TickStageRuleSet")
 	}
@@ -204,7 +204,7 @@ func (s *Session[S, A, O]) RunRealtime(ctx context.Context, tc TimeControl) erro
 // intake policy. An InputSource is polled repeatedly under IntakeAll
 // (bounded by the inbox capacity) so scheduled replays can carry several
 // actions per slot per tick.
-func (s *Session[S, A, O]) takeInputs(slot SlotID) []A {
+func (s *Session[W, A, S]) takeInputs(slot SlotID) []A {
 	all := s.cfg.Tuning != nil && s.cfg.Tuning.InputIntake == IntakeAll
 	if s.cfg.InputSource != nil {
 		if !all {

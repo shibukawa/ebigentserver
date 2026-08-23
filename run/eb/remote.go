@@ -16,18 +16,18 @@ import (
 // It is a separate scene from play only because what ends it is
 // different. A local match ends when the session says so; a link ends
 // when it ends, and the host is the one that knows why.
-type remote[S, A, O any] struct {
-	app    *app[S, A, O]
-	client Client[S, A, O]
-	guest  run.Guest[S, A, O]
+type remote[W, A, S any] struct {
+	app    *app[W, A, S]
+	client Client[W, A, S]
+	guest  run.Guest[W, A, S]
 	cancel context.CancelFunc
 	done   bool
 }
 
 // newRemote starts the link's own goroutine and hands the frame loop a
 // scene that only reads and submits.
-func newRemote[S, A, O any](a *app[S, A, O], guest run.Guest[S, A, O]) *remote[S, A, O] {
-	r := &remote[S, A, O]{app: a, client: a.opts.Client, guest: guest}
+func newRemote[W, A, S any](a *app[W, A, S], guest run.Guest[W, A, S]) *remote[W, A, S] {
+	r := &remote[W, A, S]{app: a, client: a.opts.Client, guest: guest}
 	// The sink runs on the link's goroutine, which is where the
 	// reconstructed world is safe to read — the same contract a local
 	// match's Broadcast has, from the other side of the wire.
@@ -40,7 +40,7 @@ func newRemote[S, A, O any](a *app[S, A, O], guest run.Guest[S, A, O]) *remote[S
 
 // Update submits this frame's action into the link and notices when the
 // link has ended.
-func (r *remote[S, A, O]) Update() error {
+func (r *remote[W, A, S]) Update() error {
 	if r.guest.Over() {
 		return r.ended()
 	}
@@ -49,12 +49,12 @@ func (r *remote[S, A, O]) Update() error {
 }
 
 // Draw renders whatever the last world produced.
-func (r *remote[S, A, O]) Draw(screen *ebiten.Image) { r.client.Draw(screen) }
+func (r *remote[W, A, S]) Draw(screen *ebiten.Image) { r.client.Draw(screen) }
 
 // ended holds the final board up, then returns to gathering. A guest's
 // next match is the host's to start, so gathering means looking again —
 // which is the same screen it started on.
-func (r *remote[S, A, O]) ended() error {
+func (r *remote[W, A, S]) ended() error {
 	if r.done {
 		return nil
 	}

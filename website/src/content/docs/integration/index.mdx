@@ -11,7 +11,7 @@ import { Aside, Card, CardGrid, LinkCard } from '@astrojs/starlight/components';
 ここで合わせる先は4つのインターフェースだけだ。しかも、そのうち必須なのは1つしかない。
 
 <CardGrid>
-	<Card title="StageRuleSet[S, A, O]" icon="puzzle">
+	<Card title="StageRuleSet[W, A, S]" icon="puzzle">
 		必須。世界を進め、視界を作り、評価する。5メソッド。
 	</Card>
 	<Card title="Agent[O, A]" icon="rocket">
@@ -20,7 +20,7 @@ import { Aside, Card, CardGrid, LinkCard } from '@astrojs/starlight/components';
 	<Card title="ActionValidator[S, A]" icon="approve-check">
 		任意。合法性の判定。省くと全部通る。
 	</Card>
-	<Card title="Recorder[S, A, O]" icon="document">
+	<Card title="Recorder[W, A, S]" icon="document">
 		任意。エピソード記録のフック。`episode.Writer` が既製の実装。
 	</Card>
 </CardGrid>

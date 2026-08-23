@@ -8,19 +8,19 @@ package session
 // Legal must be deterministic — under rollback it runs on every simulating
 // peer and a disagreement is a desync. The plausibility class (heuristic,
 // authoritative-side-only) arrives in Phase 4.
-type ActionValidator[S, A any] interface {
+type ActionValidator[W, A any] interface {
 	// Legal returns nil when the action is possible under the rules in
 	// this state, or an error describing the violation. It must not
 	// mutate the state.
-	Legal(state *S, slot SlotID, action A) error
+	Legal(state *W, slot SlotID, action A) error
 }
 
 // AllowAll admits every action: the Phase 1 default keeping the hook
 // position occupied (plan.md seam table) until a game supplies checks.
-type AllowAll[S, A any] struct{}
+type AllowAll[W, A any] struct{}
 
 // Legal always returns nil.
-func (AllowAll[S, A]) Legal(*S, SlotID, A) error { return nil }
+func (AllowAll[W, A]) Legal(*W, SlotID, A) error { return nil }
 
 // PlausibilityValidator is the second validator class of
 // api:action-validator: could an honest client have produced this? It

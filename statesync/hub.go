@@ -16,13 +16,13 @@ import (
 // channel is full loses the packet; the hub then forces that receiver's
 // next send to be a snapshot, since a lost packet breaks the speculative
 // delta chain (concept:delta-baseline-policy).
-type Hub[S, D any] struct {
-	codec  Codec[S, D]
+type Hub[W, D any] struct {
+	codec  Codec[W, D]
 	tuning session.TuningProfile
 
 	mu      sync.Mutex
 	slots   []session.SlotID
-	senders map[session.SlotID]*Sender[S, D]
+	senders map[session.SlotID]*Sender[W, D]
 	chans   map[session.SlotID]chan Packet
 	closed  bool
 }
@@ -31,24 +31,24 @@ type Hub[S, D any] struct {
 const chanDepth = 16
 
 // NewHub builds a hub for one session.
-func NewHub[S, D any](codec Codec[S, D], tuning session.TuningProfile) (*Hub[S, D], error) {
+func NewHub[W, D any](codec Codec[W, D], tuning session.TuningProfile) (*Hub[W, D], error) {
 	if err := codec.validate(); err != nil {
 		return nil, err
 	}
 	if err := tuning.Validate(); err != nil {
 		return nil, err
 	}
-	return &Hub[S, D]{
+	return &Hub[W, D]{
 		codec:   codec,
 		tuning:  tuning,
-		senders: map[session.SlotID]*Sender[S, D]{},
+		senders: map[session.SlotID]*Sender[W, D]{},
 		chans:   map[session.SlotID]chan Packet{},
 	}, nil
 }
 
 // Attach registers a receiver and returns its packet channel. Attach every
 // receiver before the session starts broadcasting.
-func (h *Hub[S, D]) Attach(slot session.SlotID) (<-chan Packet, error) {
+func (h *Hub[W, D]) Attach(slot session.SlotID) (<-chan Packet, error) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	if _, dup := h.senders[slot]; dup {
@@ -67,7 +67,7 @@ func (h *Hub[S, D]) Attach(slot session.SlotID) (<-chan Packet, error) {
 
 // RequestResync asks for a full snapshot on the receiver's next send
 // (Receiver returned ErrResyncNeeded).
-func (h *Hub[S, D]) RequestResync(slot session.SlotID) {
+func (h *Hub[W, D]) RequestResync(slot session.SlotID) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	if snd, ok := h.senders[slot]; ok {
@@ -77,7 +77,7 @@ func (h *Hub[S, D]) RequestResync(slot session.SlotID) {
 
 // Broadcast encodes and delivers the committed world to every receiver.
 // It matches session.Config.Broadcast.
-func (h *Hub[S, D]) Broadcast(tick session.Tick, world *S) {
+func (h *Hub[W, D]) Broadcast(tick session.Tick, world *W) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	if h.closed {
@@ -97,7 +97,7 @@ func (h *Hub[S, D]) Broadcast(tick session.Tick, world *S) {
 }
 
 // Close closes every receiver channel; call it once the session is done.
-func (h *Hub[S, D]) Close() {
+func (h *Hub[W, D]) Close() {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	if h.closed {

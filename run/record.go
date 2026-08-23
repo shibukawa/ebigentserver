@@ -18,9 +18,9 @@ import (
 // lands here with the sight it was made from, which is the input
 // flow:behavior-tree-synthesis needs and the one thing a hand-written
 // enemy loop never produces.
-type Recording[S, A, O any] struct {
+type Recording[W, A, S any] struct {
 	// Writer implements session.Recorder; hand it to session.Config.
-	Writer *episode.Writer[S, A, O]
+	Writer *episode.Writer[W, A, S]
 	// Dir is the episode directory that was created.
 	Dir string
 
@@ -53,7 +53,7 @@ type RecordOptions struct {
 // OpenRecording creates the episode directory and its streams. A zero
 // Root returns a nil recording and no error, so a caller can wire it
 // unconditionally and let configuration decide.
-func OpenRecording[S, A, O any](opts RecordOptions) (*Recording[S, A, O], error) {
+func OpenRecording[W, A, S any](opts RecordOptions) (*Recording[W, A, S], error) {
 	if opts.Root == "" {
 		return nil, nil
 	}
@@ -70,7 +70,7 @@ func OpenRecording[S, A, O any](opts RecordOptions) (*Recording[S, A, O], error)
 		return nil, fmt.Errorf("run: create episode directory: %w", err)
 	}
 
-	rec := &Recording[S, A, O]{Dir: dir}
+	rec := &Recording[W, A, S]{Dir: dir}
 	open := func(name string) (*os.File, error) {
 		f, err := os.Create(filepath.Join(dir, name))
 		if err != nil {
@@ -103,7 +103,7 @@ func OpenRecording[S, A, O any](opts RecordOptions) (*Recording[S, A, O], error)
 		}
 	}
 
-	rec.Writer = episode.NewWriter[S, A, O](streams, mode, episode.Meta{
+	rec.Writer = episode.NewWriter[W, A, S](streams, mode, episode.Meta{
 		EpisodeID:         id,
 		ProtocolVersion:   opts.ProtocolVersion,
 		EvaluationVersion: opts.EvaluationVersion,
@@ -115,7 +115,7 @@ func OpenRecording[S, A, O any](opts RecordOptions) (*Recording[S, A, O], error)
 // Close flushes and closes every stream. It reports the writer's first
 // write error if there was one: recording degrades rather than
 // interrupting play, so the failure surfaces here instead.
-func (r *Recording[S, A, O]) Close() error {
+func (r *Recording[W, A, S]) Close() error {
 	if r == nil {
 		return nil
 	}
@@ -131,7 +131,7 @@ func (r *Recording[S, A, O]) Close() error {
 
 // Recorder returns the session recorder, or nil for a nil recording, so
 // session.Config.Recorder can be assigned unconditionally.
-func (r *Recording[S, A, O]) Recorder() session.Recorder[S, A, O] {
+func (r *Recording[W, A, S]) Recorder() session.Recorder[W, A, S] {
 	if r == nil || r.Writer == nil {
 		return nil
 	}

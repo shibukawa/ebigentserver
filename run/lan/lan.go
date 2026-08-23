@@ -57,14 +57,14 @@ const ticketLife = 2 * time.Minute
 // Options declares what a game puts on the wire. Every field but the
 // test overrides is required: this package encodes nothing on its own,
 // it only carries what the game's generated codec produces.
-type Options[S, A, D, O any] struct {
+type Options[W, A, D, S any] struct {
 	// Name is what the browse list shows.
 	Name string
 	// Protocol is data:protocol-version, compared before anything else
 	// (rule:protocol-version-must-match).
 	Protocol string
 	// Codec is the game's generated snapshot and delta encoding.
-	Codec statesync.Codec[S, D]
+	Codec statesync.Codec[W, D]
 	// Tuning is the declared data:session-tuning-profile.
 	Tuning session.TuningProfile
 	// Budget bounds connections and input rate. The zero value takes
@@ -75,7 +75,7 @@ type Options[S, A, D, O any] struct {
 	DecodeInput func(b []byte) (A, error)
 	// Project builds a slot's sight on the guest side, from the
 	// world the guest reconstructed.
-	Project func(world *S, slot session.SlotID) O
+	Project func(world *W, slot session.SlotID) S
 	// Port is the host's listening port; 0 picks a free one.
 	Port int
 
@@ -91,14 +91,14 @@ type Options[S, A, D, O any] struct {
 	DiscoveryAddr string
 }
 
-func (o Options[S, A, D, O]) browseWindow() time.Duration {
+func (o Options[W, A, D, S]) browseWindow() time.Duration {
 	if o.BrowseWindow > 0 {
 		return o.BrowseWindow
 	}
 	return 1500 * time.Millisecond
 }
 
-func (o Options[S, A, D, O]) validate() error {
+func (o Options[W, A, D, S]) validate() error {
 	var missing []string
 	if o.Protocol == "" {
 		missing = append(missing, "Protocol")
@@ -121,7 +121,7 @@ func (o Options[S, A, D, O]) validate() error {
 	return o.Tuning.Validate()
 }
 
-func (o Options[S, A, D, O]) budgetOrDefault() budget.Budget {
+func (o Options[W, A, D, S]) budgetOrDefault() budget.Budget {
 	b := o.Budget
 	if b.MaxConnections == 0 {
 		b = budget.Budget{
@@ -143,9 +143,9 @@ type grant struct {
 }
 
 // Host is one instance offering its match to the network.
-type Host[S, A, D, O any] struct {
-	opts   Options[S, A, D, O]
-	roster *run.Roster[S, A, O] // guarded by mu
+type Host[W, A, D, S any] struct {
+	opts   Options[W, A, D, S]
+	roster *run.Roster[W, A, S] // guarded by mu
 
 	endpoint string
 	priv     ed25519.PrivateKey
@@ -162,7 +162,7 @@ type Host[S, A, D, O any] struct {
 	closed    bool
 	reportErr func(error)
 
-	server atomic.Pointer[netplay.Server[S, A]]
+	server atomic.Pointer[netplay.Server[W, A]]
 
 	stop  context.CancelFunc
 	wg    sync.WaitGroup
@@ -172,7 +172,7 @@ type Host[S, A, D, O any] struct {
 // Open starts listening and announcing. The roster is the one the lobby
 // is filling: a guest reaching /join takes a seat in it, so the lobby
 // shows the arrival without knowing a network exists.
-func Open[S, A, D, O any](ctx context.Context, opts Options[S, A, D, O], roster *run.Roster[S, A, O], seed uint64) (*Host[S, A, D, O], error) {
+func Open[W, A, D, S any](ctx context.Context, opts Options[W, A, D, S], roster *run.Roster[W, A, S], seed uint64) (*Host[W, A, D, S], error) {
 	if err := opts.validate(); err != nil {
 		return nil, err
 	}
@@ -202,7 +202,7 @@ func Open[S, A, D, O any](ctx context.Context, opts Options[S, A, D, O], roster 
 		ln.Close()
 		return nil, err
 	}
-	h := &Host[S, A, D, O]{
+	h := &Host[W, A, D, S]{
 		opts:     opts,
 		roster:   roster,
 		endpoint: endpoint,
@@ -232,13 +232,13 @@ func Open[S, A, D, O any](ctx context.Context, opts Options[S, A, D, O], roster 
 
 // Endpoint is the host:port a guest dials, and the audience its tickets
 // name.
-func (h *Host[S, A, D, O]) Endpoint() string { return h.endpoint }
+func (h *Host[W, A, D, S]) Endpoint() string { return h.endpoint }
 
 // Rebind points the offer at the next match's roster. A roster belongs
 // to one match, so without this the offer would keep seating arrivals
 // into the finished one, and the new lobby would wait for people who had
 // already arrived somewhere else.
-func (h *Host[S, A, D, O]) Rebind(r *run.Roster[S, A, O]) {
+func (h *Host[W, A, D, S]) Rebind(r *run.Roster[W, A, S]) {
 	h.mu.Lock()
 	h.roster = r
 	h.mu.Unlock()
@@ -247,14 +247,14 @@ func (h *Host[S, A, D, O]) Rebind(r *run.Roster[S, A, O]) {
 }
 
 // currentRoster reads the roster the offer is filling.
-func (h *Host[S, A, D, O]) currentRoster() *run.Roster[S, A, O] {
+func (h *Host[W, A, D, S]) currentRoster() *run.Roster[W, A, S] {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	return h.roster
 }
 
 // announce repeats the beacon until the context ends.
-func (h *Host[S, A, D, O]) announce(ctx context.Context) {
+func (h *Host[W, A, D, S]) announce(ctx context.Context) {
 	a := &discovery.Announcer{
 		Addr: h.opts.BeaconAddr,
 		Beacon: func() discovery.Beacon {
@@ -279,7 +279,7 @@ func (h *Host[S, A, D, O]) announce(ctx context.Context) {
 // handleJoin seats the caller in the roster and mints the ticket naming
 // that seat. This is the whole of the control plane, and it lives inside
 // the host process because on a segment there is nothing else to ask.
-func (h *Host[S, A, D, O]) handleJoin(w http.ResponseWriter, r *http.Request) {
+func (h *Host[W, A, D, S]) handleJoin(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Query().Get("protocol") != h.opts.Protocol {
 		http.Error(w, "protocol mismatch: host speaks "+h.opts.Protocol, http.StatusConflict)
 		return
@@ -311,7 +311,7 @@ func (h *Host[S, A, D, O]) handleJoin(w http.ResponseWriter, r *http.Request) {
 
 // claimFreeSeat takes the lowest seat nobody holds. Two guests arriving
 // together race here, and the roster's own lock decides.
-func (h *Host[S, A, D, O]) claimFreeSeat(roster *run.Roster[S, A, O], id string) (session.SlotID, error) {
+func (h *Host[W, A, D, S]) claimFreeSeat(roster *run.Roster[W, A, S], id string) (session.SlotID, error) {
 	for _, seat := range roster.Seats() {
 		if seat.Filled() {
 			continue
@@ -326,7 +326,7 @@ func (h *Host[S, A, D, O]) claimFreeSeat(roster *run.Roster[S, A, O], id string)
 // handleWS parks an upgraded connection. It is not admitted yet: the
 // session it would be admitted into does not exist until the lobby
 // starts the match.
-func (h *Host[S, A, D, O]) handleWS(w http.ResponseWriter, r *http.Request) {
+func (h *Host[W, A, D, S]) handleWS(w http.ResponseWriter, r *http.Request) {
 	conn, err := h.upgrader.Upgrade(w, r)
 	if err != nil {
 		return
@@ -349,9 +349,9 @@ func (h *Host[S, A, D, O]) handleWS(w http.ResponseWriter, r *http.Request) {
 // Attach installs the downstream hook before the session is built. The
 // netplay server does not exist yet, so the hook reads it each tick and
 // does nothing until Serve puts one there.
-func (h *Host[S, A, D, O]) Attach(cfg *session.Config[S, A, O]) {
+func (h *Host[W, A, D, S]) Attach(cfg *session.Config[W, A, S]) {
 	prev := cfg.Broadcast
-	cfg.Broadcast = func(tick session.Tick, world *S) {
+	cfg.Broadcast = func(tick session.Tick, world *W) {
 		if prev != nil {
 			prev(tick, world)
 		}
@@ -364,19 +364,19 @@ func (h *Host[S, A, D, O]) Attach(cfg *session.Config[S, A, O]) {
 // Serve wires the finalized match to the network and admits everyone who
 // was waiting. Call it immediately after Finalize and before the first
 // tick commits, so no state is produced with nobody to send it to.
-func (h *Host[S, A, D, O]) Serve(ctx context.Context, m *run.Match[S, A, O]) error {
+func (h *Host[W, A, D, S]) Serve(ctx context.Context, m *run.Match[W, A, S]) error {
 	if m == nil {
 		return errors.New("lan: Serve needs the finalized match")
 	}
 	b := h.opts.budgetOrDefault()
-	sv, err := netplay.NewServer(ctx, netplay.ServerConfig[S, A]{
+	sv, err := netplay.NewServer(ctx, netplay.ServerConfig[W, A]{
 		SessionID: h.opts.Name,
 		Protocol:  h.opts.Protocol,
 		Verifier:  h.verifier,
 		Seed:      h.seed,
 		Tuning:    h.opts.Tuning,
 		Budget:    b,
-		MakeSender: func(session.SlotID, string) (statesync.ViewSender[S], error) {
+		MakeSender: func(session.SlotID, string) (statesync.ViewSender[W], error) {
 			return statesync.NewSender(h.opts.Codec, h.opts.Tuning)
 		},
 		DecodeInput: h.opts.DecodeInput,
@@ -407,7 +407,7 @@ func (h *Host[S, A, D, O]) Serve(ctx context.Context, m *run.Match[S, A, O]) err
 // It runs on its own goroutine because the handshake waits on the other
 // end, and the match must not: a guest that never says hello is a seat
 // that stays silent, not a match that never starts.
-func (h *Host[S, A, D, O]) admit(ctx context.Context, sv *netplay.Server[S, A], conn transport.Conn) {
+func (h *Host[W, A, D, S]) admit(ctx context.Context, sv *netplay.Server[W, A], conn transport.Conn) {
 	peer, err := sv.Admit(ctx, conn)
 	if err != nil {
 		_ = conn.Close()
@@ -431,13 +431,13 @@ func (h *Host[S, A, D, O]) admit(ctx context.Context, sv *netplay.Server[S, A], 
 // match ending is the host's news to deliver, and closing the link is
 // how it is delivered (decision:host-loss-ends-session — the far side
 // reports and returns rather than trying to carry on).
-func (h *Host[S, A, D, O]) endWith(m *run.Match[S, A, O]) {
+func (h *Host[W, A, D, S]) endWith(m *run.Match[W, A, S]) {
 	<-m.Done()
 	h.dropAdmitted()
 }
 
 // dropAdmitted closes and forgets the links of a finished match.
-func (h *Host[S, A, D, O]) dropAdmitted() {
+func (h *Host[W, A, D, S]) dropAdmitted() {
 	h.mu.Lock()
 	conns := h.admitted
 	h.admitted = nil
@@ -448,7 +448,7 @@ func (h *Host[S, A, D, O]) dropAdmitted() {
 }
 
 // onError reports the sink for admission failures, if the game set one.
-func (h *Host[S, A, D, O]) onError() func(error) {
+func (h *Host[W, A, D, S]) onError() func(error) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	return h.reportErr
@@ -458,7 +458,7 @@ func (h *Host[S, A, D, O]) onError() func(error) {
 // protocol drifted, or one that went away between taking a seat and
 // saying hello. Without it they are silent, which is the right default
 // for a game: one guest failing is not the match failing.
-func (h *Host[S, A, D, O]) OnError(f func(error)) {
+func (h *Host[W, A, D, S]) OnError(f func(error)) {
 	h.mu.Lock()
 	h.reportErr = f
 	h.mu.Unlock()
@@ -466,7 +466,7 @@ func (h *Host[S, A, D, O]) OnError(f func(error)) {
 
 // Close stops announcing and listening. Connections already admitted
 // belong to the match and end with it.
-func (h *Host[S, A, D, O]) Close() error {
+func (h *Host[W, A, D, S]) Close() error {
 	h.mu.Lock()
 	if h.closed {
 		h.mu.Unlock()
@@ -489,7 +489,7 @@ func (h *Host[S, A, D, O]) Close() error {
 // Browse listens for beacons for the given window and reports what
 // answered, newest occupancy first seen. A browse is passive: it sends
 // nothing, so it cannot be used to find hosts outside the segment.
-func Browse[S, A, D, O any](ctx context.Context, opts Options[S, A, D, O], window time.Duration) ([]discovery.Beacon, error) {
+func Browse[W, A, D, S any](ctx context.Context, opts Options[W, A, D, S], window time.Duration) ([]discovery.Beacon, error) {
 	l, err := discovery.Listen(opts.DiscoveryAddr, opts.Protocol)
 	if err != nil {
 		return nil, err
@@ -516,8 +516,8 @@ func Browse[S, A, D, O any](ctx context.Context, opts Options[S, A, D, O], windo
 // Guest is this instance playing somebody else's match. It holds no
 // session: the world arrives already committed, and the only thing sent
 // back is data:player-input.
-type Guest[S, A, D, O any] struct {
-	opts   Options[S, A, D, O]
+type Guest[W, A, D, S any] struct {
+	opts   Options[W, A, D, S]
 	conn   transport.Conn
 	ticket string
 	seat   session.SlotID
@@ -526,8 +526,8 @@ type Guest[S, A, D, O any] struct {
 	ready chan struct{}
 
 	mu      sync.Mutex
-	client  *netplay.Client[S, A, D, O]
-	onWorld func(session.Tick, *S)
+	client  *netplay.Client[W, A, D, S]
+	onWorld func(session.Tick, *W)
 	over    bool
 }
 
@@ -535,7 +535,7 @@ type Guest[S, A, D, O any] struct {
 // granted and the link is open — before the host has started anything,
 // because the host is still gathering and a guest with nothing on screen
 // until then would look broken. The handshake happens in Play.
-func JoinAt[S, A, D, O any](ctx context.Context, opts Options[S, A, D, O], endpoint string) (*Guest[S, A, D, O], error) {
+func JoinAt[W, A, D, S any](ctx context.Context, opts Options[W, A, D, S], endpoint string) (*Guest[W, A, D, S], error) {
 	if err := opts.validate(); err != nil {
 		return nil, err
 	}
@@ -547,7 +547,7 @@ func JoinAt[S, A, D, O any](ctx context.Context, opts Options[S, A, D, O], endpo
 	if err != nil {
 		return nil, fmt.Errorf("lan: dialling %s: %w", endpoint, err)
 	}
-	return &Guest[S, A, D, O]{
+	return &Guest[W, A, D, S]{
 		opts:   opts,
 		conn:   conn,
 		ticket: g.Ticket,
@@ -581,14 +581,14 @@ func requestSeat(ctx context.Context, endpoint, protocol string) (grant, error) 
 // Slot is the seat the host granted. It is known before the handshake,
 // which is what lets a guest draw its own side of the board while it is
 // still waiting.
-func (g *Guest[S, A, D, O]) Slot() session.SlotID { return g.seat }
+func (g *Guest[W, A, D, S]) Slot() session.SlotID { return g.seat }
 
 // Ready closes once the handshake completes and state starts arriving.
-func (g *Guest[S, A, D, O]) Ready() <-chan struct{} { return g.ready }
+func (g *Guest[W, A, D, S]) Ready() <-chan struct{} { return g.ready }
 
 // Seed is the match's shared RNG seed, delivered by the handshake. It is
 // meaningful only after Ready closes.
-func (g *Guest[S, A, D, O]) Seed() uint64 {
+func (g *Guest[W, A, D, S]) Seed() uint64 {
 	if c := g.live(); c != nil {
 		return c.Seed
 	}
@@ -596,10 +596,10 @@ func (g *Guest[S, A, D, O]) Seed() uint64 {
 }
 
 // State is the newest world this guest has reconstructed.
-func (g *Guest[S, A, D, O]) State() (*S, session.Tick, bool) {
+func (g *Guest[W, A, D, S]) State() (*W, session.Tick, bool) {
 	c := g.live()
 	if c == nil {
-		var zero *S
+		var zero *W
 		return zero, 0, false
 	}
 	return c.State()
@@ -613,8 +613,8 @@ func (g *Guest[S, A, D, O]) State() (*S, session.Tick, bool) {
 // the keyboard and a bot are the same kind of object, which is what
 // makes replacing one with the other a seating decision rather than a
 // rewrite.
-func (g *Guest[S, A, D, O]) Run(ctx context.Context, agent session.Agent[O, A]) error {
-	client, err := netplay.Connect(ctx, g.conn, g.ticket, netplay.ClientConfig[S, A, D, O]{
+func (g *Guest[W, A, D, S]) Run(ctx context.Context, agent session.Agent[S, A]) error {
+	client, err := netplay.Connect(ctx, g.conn, g.ticket, netplay.ClientConfig[W, A, D, S]{
 		Protocol:    g.opts.Protocol,
 		Tuning:      g.opts.Tuning,
 		Codec:       g.opts.Codec,
@@ -631,14 +631,14 @@ func (g *Guest[S, A, D, O]) Run(ctx context.Context, agent session.Agent[O, A]) 
 	return client.Run(ctx, agent)
 }
 
-func (g *Guest[S, A, D, O]) live() *netplay.Client[S, A, D, O] {
+func (g *Guest[W, A, D, S]) live() *netplay.Client[W, A, D, S] {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 	return g.client
 }
 
 // Close ends the link, whether or not the handshake ever completed.
-func (g *Guest[S, A, D, O]) Close() error {
+func (g *Guest[W, A, D, S]) Close() error {
 	if c := g.live(); c != nil {
 		return c.Close()
 	}

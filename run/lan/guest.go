@@ -43,15 +43,15 @@ func (m *mailbox[A]) take() (A, bool) {
 // local is the guest's own controller, and it is an ordinary agent. A
 // bot put in its place would change nothing else, which is the property
 // decision:agent-as-central-abstraction is for.
-type local[S, A, D, O any] struct {
-	g *Guest[S, A, D, O]
+type local[W, A, D, S any] struct {
+	g *Guest[W, A, D, S]
 }
 
-func (l *local[S, A, D, O]) Joined(session.SlotID) {}
+func (l *local[W, A, D, S]) Joined(session.SlotID) {}
 
 // Observe runs on the link goroutine, immediately after the receiver
 // reconstructed this world — which is the only place it is safe to read.
-func (l *local[S, A, D, O]) Observe(O) {
+func (l *local[W, A, D, S]) Observe(S) {
 	sink := l.g.sink()
 	if sink == nil {
 		return
@@ -61,19 +61,19 @@ func (l *local[S, A, D, O]) Observe(O) {
 	}
 }
 
-func (l *local[S, A, D, O]) Decide(context.Context) (A, bool) { return l.g.box.take() }
+func (l *local[W, A, D, S]) Decide(context.Context) (A, bool) { return l.g.box.take() }
 
-func (l *local[S, A, D, O]) Ended(session.Result) {}
+func (l *local[W, A, D, S]) Ended(session.Result) {}
 
 // LocalSeats reports the one seat this machine plays. It is known from
 // the seat grant, so a guest can draw and take input while the handshake
 // is still waiting on the host.
-func (g *Guest[S, A, D, O]) LocalSeats() []run.Seat {
+func (g *Guest[W, A, D, S]) LocalSeats() []run.Seat {
 	return []run.Seat{{Slot: g.seat, Kind: run.Human, Local: true, ID: "you", Ready: true}}
 }
 
 // Submit hands this frame's action to the link.
-func (g *Guest[S, A, D, O]) Submit(slot session.SlotID, action A) error {
+func (g *Guest[W, A, D, S]) Submit(slot session.SlotID, action A) error {
 	if slot != g.seat {
 		return run.ErrUnknownSlot
 	}
@@ -82,21 +82,21 @@ func (g *Guest[S, A, D, O]) Submit(slot session.SlotID, action A) error {
 }
 
 // OnWorld registers the sink for each reconstructed world.
-func (g *Guest[S, A, D, O]) OnWorld(f func(session.Tick, *S)) {
+func (g *Guest[W, A, D, S]) OnWorld(f func(session.Tick, *W)) {
 	g.mu.Lock()
 	g.onWorld = f
 	g.mu.Unlock()
 }
 
-func (g *Guest[S, A, D, O]) sink() func(session.Tick, *S) {
+func (g *Guest[W, A, D, S]) sink() func(session.Tick, *W) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 	return g.onWorld
 }
 
 // Play drives the link with the guest's own controller.
-func (g *Guest[S, A, D, O]) Play(ctx context.Context) error {
-	err := g.Run(ctx, &local[S, A, D, O]{g: g})
+func (g *Guest[W, A, D, S]) Play(ctx context.Context) error {
+	err := g.Run(ctx, &local[W, A, D, S]{g: g})
 	g.mu.Lock()
 	g.over = true
 	g.mu.Unlock()
@@ -104,7 +104,7 @@ func (g *Guest[S, A, D, O]) Play(ctx context.Context) error {
 }
 
 // Over reports that Play has returned — the match ended, or the host did.
-func (g *Guest[S, A, D, O]) Over() bool {
+func (g *Guest[W, A, D, S]) Over() bool {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 	return g.over
@@ -114,17 +114,17 @@ func (g *Guest[S, A, D, O]) Over() bool {
 // protocol, these wire types. The wrapper asks it what is out there and
 // the player decides — which is why hosting and joining are separate
 // calls rather than one that picks for them.
-func Preset[S, A, D, O any](opts Options[S, A, D, O]) run.Matchmaking[S, A, O] {
-	return &preset[S, A, D, O]{opts: opts, window: opts.browseWindow()}
+func Preset[W, A, D, S any](opts Options[W, A, D, S]) run.Matchmaking[W, A, S] {
+	return &preset[W, A, D, S]{opts: opts, window: opts.browseWindow()}
 }
 
-type preset[S, A, D, O any] struct {
-	opts   Options[S, A, D, O]
+type preset[W, A, D, S any] struct {
+	opts   Options[W, A, D, S]
 	window time.Duration
 }
 
 // Discover lists the games answering on this network.
-func (p *preset[S, A, D, O]) Discover(ctx context.Context) ([]run.Found, error) {
+func (p *preset[W, A, D, S]) Discover(ctx context.Context) ([]run.Found, error) {
 	beacons, err := Browse(ctx, p.opts, p.window)
 	if err != nil && !errors.Is(err, context.DeadlineExceeded) {
 		return nil, err
@@ -137,12 +137,12 @@ func (p *preset[S, A, D, O]) Discover(ctx context.Context) ([]run.Found, error) 
 }
 
 // Host offers this instance's match.
-func (p *preset[S, A, D, O]) Host(ctx context.Context, r *run.Roster[S, A, O], seed uint64) (run.Host[S, A, O], error) {
+func (p *preset[W, A, D, S]) Host(ctx context.Context, r *run.Roster[W, A, S], seed uint64) (run.Host[W, A, S], error) {
 	return Open(ctx, p.opts, r, seed)
 }
 
 // Join takes a seat on one of the games Discover reported.
-func (p *preset[S, A, D, O]) Match(ctx context.Context, f run.Found) (run.Guest[S, A, O], error) {
+func (p *preset[W, A, D, S]) Match(ctx context.Context, f run.Found) (run.Guest[W, A, S], error) {
 	return JoinAt(ctx, p.opts, f.Address)
 }
 

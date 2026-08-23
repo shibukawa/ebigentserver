@@ -10,7 +10,7 @@ import "context"
 //
 // Reproducing identical state from actions alone requires
 // term:determinism; the checkpoint stream is what proves it held.
-type ReplayAgent[O, A any] struct {
+type ReplayAgent[S, A any] struct {
 	// Actions is the slot's recorded action sequence, in commit order.
 	Actions []A
 	next    int
@@ -19,16 +19,16 @@ type ReplayAgent[O, A any] struct {
 var _ Agent[struct{}, struct{}] = (*ReplayAgent[struct{}, struct{}])(nil)
 
 // Joined does nothing.
-func (*ReplayAgent[O, A]) Joined(SlotID) {}
+func (*ReplayAgent[S, A]) Joined(SlotID) {}
 
 // Observe discards the sight: the replayed decisions already
 // happened.
-func (*ReplayAgent[O, A]) Observe(O) {}
+func (*ReplayAgent[S, A]) Observe(S) {}
 
 // Decide emits the next recorded action; exhaustion returns no action,
 // which drains the session (a truncated recording ends the replay rather
 // than inventing moves).
-func (r *ReplayAgent[O, A]) Decide(context.Context) (A, bool) {
+func (r *ReplayAgent[S, A]) Decide(context.Context) (A, bool) {
 	if r.next >= len(r.Actions) {
 		var zero A
 		return zero, false
@@ -39,4 +39,4 @@ func (r *ReplayAgent[O, A]) Decide(context.Context) (A, bool) {
 }
 
 // Ended does nothing.
-func (*ReplayAgent[O, A]) Ended(Result) {}
+func (*ReplayAgent[S, A]) Ended(Result) {}

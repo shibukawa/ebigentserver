@@ -8,20 +8,20 @@ import "context"
 // interface — game rules can therefore never ask what occupies a slot
 // (decision:no-ai-game-mode).
 //
-// An agent reads only its sight O, never the world state.
+// An agent reads only its sight S, never the world.
 //
 // Call order per session (concept:session-lifecycle):
 // Joined once, before the first Observe; then Observe once per step
 // followed by Decide when the slot is acting; then a final Observe of the
 // terminal position and Ended exactly once.
-type Agent[O, A any] interface {
+type Agent[S, A any] interface {
 	// Joined tells the agent which slot it controls. It completes
 	// before the first Observe.
 	Joined(slot SlotID)
 	// Observe delivers the slot's projection of the current step
 	// (concept:sight). It never blocks the session for long: in
 	// step pacing the session waits in Decide, not here.
-	Observe(obs O)
+	Observe(obs S)
 	// Decide returns the agent's next action, or ok=false for none.
 	// In step pacing (decision:dual-mode-agent-pacing) the session
 	// blocks until Decide returns, and ok=false means the controller

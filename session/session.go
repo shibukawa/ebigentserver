@@ -37,13 +37,13 @@ type Tick uint64
 
 // StageRuleSet is what a game implements to be hosted (rule:sight-content-
 // owned-by-game: every content decision lives here, none in the session).
-// S is the game's world state (concept:world-state), A its action type
-// (concept:action), O its sight type (concept:sight).
+// W is the game's world (concept:world-state), A its action type
+// (concept:action), S its sight type (concept:sight).
 //
-// S and O are deliberately distinct type parameters even though a Phase 1
+// W and S are deliberately distinct type parameters even though a Phase 1
 // game may project one into the other almost unchanged: per-slot visibility
 // (concept:visibility-scope) later changes Project, never the session loop.
-type StageRuleSet[S, A, O any] interface {
+type StageRuleSet[W, A, S any] interface {
 	// Start returns the initial world state. seed is the session's
 	// shared RNG seed (rule:shared-rng-seed): a game that needs
 	// randomness derives it from here — typically by embedding a
@@ -51,22 +51,22 @@ type StageRuleSet[S, A, O any] interface {
 	// simulation steps and travels with every checkpoint — and never
 	// from the wall clock or an unseeded source. Deterministic games
 	// ignore it.
-	Start(seed uint64) S
+	Start(seed uint64) W
 	// ActingSlots returns the slots that must decide this step, in any
 	// order; the session commits them in SlotID order. Empty means the
 	// game has no further decisions, which is only legal once every
 	// slot's evaluation is terminal.
-	ActingSlots(state *S) []SlotID
+	ActingSlots(state *W) []SlotID
 	// Apply advances the state by one already-validated action. Legality
 	// was established by the ActionValidator; Apply must not fail.
-	Apply(state *S, slot SlotID, action A)
+	Apply(state *W, slot SlotID, action A)
 	// Project builds the sight a slot is allowed to see. Phase 1
 	// games use global scope: every slot sees the same world.
-	Project(state *S, slot SlotID) O
+	Project(state *W, slot SlotID) S
 	// Evaluate computes the slot's data:evaluation-signal
 	// (rule:evaluation-computed-by-session: the session calls this; an
 	// agent never scores itself).
-	Evaluate(state *S, slot SlotID) EvaluationSignal
+	Evaluate(state *W, slot SlotID) EvaluationSignal
 }
 
 // Errors returned by lifecycle-guarded methods.
@@ -79,17 +79,17 @@ var (
 
 // Config assembles one session. Zero-value optional fields select safe
 // defaults so Phase 1 games only name their game and slots.
-type Config[S, A, O any] struct {
+type Config[W, A, S any] struct {
 	// ID names the session in progress reports.
 	ID string
 	// Slots is the game-defined slot set (concept:player-slot). Must be
 	// non-empty, unique, and must not contain 0.
 	Slots []SlotID
 	// RuleSet supplies the rules of this stage.
-	RuleSet StageRuleSet[S, A, O]
+	RuleSet StageRuleSet[W, A, S]
 	// Validator judges legality before Apply (api:action-validator).
 	// Nil admits every action — the Phase 1 seam default.
-	Validator ActionValidator[S, A]
+	Validator ActionValidator[W, A]
 	// Reports receives data:progress-report items. Nil discards them —
 	// the Phase 1 seam default (terminal report only).
 	Reports ReportSink
@@ -103,12 +103,12 @@ type Config[S, A, O any] struct {
 	Seed uint64
 	// Recorder receives the episode's record hooks. Nil records
 	// nothing.
-	Recorder Recorder[S, A, O]
+	Recorder Recorder[W, A, S]
 	// Canonical encodes the world state into stable bytes — the
 	// canonical input of data:state-checkpoint (the eventual contract
 	// is the CBOR world profile encoding; any stable-order encoding
 	// serves). Nil disables checkpoints and the world stream.
-	Canonical func(state *S) []byte
+	Canonical func(state *W) []byte
 	// CheckpointEvery emits a checkpoint each time this many ticks
 	// commit. 0 means every tick — cheap for turn-based games; tune
 	// upward for realtime ones.
@@ -124,7 +124,7 @@ type Config[S, A, O any] struct {
 	// profile's send cadence — the seam where snapshot/delta encoding
 	// (package statesync) attaches without the session knowing any
 	// transport.
-	Broadcast func(tick Tick, world *S)
+	Broadcast func(tick Tick, world *W)
 	// InputSource, when set, replaces the realtime inboxes with a
 	// deterministic per-tick schedule: called once per slot per tick in
 	// commit order. Replays and tests use it; live play leaves it nil.
@@ -142,13 +142,13 @@ type Config[S, A, O any] struct {
 
 // Session hosts one game run. Methods are not safe for concurrent use:
 // Phase 1 pacing is a single-threaded step loop.
-type Session[S, A, O any] struct {
-	cfg        Config[S, A, O]
+type Session[W, A, S any] struct {
+	cfg        Config[W, A, S]
 	slots      []SlotID // sorted; the commit order
-	agents     map[SlotID]Agent[O, A]
+	agents     map[SlotID]Agent[S, A]
 	inboxes    map[SlotID]*Inbox[A]
 	state      State
-	world      S
+	world      W
 	tick       Tick
 	seq        uint64 // progress report sequence
 	actionHash uint64 // running digest over accepted actions
@@ -157,7 +157,7 @@ type Session[S, A, O any] struct {
 }
 
 // New validates the configuration and returns a session in StateCreated.
-func New[S, A, O any](cfg Config[S, A, O]) (*Session[S, A, O], error) {
+func New[W, A, S any](cfg Config[W, A, S]) (*Session[W, A, S], error) {
 	if cfg.RuleSet == nil {
 		return nil, errors.New("session: Config.RuleSet is required")
 	}
@@ -175,7 +175,7 @@ func New[S, A, O any](cfg Config[S, A, O]) (*Session[S, A, O], error) {
 		}
 	}
 	if cfg.Validator == nil {
-		cfg.Validator = AllowAll[S, A]{}
+		cfg.Validator = AllowAll[W, A]{}
 	}
 	if cfg.Reports == nil {
 		cfg.Reports = Discard{}
@@ -193,10 +193,10 @@ func New[S, A, O any](cfg Config[S, A, O]) (*Session[S, A, O], error) {
 	for _, slot := range slots {
 		inboxes[slot] = &Inbox[A]{}
 	}
-	return &Session[S, A, O]{
+	return &Session[W, A, S]{
 		cfg:        cfg,
 		slots:      slots,
-		agents:     make(map[SlotID]Agent[O, A], len(slots)),
+		agents:     make(map[SlotID]Agent[S, A], len(slots)),
 		inboxes:    inboxes,
 		state:      StateCreated,
 		rejections: map[SlotID]int32{},
@@ -205,13 +205,13 @@ func New[S, A, O any](cfg Config[S, A, O]) (*Session[S, A, O], error) {
 }
 
 // State reports the lifecycle state (concept:session-lifecycle).
-func (s *Session[S, A, O]) State() State { return s.state }
+func (s *Session[W, A, S]) State() State { return s.state }
 
 // Tick reports the number of committed steps.
-func (s *Session[S, A, O]) Tick() Tick { return s.tick }
+func (s *Session[W, A, S]) Tick() Tick { return s.tick }
 
 // OpenAdmission moves created → admitting.
-func (s *Session[S, A, O]) OpenAdmission() error {
+func (s *Session[W, A, S]) OpenAdmission() error {
 	return s.transition(StateAdmitting)
 }
 
@@ -219,7 +219,7 @@ func (s *Session[S, A, O]) OpenAdmission() error {
 // (concept:session-lifecycle forbids admission in created; running-state
 // re-admission is a later-phase policy). Joined completes before the
 // agent's first Observe.
-func (s *Session[S, A, O]) Admit(slot SlotID, agent Agent[O, A]) error {
+func (s *Session[W, A, S]) Admit(slot SlotID, agent Agent[S, A]) error {
 	if s.state != StateAdmitting {
 		return fmt.Errorf("%w: Admit in %v", ErrWrongState, s.state)
 	}
@@ -238,7 +238,7 @@ func (s *Session[S, A, O]) Admit(slot SlotID, agent Agent[O, A]) error {
 // reaches a terminal position, the context is cancelled (operator stop:
 // unfinished slots end Abandoned), or an invariant is violated (aborted).
 // It returns once the session is in a terminal lifecycle state.
-func (s *Session[S, A, O]) Run(ctx context.Context) error {
+func (s *Session[W, A, S]) Run(ctx context.Context) error {
 	if s.state != StateAdmitting {
 		return fmt.Errorf("%w: Run in %v", ErrWrongState, s.state)
 	}
@@ -304,7 +304,7 @@ func (s *Session[S, A, O]) Run(ctx context.Context) error {
 
 // commitAction folds one accepted action into the running action digest of
 // data:state-checkpoint.
-func (s *Session[S, A, O]) commitAction(slot SlotID, action A) {
+func (s *Session[W, A, S]) commitAction(slot SlotID, action A) {
 	h := fnv.New64a()
 	fmt.Fprintf(h, "%d:%d:", s.tick, slot)
 	if b, err := json.Marshal(action); err == nil {
@@ -316,7 +316,7 @@ func (s *Session[S, A, O]) commitAction(slot SlotID, action A) {
 }
 
 // recordCommit emits the post-commit ground truth and checkpoint.
-func (s *Session[S, A, O]) recordCommit() {
+func (s *Session[W, A, S]) recordCommit() {
 	if s.cfg.Recorder == nil {
 		return
 	}
@@ -337,7 +337,7 @@ func (s *Session[S, A, O]) recordCommit() {
 // the retry budget when the validator rejects (drop rung of the
 // api:action-validator escalation ladder). obs is the sight as
 // delivered this tick, retained for the decision record.
-func (s *Session[S, A, O]) decideLegal(ctx context.Context, slot SlotID, obs O, sig EvaluationSignal) (action A, ok bool, err error) {
+func (s *Session[W, A, S]) decideLegal(ctx context.Context, slot SlotID, obs S, sig EvaluationSignal) (action A, ok bool, err error) {
 	agent := s.agents[slot]
 	for attempt := 0; attempt <= s.cfg.RetryBudget; attempt++ {
 		before := s.cfg.Clock()
@@ -366,7 +366,7 @@ func (s *Session[S, A, O]) decideLegal(ctx context.Context, slot SlotID, obs O, 
 
 // evaluateAll computes every slot's signal in commit order and reports
 // whether all of them are terminal.
-func (s *Session[S, A, O]) evaluateAll() (map[SlotID]EvaluationSignal, bool) {
+func (s *Session[W, A, S]) evaluateAll() (map[SlotID]EvaluationSignal, bool) {
 	signals := make(map[SlotID]EvaluationSignal, len(s.slots))
 	done := true
 	for _, slot := range s.slots {
@@ -388,8 +388,8 @@ func (s *Session[S, A, O]) evaluateAll() (map[SlotID]EvaluationSignal, bool) {
 // Non-acting deliveries are recorded here as sight-only rows;
 // acting slots' rows are written by decideLegal once the action is known,
 // so each delivery appears exactly once in the decisions stream.
-func (s *Session[S, A, O]) observeAll(acting []SlotID, signals map[SlotID]EvaluationSignal) map[SlotID]O {
-	delivered := make(map[SlotID]O, len(acting))
+func (s *Session[W, A, S]) observeAll(acting []SlotID, signals map[SlotID]EvaluationSignal) map[SlotID]S {
+	delivered := make(map[SlotID]S, len(acting))
 	for _, slot := range s.slots {
 		obs := s.cfg.RuleSet.Project(&s.world, slot)
 		if slices.Contains(acting, slot) {
@@ -404,7 +404,7 @@ func (s *Session[S, A, O]) observeAll(acting []SlotID, signals map[SlotID]Evalua
 
 // abandonRemaining marks every non-terminal slot Abandoned, for operator
 // stop and for a controller that returned no action.
-func (s *Session[S, A, O]) abandonRemaining(signals map[SlotID]EvaluationSignal) map[SlotID]EvaluationSignal {
+func (s *Session[W, A, S]) abandonRemaining(signals map[SlotID]EvaluationSignal) map[SlotID]EvaluationSignal {
 	for _, slot := range s.slots {
 		sig := signals[slot]
 		if sig.Terminal == NotTerminal {
@@ -418,7 +418,7 @@ func (s *Session[S, A, O]) abandonRemaining(signals map[SlotID]EvaluationSignal)
 // drain is running → draining → ended: flush progress reports, deliver the
 // final sight and result to every agent (agent leave completes before
 // the session-end callback per concept:session-lifecycle), then end.
-func (s *Session[S, A, O]) drain(signals map[SlotID]EvaluationSignal) error {
+func (s *Session[W, A, S]) drain(signals map[SlotID]EvaluationSignal) error {
 	if err := s.transition(StateDraining); err != nil {
 		return err
 	}
@@ -448,7 +448,7 @@ func (s *Session[S, A, O]) drain(signals map[SlotID]EvaluationSignal) error {
 
 // abort is the unrecoverable-failure terminal transition. Agents are told;
 // the error is returned to the caller.
-func (s *Session[S, A, O]) abort(cause error) error {
+func (s *Session[W, A, S]) abort(cause error) error {
 	if s.state.Terminal() {
 		return cause
 	}
@@ -473,7 +473,7 @@ func (s *Session[S, A, O]) abort(cause error) error {
 // rejected books one refused action: record, count, and escalate at the
 // declared threshold (the drop → flag rungs of api:action-validator's
 // escalation ladder; disconnecting is the hosting layer's rung).
-func (s *Session[S, A, O]) rejected(slot SlotID, reason string) {
+func (s *Session[W, A, S]) rejected(slot SlotID, reason string) {
 	if s.cfg.Recorder != nil {
 		s.cfg.Recorder.Rejected(s.tick, slot, reason)
 	}
@@ -488,7 +488,7 @@ func (s *Session[S, A, O]) rejected(slot SlotID, reason string) {
 	}
 }
 
-func (s *Session[S, A, O]) report(r Report) error {
+func (s *Session[W, A, S]) report(r Report) error {
 	s.seq++
 	r.SessionID = s.cfg.ID
 	r.Seq = s.seq
@@ -496,7 +496,7 @@ func (s *Session[S, A, O]) report(r Report) error {
 	return s.cfg.Reports.Report(r)
 }
 
-func (s *Session[S, A, O]) transition(to State) error {
+func (s *Session[W, A, S]) transition(to State) error {
 	if !s.state.CanTransition(to) {
 		return fmt.Errorf("%w: %v -> %v", ErrWrongState, s.state, to)
 	}

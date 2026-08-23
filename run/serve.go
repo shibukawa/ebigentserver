@@ -16,13 +16,13 @@ import (
 // how to build a session for one match, and how to fill a seat with an
 // agent. Everything else — physics, projection, validation, evaluation —
 // is already inside the session config the game supplies.
-type Binding[S, A, O any] struct {
+type Binding[W, A, S any] struct {
 	// Slots is the game's declared slot set (concept:player-slot).
 	Slots []session.SlotID
 	// Config builds the session configuration for one match. A fresh
 	// seed per match is what keeps a corpus from collapsing into
 	// duplicates (rule:shared-rng-seed).
-	Config func(id string, seed uint64) session.Config[S, A, O]
+	Config func(id string, seed uint64) session.Config[W, A, S]
 	// NewAgent supplies the controller for a bot seat: the enemies of a
 	// solo game, the opponent of a practice match, the stand-in for a
 	// seat nobody took. The returned id labels the seat in the lobby
@@ -34,7 +34,7 @@ type Binding[S, A, O any] struct {
 	// and one that cannot exist before the game is running. A game that
 	// only waits for people therefore has no factory to name, and
 	// FillBots — the one caller — reports its absence where it matters.
-	NewAgent func(slot session.SlotID) (id string, agent session.Agent[O, A])
+	NewAgent func(slot session.SlotID) (id string, agent session.Agent[S, A])
 	// ProtocolVersion and EvaluationVersion travel into every episode
 	// header so a corpus cannot silently mix incompatible runs.
 	ProtocolVersion   string
@@ -42,7 +42,7 @@ type Binding[S, A, O any] struct {
 }
 
 // Validate rejects a binding the wrapper cannot use.
-func (b Binding[S, A, O]) Validate() error {
+func (b Binding[W, A, S]) Validate() error {
 	if len(b.Slots) == 0 {
 		return errors.New("run: Binding.Slots is required")
 	}
@@ -105,7 +105,7 @@ type MatchResult struct {
 // A dedicated server is the same loop with the gathering step fed by a
 // listener instead of by NewAgent. That wiring is the transport seam and
 // is not connected here yet.
-func Serve[S, A, O any](ctx context.Context, opts Options, b Binding[S, A, O], sp ServeOptions) error {
+func Serve[W, A, S any](ctx context.Context, opts Options, b Binding[W, A, S], sp ServeOptions) error {
 	if err := opts.Validate(); err != nil {
 		return err
 	}
@@ -131,11 +131,11 @@ func Serve[S, A, O any](ctx context.Context, opts Options, b Binding[S, A, O], s
 }
 
 // serveOne gathers, runs, and closes one match.
-func serveOne[S, A, O any](ctx context.Context, opts Options, b Binding[S, A, O], sp ServeOptions, index int) (MatchResult, error) {
+func serveOne[W, A, S any](ctx context.Context, opts Options, b Binding[W, A, S], sp ServeOptions, index int) (MatchResult, error) {
 	seed := sp.Seed + uint64(index)
 	id := fmt.Sprintf("%s-%04d", opts.Name, index)
 
-	roster, err := NewRoster[S, A, O](opts, b.Slots)
+	roster, err := NewRoster[W, A, S](opts, b.Slots)
 	if err != nil {
 		return MatchResult{}, err
 	}
@@ -143,7 +143,7 @@ func serveOne[S, A, O any](ctx context.Context, opts Options, b Binding[S, A, O]
 		return MatchResult{}, err
 	}
 
-	rec, err := OpenRecording[S, A, O](RecordOptions{
+	rec, err := OpenRecording[W, A, S](RecordOptions{
 		Root:              sp.Record.Root,
 		EpisodeID:         id,
 		Mode:              recordMode(sp.Record.Mode),

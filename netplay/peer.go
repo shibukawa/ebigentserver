@@ -15,8 +15,8 @@ import (
 )
 
 // Peer is one admitted connection on the server side.
-type Peer[S, A any] struct {
-	sv   *Server[S, A]
+type Peer[W, A any] struct {
+	sv   *Server[W, A]
 	conn transport.Conn
 	// Slot is the seat; spectators keep the ticket's seat value for
 	// identification but hold no inbox.
@@ -28,7 +28,7 @@ type Peer[S, A any] struct {
 	inbox *session.Inbox[A] // nil for spectators
 
 	mu     sync.Mutex
-	sender statesync.ViewSender[S]
+	sender statesync.ViewSender[W]
 
 	// abuse accounting (policy:realtime-abuse-protection)
 	violations   atomic.Int32
@@ -40,7 +40,7 @@ type Peer[S, A any] struct {
 }
 
 // sendState encodes and sends one committed world version.
-func (p *Peer[S, A]) sendState(ctx context.Context, tick session.Tick, world *S) {
+func (p *Peer[W, A]) sendState(ctx context.Context, tick session.Tick, world *W) {
 	p.mu.Lock()
 	if conf, ok := p.layer.Confirmed(); ok {
 		p.sender.Confirm(session.Tick(conf))
@@ -52,7 +52,7 @@ func (p *Peer[S, A]) sendState(ctx context.Context, tick session.Tick, world *S)
 
 // Run consumes the connection until it closes, then reports the
 // departure. Run it on its own goroutine.
-func (p *Peer[S, A]) Run(ctx context.Context, wg *sync.WaitGroup) {
+func (p *Peer[W, A]) Run(ctx context.Context, wg *sync.WaitGroup) {
 	defer wg.Done()
 	defer p.depart("transport_closed")
 	for {
@@ -81,7 +81,7 @@ func (p *Peer[S, A]) Run(ctx context.Context, wg *sync.WaitGroup) {
 	}
 }
 
-func (p *Peer[S, A]) absorbDatagram(payload []byte) {
+func (p *Peer[W, A]) absorbDatagram(payload []byte) {
 	data := p.layer.Absorb(payload)
 	if data == nil {
 		return // ack-only, stale, or not ours
@@ -108,7 +108,7 @@ func (p *Peer[S, A]) absorbDatagram(payload []byte) {
 // takeToken enforces the declared input rate: a bucket of
 // Budget.InputsPerTick tokens refilled at InputsPerTick per tick
 // duration.
-func (p *Peer[S, A]) takeToken() bool {
+func (p *Peer[W, A]) takeToken() bool {
 	now := time.Now()
 	perTick := float64(p.sv.cfg.Budget.InputsPerTick)
 	tickDur := time.Second / time.Duration(p.sv.cfg.Tuning.TickRate)
@@ -126,7 +126,7 @@ func (p *Peer[S, A]) takeToken() bool {
 	return true
 }
 
-func (p *Peer[S, A]) violate(reason string) {
+func (p *Peer[W, A]) violate(reason string) {
 	p.violations.Add(1)
 	p.sv.cfg.Metrics.InputsRejected.Add(1)
 	p.sv.event(observe.Event{Kind: "abuse_reject", Slot: uint16(p.Slot), Reason: reason})
@@ -134,7 +134,7 @@ func (p *Peer[S, A]) violate(reason string) {
 
 // depart declares the connection lost exactly once and hands the seat to
 // the game's departure policy.
-func (p *Peer[S, A]) depart(reason string) {
+func (p *Peer[W, A]) depart(reason string) {
 	p.departed.Do(func() {
 		p.gone.Store(true)
 		p.sv.cfg.Metrics.ActiveConnections.Add(-1)

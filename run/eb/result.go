@@ -18,9 +18,9 @@ import (
 // says "over" takes it away before they have seen why. So the board
 // stays up, drawn by the same client that drew it a moment ago, and the
 // dismissal is theirs to make.
-type result[S, A, O any] struct {
-	app     *app[S, A, O]
-	client  Client[S, A, O]
+type result[W, A, S any] struct {
+	app     *app[W, A, S]
+	client  Client[W, A, S]
 	line    string
 	done    bool
 	keys    []ebiten.Key
@@ -30,15 +30,15 @@ type result[S, A, O any] struct {
 }
 
 // newResult freezes the outcome into a line and holds the last board.
-func newResult[S, A, O any](a *app[S, A, O], line string) *result[S, A, O] {
-	return &result[S, A, O]{
+func newResult[W, A, S any](a *app[W, A, S], line string) *result[W, A, S] {
+	return &result[W, A, S]{
 		app: a, client: a.opts.Client, line: line,
 		devices: a.opts.Options.Devices,
 	}
 }
 
 // Update waits for the player to dismiss the board.
-func (r *result[S, A, O]) Update() error {
+func (r *result[W, A, S]) Update() error {
 	if r.done || !r.dismissed() {
 		return nil
 	}
@@ -52,7 +52,7 @@ func (r *result[S, A, O]) Update() error {
 // screen is to let somebody look at it. The wrapper does not know where
 // a game keeps its own text, so the overlay claims the middle and the
 // scrim makes it legible over whatever is underneath.
-func (r *result[S, A, O]) Draw(screen *ebiten.Image) {
+func (r *result[W, A, S]) Draw(screen *ebiten.Image) {
 	r.client.Draw(screen)
 
 	b := screen.Bounds()
@@ -77,7 +77,7 @@ func centred(width int, line string) int {
 }
 
 // dismissed reports a press on any accepted device.
-func (r *result[S, A, O]) dismissed() bool {
+func (r *result[W, A, S]) dismissed() bool {
 	if r.devices.Has(run.Mouse) && inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
 		return true
 	}

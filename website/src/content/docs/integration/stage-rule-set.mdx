@@ -6,7 +6,7 @@ description: 5つのメソッドと、それぞれが守らなければならな
 import { Aside, LinkCard } from '@astrojs/starlight/components';
 
 ```go
-type StageRuleSet[S, A, O any] interface {
+type StageRuleSet[W, A, S any] interface {
 	Start(seed uint64) S
 	ActingSlots(state *S) []SlotID
 	Apply(state *S, slot SlotID, action A)

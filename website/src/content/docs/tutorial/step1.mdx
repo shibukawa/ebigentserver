@@ -158,7 +158,7 @@ Ebitengine は `Update` を固定レートで呼び、`Draw` は画面のリフ�
 **`cellAt` の出口** — ピクセルがセル番号になったこの地点が、step 2 では `Submit` の引数になる。
 その行き先がローカルの inbox なのか1マシン先のソケットなのかを、この行は知らないままでいられる。
 
-**`game` パッケージが engine を知らないこと** — step 2 では `StageRuleSet[S, A, O]` を実装するが、
+**`game` パッケージが engine を知らないこと** — step 2 では `StageRuleSet[W, A, S]` を実装するが、
 ルールを移す必要はない。`Project` と `Evaluate` を**足す**だけで済む。
 
 ## まだないもの

@@ -12,12 +12,12 @@ import (
 // Match is one running game: the concept:session a finalized api:roster
 // produced, plus the seats that fill it and the mailboxes their actions
 // travel through. It is the running state of concept:match-lifecycle.
-type Match[S, A, O any] struct {
+type Match[W, A, S any] struct {
 	opts    Options
 	seats   []Seat
-	sess    *session.Session[S, A, O]
+	sess    *session.Session[W, A, S]
 	inboxes map[session.SlotID]*session.Inbox[A]
-	drivers []*driver[S, A, O]
+	drivers []*driver[W, A, S]
 
 	mu   sync.Mutex
 	err  error
@@ -30,17 +30,17 @@ type Match[S, A, O any] struct {
 // to keep two (rule:session-independent-of-transport-and-agent-kind). A
 // local agent therefore needs something to turn each committed world into
 // an sight, ask for a decision, and submit it. This is that.
-type driver[S, A, O any] struct {
+type driver[W, A, S any] struct {
 	slot  session.SlotID
-	agent session.Agent[O, A]
+	agent session.Agent[S, A]
 	inbox *session.Inbox[A]
-	game  session.StageRuleSet[S, A, O]
+	game  session.StageRuleSet[W, A, S]
 	ctx   context.Context
 }
 
 // pump runs one controller against one committed world. It runs on the
 // session's goroutine, so a controller that blocks here stalls the tick.
-func (d *driver[S, A, O]) pump(world *S) {
+func (d *driver[W, A, S]) pump(world *W) {
 	obs := d.game.Project(world, d.slot)
 	d.agent.Observe(obs)
 	ctx := d.ctx
@@ -61,7 +61,7 @@ func (d *driver[S, A, O]) pump(world *S) {
 // things: the local controller pump on the broadcast seam, and whatever
 // recorder Options and data:run-config asked for. Anything the game set
 // on cfg.Broadcast still runs, after the pump.
-func (r *Roster[S, A, O]) Finalize(cfg session.Config[S, A, O]) (*Match[S, A, O], error) {
+func (r *Roster[W, A, S]) Finalize(cfg session.Config[W, A, S]) (*Match[W, A, S], error) {
 	if !r.Complete() {
 		return nil, fmt.Errorf("%w: %s", ErrIncomplete, describeEmpty(r.Seats()))
 	}
@@ -74,7 +74,7 @@ func (r *Roster[S, A, O]) Finalize(cfg session.Config[S, A, O]) (*Match[S, A, O]
 		cfg.ID = r.opts.Name
 	}
 
-	m := &Match[S, A, O]{
+	m := &Match[W, A, S]{
 		opts:    r.opts,
 		seats:   r.Seats(),
 		inboxes: make(map[session.SlotID]*session.Inbox[A], len(r.slots)),
@@ -83,7 +83,7 @@ func (r *Roster[S, A, O]) Finalize(cfg session.Config[S, A, O]) (*Match[S, A, O]
 
 	game := cfg.RuleSet
 	appBroadcast := cfg.Broadcast
-	cfg.Broadcast = func(tick session.Tick, world *S) {
+	cfg.Broadcast = func(tick session.Tick, world *W) {
 		// Local controllers decide against the world that just
 		// committed; their actions land in the next tick's intake.
 		for _, d := range m.drivers {
@@ -104,7 +104,7 @@ func (r *Roster[S, A, O]) Finalize(cfg session.Config[S, A, O]) (*Match[S, A, O]
 	m.sess = sess
 
 	r.mu.Lock()
-	agents := make(map[session.SlotID]session.Agent[O, A], len(r.agents))
+	agents := make(map[session.SlotID]session.Agent[S, A], len(r.agents))
 	for slot, agent := range r.agents {
 		agents[slot] = agent
 	}
@@ -116,7 +116,7 @@ func (r *Roster[S, A, O]) Finalize(cfg session.Config[S, A, O]) (*Match[S, A, O]
 			// A human seat, local or remote: the session sees a
 			// detached slot and reads the inbox, so the local
 			// path and the network path stay the same path.
-			agent = session.Detached[O, A]{}
+			agent = session.Detached[S, A]{}
 		}
 		if err := sess.Admit(seat.Slot, agent); err != nil {
 			return nil, err
@@ -127,7 +127,7 @@ func (r *Roster[S, A, O]) Finalize(cfg session.Config[S, A, O]) (*Match[S, A, O]
 		}
 		m.inboxes[seat.Slot] = inbox
 		if seat.LocalBot() {
-			m.drivers = append(m.drivers, &driver[S, A, O]{
+			m.drivers = append(m.drivers, &driver[W, A, S]{
 				slot:  seat.Slot,
 				agent: agent,
 				inbox: inbox,
@@ -151,15 +151,15 @@ func describeEmpty(seats []Seat) string {
 
 // Session exposes the running session for callers that need it directly —
 // tick counts, lifecycle state, and the seams netplay attaches to.
-func (m *Match[S, A, O]) Session() *session.Session[S, A, O] { return m.sess }
+func (m *Match[W, A, S]) Session() *session.Session[W, A, S] { return m.sess }
 
 // Seats reports the roster this match was built from.
-func (m *Match[S, A, O]) Seats() []Seat { return slices.Clone(m.seats) }
+func (m *Match[W, A, S]) Seats() []Seat { return slices.Clone(m.seats) }
 
 // LocalSeats reports the seats a person at this machine controls, in slot
 // order. The intake hook of api:tick-hooks iterates it: one device
 // mapping per seat, which is what a shared screen means in practice.
-func (m *Match[S, A, O]) LocalSeats() []Seat {
+func (m *Match[W, A, S]) LocalSeats() []Seat {
 	out := make([]Seat, 0, len(m.seats))
 	for _, seat := range m.seats {
 		if seat.LocalHuman() {
@@ -172,7 +172,7 @@ func (m *Match[S, A, O]) LocalSeats() []Seat {
 // Submit queues one action for a slot — the intake half of
 // api:tick-hooks. Safe for concurrent use, and safe to call every frame:
 // under the newest-input intake policy a duplicate simply supersedes.
-func (m *Match[S, A, O]) Submit(slot session.SlotID, action A) error {
+func (m *Match[W, A, S]) Submit(slot session.SlotID, action A) error {
 	inbox, ok := m.inboxes[slot]
 	if !ok {
 		return fmt.Errorf("%w: %d", ErrUnknownSlot, slot)
@@ -183,7 +183,7 @@ func (m *Match[S, A, O]) Submit(slot session.SlotID, action A) error {
 
 // Inbox exposes a slot's mailbox, for a caller wiring its own transport
 // or driving a scripted schedule.
-func (m *Match[S, A, O]) Inbox(slot session.SlotID) (*session.Inbox[A], error) {
+func (m *Match[W, A, S]) Inbox(slot session.SlotID) (*session.Inbox[A], error) {
 	inbox, ok := m.inboxes[slot]
 	if !ok {
 		return nil, fmt.Errorf("%w: %d", ErrUnknownSlot, slot)
@@ -193,7 +193,7 @@ func (m *Match[S, A, O]) Inbox(slot session.SlotID) (*session.Inbox[A], error) {
 
 // Run drives the match on the calling goroutine until it ends or ctx is
 // cancelled. A headless process uses this.
-func (m *Match[S, A, O]) Run(ctx context.Context, tc session.TimeControl) error {
+func (m *Match[W, A, S]) Run(ctx context.Context, tc session.TimeControl) error {
 	for _, d := range m.drivers {
 		d.ctx = ctx
 	}
@@ -205,7 +205,7 @@ func (m *Match[S, A, O]) Run(ctx context.Context, tc session.TimeControl) error 
 // Start drives the match on its own goroutine and returns immediately —
 // what a client does, because Ebitengine insists on the main one. Wait
 // for Done and read Err.
-func (m *Match[S, A, O]) Start(ctx context.Context, tc session.TimeControl) {
+func (m *Match[W, A, S]) Start(ctx context.Context, tc session.TimeControl) {
 	for _, d := range m.drivers {
 		d.ctx = ctx
 	}
@@ -215,7 +215,7 @@ func (m *Match[S, A, O]) Start(ctx context.Context, tc session.TimeControl) {
 }
 
 // finish records the outcome once and closes Done.
-func (m *Match[S, A, O]) finish(err error) {
+func (m *Match[W, A, S]) finish(err error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	select {
@@ -228,10 +228,10 @@ func (m *Match[S, A, O]) finish(err error) {
 }
 
 // Done is closed when the match has ended, however it ended.
-func (m *Match[S, A, O]) Done() <-chan struct{} { return m.done }
+func (m *Match[W, A, S]) Done() <-chan struct{} { return m.done }
 
 // Over reports whether the match has ended, without blocking.
-func (m *Match[S, A, O]) Over() bool {
+func (m *Match[W, A, S]) Over() bool {
 	select {
 	case <-m.done:
 		return true
@@ -241,11 +241,11 @@ func (m *Match[S, A, O]) Over() bool {
 }
 
 // Err reports why the match ended. Nil after a normal end.
-func (m *Match[S, A, O]) Err() error {
+func (m *Match[W, A, S]) Err() error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	return m.err
 }
 
 // Tick reports how many ticks have committed.
-func (m *Match[S, A, O]) Tick() session.Tick { return m.sess.Tick() }
+func (m *Match[W, A, S]) Tick() session.Tick { return m.sess.Tick() }

@@ -47,17 +47,17 @@ type Checkpoint struct {
 //
 // Calls arrive in deterministic commit order on the session's goroutine;
 // implementations must not block for long.
-type Recorder[S, A, O any] interface {
+type Recorder[W, A, S any] interface {
 	// EpisodeStarted opens the episode.
 	EpisodeStarted(start EpisodeStart)
 	// Observed is one delivered sight for a slot that is not
 	// deciding this tick (data:decision-record with action none).
-	Observed(tick Tick, slot SlotID, obs O, sig EvaluationSignal)
+	Observed(tick Tick, slot SlotID, obs S, sig EvaluationSignal)
 	// Decided is one accepted action together with the sight as
 	// delivered at the decision point — the sight is the record
 	// (data:decision-record). latencyMicros is wall-clock decision
 	// latency: measurement metadata, never simulation input.
-	Decided(tick Tick, slot SlotID, obs O, action A, sig EvaluationSignal, latencyMicros int64)
+	Decided(tick Tick, slot SlotID, obs S, action A, sig EvaluationSignal, latencyMicros int64)
 	// Rejected is one action the validator refused (worth keeping: a
 	// cluster of rejections is a cheat or a client bug).
 	Rejected(tick Tick, slot SlotID, reason string)
@@ -65,7 +65,7 @@ type Recorder[S, A, O any] interface {
 	Lifecycle(tick Tick, from, to State)
 	// WorldCommitted delivers the committed world state after a tick,
 	// for the optional ground-truth stream.
-	WorldCommitted(tick Tick, world *S)
+	WorldCommitted(tick Tick, world *W)
 	// Checkpointed delivers a data:state-checkpoint.
 	Checkpointed(cp Checkpoint)
 	// Ended closes the episode with every slot's outcome.

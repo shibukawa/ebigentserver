@@ -17,31 +17,31 @@ import (
 const ackDeadline = 50 * time.Millisecond
 
 // ClientConfig assembles the player (or spectator) side.
-type ClientConfig[S, A, D, O any] struct {
+type ClientConfig[W, A, D, S any] struct {
 	// Protocol is the exact wire version.
 	Protocol string
 	// Tuning must declare the same profile the server runs.
 	Tuning session.TuningProfile
 	// Codec wires the generated state functions.
-	Codec statesync.Codec[S, D]
+	Codec statesync.Codec[W, D]
 	// EncodeInput serializes one action for the wire.
 	EncodeInput func(dst []byte, a A) []byte
 	// Project builds the sight an agent reads
 	// (rule:sight-content-owned-by-game — the game's projection,
 	// run client-side over the reconstructed world in global-scope
 	// phases).
-	Project func(world *S, slot session.SlotID) O
+	Project func(world *W, slot session.SlotID) S
 }
 
 // Client is one connected participant.
-type Client[S, A, D, O any] struct {
-	cfg   ClientConfig[S, A, D, O]
+type Client[W, A, D, S any] struct {
+	cfg   ClientConfig[W, A, D, S]
 	Slot  session.SlotID
 	Role  string
 	Seed  uint64
 	conn  transport.Conn
 	layer *seqack.Layer
-	recv  *statesync.Receiver[S, D]
+	recv  *statesync.Receiver[W, D]
 }
 
 // ErrSessionLost reports the authoritative side going away: per
@@ -54,7 +54,7 @@ var ErrSessionLost = errors.New("netplay: session lost")
 // role automatically uses dedicated acks — with no upstream flow its
 // baseline would otherwise never confirm
 // (concept:ack-transmission-policy).
-func Connect[S, A, D, O any](ctx context.Context, conn transport.Conn, ticket string, cfg ClientConfig[S, A, D, O]) (*Client[S, A, D, O], error) {
+func Connect[W, A, D, S any](ctx context.Context, conn transport.Conn, ticket string, cfg ClientConfig[W, A, D, S]) (*Client[W, A, D, S], error) {
 	welcome, err := admission.Join(ctx, conn, cfg.Protocol, ticket)
 	if err != nil {
 		return nil, err
@@ -67,7 +67,7 @@ func Connect[S, A, D, O any](ctx context.Context, conn transport.Conn, ticket st
 	if welcome.Role == RoleSpectator {
 		policy = seqack.Dedicated
 	}
-	return &Client[S, A, D, O]{
+	return &Client[W, A, D, S]{
 		cfg:   cfg,
 		Slot:  session.SlotID(welcome.Seat),
 		Role:  welcome.Role,
@@ -82,7 +82,7 @@ func Connect[S, A, D, O any](ctx context.Context, conn transport.Conn, ticket st
 // (ErrSessionLost) or ctx cancels (nil). Spectator clients pass an agent
 // whose Decide never returns an action — or any agent: its actions are
 // simply never sent.
-func (c *Client[S, A, D, O]) Run(ctx context.Context, agent session.Agent[O, A]) error {
+func (c *Client[W, A, D, S]) Run(ctx context.Context, agent session.Agent[S, A]) error {
 	agent.Joined(c.Slot)
 	for {
 		m, err := c.conn.Receive(ctx)
@@ -125,10 +125,10 @@ func (c *Client[S, A, D, O]) Run(ctx context.Context, agent session.Agent[O, A])
 }
 
 // State exposes the newest reconstructed world.
-func (c *Client[S, A, D, O]) State() (*S, session.Tick, bool) { return c.recv.State() }
+func (c *Client[W, A, D, S]) State() (*W, session.Tick, bool) { return c.recv.State() }
 
 // Stats exposes the measured link.
-func (c *Client[S, A, D, O]) Stats() seqack.Stats { return c.layer.Stats() }
+func (c *Client[W, A, D, S]) Stats() seqack.Stats { return c.layer.Stats() }
 
 // Close tears the connection down.
-func (c *Client[S, A, D, O]) Close() error { return c.conn.Close() }
+func (c *Client[W, A, D, S]) Close() error { return c.conn.Close() }

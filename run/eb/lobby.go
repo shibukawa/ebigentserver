@@ -39,28 +39,28 @@ type LobbyOptions struct {
 // appHost is what a gathering scene needs from the wrapper. It is one
 // interface rather than a pile of callbacks so that a game replacing
 // this screen has a single thing to satisfy.
-type appHost[S, A, O any] interface {
+type appHost[W, A, S any] interface {
 	// Start finalizes the roster and begins the match.
 	Start() error
 	// Last reports the previous match, or nil.
 	Last() *run.MatchResult
 	// Roster is the one being gathered.
-	Roster() *run.Roster[S, A, O]
+	Roster() *run.Roster[W, A, S]
 	// Network is the preset, or nil when this build plays offline.
-	Matchmaking() run.Matchmaking[S, A, O]
+	Matchmaking() run.Matchmaking[W, A, S]
 	// Host is the offer this instance already makes, or nil. An
 	// instance that hosted the last match still holds the listener and
 	// is still announcing, so a second lobby must not go looking — it
 	// would find itself.
-	Host() run.Host[S, A, O]
+	Host() run.Host[W, A, S]
 	// BecomeHost and BecomeGuest tell the wrapper which part this
 	// instance took.
-	BecomeHost(run.Host[S, A, O])
-	BecomeGuest(run.Guest[S, A, O])
+	BecomeHost(run.Host[W, A, S])
+	BecomeGuest(run.Guest[W, A, S])
 	// Context bounds the work a scene starts.
 	Context() context.Context
 	// Options is the framework declaration.
-	Declared() (run.Options, LobbyOptions, run.Binding[S, A, O])
+	Declared() (run.Options, LobbyOptions, run.Binding[W, A, S])
 }
 
 // phase is where the lobby is in gathering.
@@ -84,12 +84,12 @@ const (
 // It supplies nothing that api:roster does not, which is the point — a
 // game replacing this screen keeps admission, bot seating, and the match
 // lifecycle, and loses only these few lines of drawing.
-type Lobby[S, A, O any] struct {
-	app    appHost[S, A, O]
-	roster *run.Roster[S, A, O]
+type Lobby[W, A, S any] struct {
+	app    appHost[W, A, S]
+	roster *run.Roster[W, A, S]
 	opts   run.Options
 	lobby  LobbyOptions
-	binder run.Binding[S, A, O]
+	binder run.Binding[W, A, S]
 
 	phase phase
 	guest bool
@@ -105,9 +105,9 @@ type Lobby[S, A, O any] struct {
 }
 
 // NewLobby builds the default gathering screen for one match.
-func NewLobby[S, A, O any](a appHost[S, A, O], roster *run.Roster[S, A, O]) *Lobby[S, A, O] {
+func NewLobby[W, A, S any](a appHost[W, A, S], roster *run.Roster[W, A, S]) *Lobby[W, A, S] {
 	opts, lobby, binder := a.Declared()
-	l := &Lobby[S, A, O]{
+	l := &Lobby[W, A, S]{
 		app: a, roster: roster,
 		opts: opts, lobby: lobby, binder: binder,
 		phase: phaseSeated,
@@ -126,7 +126,7 @@ func NewLobby[S, A, O any](a appHost[S, A, O], roster *run.Roster[S, A, O]) *Lob
 
 // seatHost takes the local seat of a hosting instance. It is separate
 // from hostAlone because the offer may already exist.
-func (l *Lobby[S, A, O]) seatHost() {
+func (l *Lobby[W, A, S]) seatHost() {
 	l.phase = phaseSeated
 	if _, err := l.roster.SitLocal("player"); err != nil {
 		l.err = err
@@ -137,7 +137,7 @@ func (l *Lobby[S, A, O]) seatHost() {
 
 // ask puts the discovery on its own goroutine: it takes about as long as
 // a beacon interval, and a frozen window is not a lobby.
-func (l *Lobby[S, A, O]) ask() {
+func (l *Lobby[W, A, S]) ask() {
 	found, err := l.app.Matchmaking().Discover(l.app.Context())
 	l.mu.Lock()
 	l.found, l.asked = found, true
@@ -148,7 +148,7 @@ func (l *Lobby[S, A, O]) ask() {
 }
 
 // Update advances gathering.
-func (l *Lobby[S, A, O]) Update() error {
+func (l *Lobby[W, A, S]) Update() error {
 	switch l.phase {
 	case phaseAsking:
 		return l.updateAsking()
@@ -161,7 +161,7 @@ func (l *Lobby[S, A, O]) Update() error {
 
 // updateAsking waits for the network to answer, then either offers the
 // list or, finding nobody, hosts and sits down.
-func (l *Lobby[S, A, O]) updateAsking() error {
+func (l *Lobby[W, A, S]) updateAsking() error {
 	l.mu.Lock()
 	asked, found := l.asked, l.found
 	l.mu.Unlock()
@@ -182,7 +182,7 @@ func (l *Lobby[S, A, O]) updateAsking() error {
 // answer — there is nobody else to pick, and the seat is the only thing
 // on offer. So the press is spent later, on the choice that has two
 // sides: whether to join somebody.
-func (l *Lobby[S, A, O]) hostAlone() error {
+func (l *Lobby[W, A, S]) hostAlone() error {
 	hosting, err := l.app.Matchmaking().Host(l.app.Context(), l.roster, 0)
 	if err != nil {
 		l.err = err
@@ -199,7 +199,7 @@ func (l *Lobby[S, A, O]) hostAlone() error {
 
 // updateChoosing turns a click on a row into a seat on that host, and a
 // click on the last row into hosting instead.
-func (l *Lobby[S, A, O]) updateChoosing() error {
+func (l *Lobby[W, A, S]) updateChoosing() error {
 	l.mu.Lock()
 	found := l.found
 	l.mu.Unlock()
@@ -227,7 +227,7 @@ func (l *Lobby[S, A, O]) updateChoosing() error {
 
 // updateSeated is the offline and the hosting case: take a seat, and
 // start when the roster is ready.
-func (l *Lobby[S, A, O]) updateSeated() error {
+func (l *Lobby[W, A, S]) updateSeated() error {
 	// NoBots means the empty seats belong to people arriving from
 	// elsewhere. When the last of them does, waiting for another press
 	// would mean somebody has to be watching the screen to notice —
@@ -255,7 +255,7 @@ func (l *Lobby[S, A, O]) updateSeated() error {
 }
 
 // canJoin reports whether another person may sit down at this machine.
-func (l *Lobby[S, A, O]) canJoin() bool {
+func (l *Lobby[W, A, S]) canJoin() bool {
 	limit := 1
 	if l.opts.MaxLocalSeats > 0 {
 		limit = l.opts.MaxLocalSeats
@@ -274,7 +274,7 @@ func (l *Lobby[S, A, O]) canJoin() bool {
 }
 
 // start fills the remaining seats and hands the roster to the wrapper.
-func (l *Lobby[S, A, O]) start() error {
+func (l *Lobby[W, A, S]) start() error {
 	if !l.lobby.NoBots {
 		if err := l.roster.FillBots(l.binder.NewAgent); err != nil {
 			l.err = err
@@ -296,7 +296,7 @@ func (l *Lobby[S, A, O]) start() error {
 // pressed reports a start signal on any accepted device. Only devices the
 // game declared are read, so a keyboard-only game never reports a
 // gamepad press it has no adapter for.
-func (l *Lobby[S, A, O]) pressed() bool {
+func (l *Lobby[W, A, S]) pressed() bool {
 	if l.opts.Devices.Has(run.Keyboard) {
 		l.keys = inpututil.AppendJustPressedKeys(l.keys[:0])
 		if len(l.keys) > 0 {
@@ -326,7 +326,7 @@ const (
 
 // pickedRow reports which row a click or a key landed on. Number keys
 // work too, so a build that accepts no mouse can still choose.
-func (l *Lobby[S, A, O]) pickedRow(rows int) (int, bool) {
+func (l *Lobby[W, A, S]) pickedRow(rows int) (int, bool) {
 	if l.opts.Devices.Has(run.Mouse) && inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
 		_, y := ebiten.CursorPosition()
 		row := (y - rowTop) / rowHeight
@@ -345,7 +345,7 @@ func (l *Lobby[S, A, O]) pickedRow(rows int) (int, bool) {
 }
 
 // Draw shows what the lobby is doing and what it is waiting for.
-func (l *Lobby[S, A, O]) Draw(screen *ebiten.Image) {
+func (l *Lobby[W, A, S]) Draw(screen *ebiten.Image) {
 	bg := l.lobby.Background
 	if bg == nil {
 		bg = color.RGBA{0x12, 0x16, 0x1c, 0xff}
@@ -372,7 +372,7 @@ func (l *Lobby[S, A, O]) Draw(screen *ebiten.Image) {
 }
 
 // drawChoices lists what answered, plus the option of hosting instead.
-func (l *Lobby[S, A, O]) drawChoices(screen *ebiten.Image) {
+func (l *Lobby[W, A, S]) drawChoices(screen *ebiten.Image) {
 	l.mu.Lock()
 	found := l.found
 	l.mu.Unlock()
@@ -388,7 +388,7 @@ func (l *Lobby[S, A, O]) drawChoices(screen *ebiten.Image) {
 }
 
 // drawSeats shows the roster and what it is waiting for.
-func (l *Lobby[S, A, O]) drawSeats(screen *ebiten.Image) {
+func (l *Lobby[W, A, S]) drawSeats(screen *ebiten.Image) {
 	y := 28
 	for _, seat := range l.roster.Seats() {
 		line := fmt.Sprintf("slot %d  %-12s %s", seat.Slot, seat.Kind, seat.ID)
@@ -410,7 +410,7 @@ func (l *Lobby[S, A, O]) drawSeats(screen *ebiten.Image) {
 // previous describes how the last match went, so returning to the lobby
 // reports a result instead of looking like a restart. It reads the seat a
 // person held, since that is the outcome they care about.
-func (l *Lobby[S, A, O]) previous() string {
+func (l *Lobby[W, A, S]) previous() string {
 	last := l.app.Last()
 	if last == nil {
 		return ""
@@ -428,7 +428,7 @@ func (l *Lobby[S, A, O]) previous() string {
 
 // prompt is the instruction line, derived from what the lobby is
 // actually waiting for.
-func (l *Lobby[S, A, O]) prompt() string {
+func (l *Lobby[W, A, S]) prompt() string {
 	if l.guest && l.lobby.NoBots && !l.roster.Complete() {
 		return "waiting for another player to join..."
 	}
