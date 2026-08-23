@@ -65,9 +65,49 @@ eb.Options[game.World, game.Action, game.Sight]{ ... }
 何も知らない。
 </Aside>
 
-### `Update` は決めるのをやめる
+## `ebiten.RunGame` との差分
 
-描画はほぼ step 1 のままだ。変わったのは入力の側になる。
+step 1 は Ebitengine そのものだった。`Game` を1つ書いて渡す。
+
+```go
+type Game struct{ /* 状態 */ }
+func (g *Game) Update() error                    { /* 入力を読み、世界を進める */ }
+func (g *Game) Draw(screen *ebiten.Image)        { /* 描く */ }
+func (g *Game) Layout(w, h int) (int, int)       { /* 論理解像度 */ }
+
+ebiten.RunGame(&Game{})
+```
+
+step 2 は `eb.Run` に変わるが、**`ebiten.RunGameWithOptions` は中で呼ばれている**。
+`Engine *ebiten.RunGameOptions` はそのまま素通しされるので、エンジン側の設定は何も失わない。
+メインの goroutine も Ebitengine に渡される——あちらがそれを要求するからだ。
+
+変わるのは `Game` の位置と、`Update` の中身になる。
+
+| Ebitengine | eb.Run |
+|---|---|
+| `Game` を1つ渡す | 画面（Screen）を渡り歩き、ロビーは最初から付いてくる |
+| `Update` が入力も世界の前進も両方やる | **`Intake` と `Apply` に割れる** |
+| `Draw` が描く | 同じ。何も決めない |
+| `Layout` が論理解像度を決める | 同じ。そのまま呼ばれる |
+
+### `Update` が2つに割れる
+
+これが一番大きい差分で、しかも**動く goroutine が違う**。
+
+| | どこで | いつ |
+|---|---|---|
+| `Intake` | Ebitengine の goroutine | フレームごと |
+| `Apply` | セッションの goroutine | tick ごと |
+
+step 1 の `Update` は「入力を読んで世界を書き換える」を1つの関数の中でやっていた。
+フレームレートがそのままシミュレーションの速度だった、とも言える。
+
+step 2 では**シミュレーションがフレームループから外れる**。tick は自分の goroutine で自分の
+速度で回り、フレームは描きたいときに描く。`Apply` が呼ばれるのは tick が確定した瞬間で、
+そこはもう Ebitengine の世界ではない。
+
+残った `Intake` の側は、**決める仕事が抜けた**姿になる。
 
 ```go
 func (v *view) Intake(controls run.Controls[game.Action]) {
@@ -78,10 +118,9 @@ func (v *view) Intake(controls run.Controls[game.Action]) {
 }
 ```
 
-step 1 の `Update` は盤面に印を置いていた。こちらは **Action を提出して、World がどうなったかを
-教えてもらうまで待つ**。
+印を置くのではなく、**Action を提出して、World がどうなったかを `Apply` で教えてもらうまで待つ**。
 
-そして `Submit` の行き先は、ホストなら1 goroutine 先の inbox、ゲストなら1マシン先のソケットだ。
+`Submit` の行き先は、ホストなら1 goroutine 先の inbox、ゲストなら1マシン先のソケットだ。
 **どちらのインスタンスが実際にルールを走らせたのかは、このファイルからは見えない。**
 
 <Aside type="note" title="run.Controls">
@@ -89,6 +128,21 @@ step 1 の `Update` は盤面に印を置いていた。こちらは **Action �
 1つのプレイ画面がホストとゲストの両方を務められるのは、画面の側から見た差が
 「`Submit` の行き先」しかないからである。
 </Aside>
+
+<Aside type="caution" title="Apply は借りずに写す">
+`Apply` は別の goroutine から呼ばれ、しかも渡されたポインタの先はセッションが**書き換え続ける**。
+`Draw` が読むものは、`Apply` の中で写しておかなければならない。step 2 の `view.Apply` が
+スライスまで深くコピーしているのはこのためだ。
+</Aside>
+
+### 画面が入れ替わる
+
+`ebiten.RunGame` に渡す `Game` を差し替えて画面を切り替えるのは、Ebitengine のゲームが
+もともとやっているやり方だ。`eb.Run` はそれを引き受けて、**ロビーを最初から持っている**。
+
+`Client` として渡すのは**プレイ画面1つだけ**でよく、ロビーも、対局結果の画面も、
+リンクの向こうを描く画面も、フレームワーク側にある。自前の集合画面を出したければ
+`Screen` を渡して差し替えられる。
 
 ## ゲームのライフサイクルが変わる
 
