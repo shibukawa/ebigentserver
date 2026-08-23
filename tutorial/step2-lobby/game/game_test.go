@@ -8,7 +8,7 @@ import (
 )
 
 // play applies a sequence of cells for whoever is to move.
-func play(t *testing.T, cells ...uint8) game.State {
+func play(t *testing.T, cells ...uint8) game.World {
 	t.Helper()
 	var sim game.RuleSet
 	s := sim.Start(0)
@@ -111,7 +111,7 @@ func TestCodecRoundTripsTheBoard(t *testing.T) {
 	s := play(t, 0, 3, 1, 4, 2)
 	codec := game.Codec()
 
-	var back game.State
+	var back game.World
 	if err := codec.DecodeSnapshot(&back, codec.AppendSnapshot(nil, &s)); err != nil {
 		t.Fatal(err)
 	}

@@ -16,7 +16,7 @@ func TestReadResolvesEveryFieldShapeTheSamplesUse(t *testing.T) {
 		want  map[string]codegen.Kind
 	}{
 		{
-			"../tutorial/step2-lobby/msg", []string{"TTTState"},
+			"../tutorial/step2-lobby/msg", []string{"TTTWorld"},
 			map[string]codegen.Kind{
 				"Cells": codegen.KindBytes, "Turn": codegen.KindUint, "Over": codegen.KindBool,
 			},

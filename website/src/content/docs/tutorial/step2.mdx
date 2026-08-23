@@ -35,49 +35,103 @@ go run ./tutorial/step2-lobby
 対局が終わったら**最終盤面がそのまま残る**。クリックするとロビーに戻る。終わった瞬間に
 画面を取り上げると、どう終わったのかを見る機会がなくなるからだ。
 
-## `Update` が何も決めなくなる
+## オンラインゲームのために構造を変える
 
-描画はほぼ step 1 のままだ。変わったのはここになる。
+step 1 の盤面は `State` という**1つの状態**だった。それをメモリに置いて、`Update` が直接
+書き換える。1台で完結する限り、これで足りていた。
+
+2台目が同じ盤面を見た瞬間に、1つでは足りなくなる。step 2 は状態を**3つに分ける**。
+
+| 型 | 何を表すか | なぜ分かれるか |
+|---|---|---|
+| **World** | 権威ある世界そのもの | 通信量を抑えるには、前の版と比べて**変わった分だけ**送れる形が要る |
+| **Action** | 1つの席が出す1つの決定 | 上りに流れるのはこれだけ。世界は上らない |
+| **Sight** | 1つの席が見てよいものだけ | 席ごとに適切なロジックを動かすには、席ごとの見え方が要る |
+
+`State` が `World` になったのは改名ではない。**役割が減った**からだ。step 1 の `State` は
+「全部」だった——真実であり、画面に出すものであり、判断の材料でもあった。ネットワーク越しでは
+その3つが別々の場所に、別々の頻度で存在する。だから名前も3つに分かれる。
+
+型引数もそのまま3つ並ぶ。
 
 ```go
-func (v *view) Intake(seating run.Seating[game.Action]) {
-	for _, seat := range seating.LocalSeats() {
+eb.Options[game.World, game.Action, game.Sight]{ ... }
+```
+
+<Aside type="note" title="三目並べに Sight が要るのか">
+盤面が全部見えるゲームなので、`Sight` の中身は `World` とほとんど同じになる。それでも
+**別の型**にしてあるのは、隠し情報を持つゲームがここだけを変えれば済むようにするためだ。
+手札も、視界も、戦場の霧も、変わるのは `Project` の1メソッドで、セッションのループは
+何も知らない。
+</Aside>
+
+### `Update` は決めるのをやめる
+
+描画はほぼ step 1 のままだ。変わったのは入力の側になる。
+
+```go
+func (v *view) Intake(controls run.Controls[game.Action]) {
+	for _, seat := range controls.LocalSeats() {
 		// 不正なセルは上流のバリデータが弾くので、盤上ならどこでも送ってよい
-		_ = seating.Submit(seat.Slot, game.Action{Cell: cell})
+		_ = controls.Submit(seat.Slot, game.Action{Cell: cell})
 	}
 }
 ```
 
-step 1 の `Update` は盤面に印を置いていた。こちらは行動を提出して、盤面がどうなったかを
-教えてもらうまで待つ。
+step 1 の `Update` は盤面に印を置いていた。こちらは **Action を提出して、World がどうなったかを
+教えてもらうまで待つ**。
 
 そして `Submit` の行き先は、ホストなら1 goroutine 先の inbox、ゲストなら1マシン先のソケットだ。
 **どちらのインスタンスが実際にルールを走らせたのかは、このファイルからは見えない。**
 
-<Aside type="note" title="run.Seating">
-`Intake` が受け取るのは `Match` ではなく席の抽象で、ローカルの試合もリンクも同じように満たす。
-1つの再生シーンがホストとゲストの両方を務められるのは、シーンの側から見た差が
-「`Submit` の行き先」しかないからだ。
+<Aside type="note" title="run.Controls">
+`Intake` が受け取るのは `Match` ではなく、**このマシンが操作する席と、その出し方**だけだ。
+1つのプレイ画面がホストとゲストの両方を務められるのは、画面の側から見た差が
+「`Submit` の行き先」しかないからである。
 </Aside>
 
-## ルールは移らず、メソッドが増える
+## ゲームのライフサイクルが変わる
 
-step 1 の約束どおり、`Legal` はそのまま残った。その周りに5つ増えただけだ。
+step 1 は起動したら即プレイだった。プレイヤーは最初から2人そろっていて、そう決まっていた
+からだ。相手が別のマシンにいる瞬間、それは決めておけない——**起動してから集まる**。
+
+だから間に階層が2つ入る。
+
+| 階層 | 何が起きるか |
+|---|---|
+| **Matchmaking** | 誰がいるか探し、部屋を開くか入るかを決め、席を取る |
+| **Match** | 席が埋まってから終わるまで。ロスターとリンクを持つ |
+| **Stage** | その中で実際に遊ぶルールセット1つ |
+
+step 1 にあったのは Stage だけで、しかも名前が要らなかった。1つしかないものに名前は要らない。
+
+そして**ゲームのロジックは Stage の側に入っていく**。step 1 の約束どおり `Legal` はそのまま
+残り、その周りに `StageRuleSet` のメソッドが5つ増えただけだ。
 
 ```go
 type RuleSet struct{}
 
-func (RuleSet) Start(uint64) State { ... }
-func (RuleSet) ActingSlots(s *State) []session.SlotID { ... }
-func (RuleSet) Apply(s *State, slot session.SlotID, a Action) { ... }
-func (RuleSet) Advance(*State) {}
-func (g RuleSet) Project(s *State, slot session.SlotID) Sight { ... }
-func (RuleSet) Evaluate(s *State, slot session.SlotID) session.EvaluationSignal { ... }
+func (RuleSet) Start(uint64) World { ... }
+func (RuleSet) ActingSlots(w *World) []session.SlotID { ... }
+func (RuleSet) Apply(w *World, slot session.SlotID, a Action) { ... }
+func (RuleSet) Advance(*World) {}
+func (g RuleSet) Project(w *World, slot session.SlotID) Sight { ... }
+func (RuleSet) Evaluate(w *World, slot session.SlotID) session.EvaluationSignal { ... }
 ```
+
+引数を見ると、さっきの3つがそのまま出てくる。`Apply` は Action を World に適用し、`Project` は
+World から Sight を作る。**この6メソッドがゲームの全部**で、Matchmaking も Match も
+1行も知らない。
 
 `Advance` が空なのは手抜きではない。リアルタイムループは全てのゲームに毎 tick の前進を尋ねるが、
 **盤面は着手でしか動かない**。ターン制が「何も起きていない」と答えるのは欠落ではなく、
 同じループ・同じ記録・同じリンクがボードゲームにもシューターにも使える理由になっている。
+
+<Aside type="note" title="Stage が別の階層である理由">
+このゲームには Stage が1つしかないので、Match と Stage の区別は今は効いてこない。効くのは
+**本編のあとにボーナスステージ**を足したときだ。ルールも、World の型も、送るデータも変わるが、
+席とリンクはそのまま——同じ相手と、違うルールで、続けて遊べる。
+</Aside>
 
 ## 盤面にワイヤ形式ができる
 
@@ -86,7 +140,7 @@ step 1 は盤面をただの Go 配列に持っていて、それがどう運ば
 
 ```go
 // tutorial/step2-lobby/msg/types.go
-type TTTState struct {
+type TTTWorld struct {
 	Cells  []uint8 `json:"cells"`
 	Turn   uint16  `json:"turn"`
 	Winner uint16  `json:"winner"`
@@ -96,8 +150,8 @@ type TTTState struct {
 }
 
 // この2つの呼び出しがコーデックの依頼そのものになる。
-func AppendTTTState(dst []byte, v TTTState) []byte { return cborbind.AppendCBORInMapTo(dst, v) }
-func DecodeTTTState(data []byte) (TTTState, error) { return cborbind.DecodeCBORInMapFrom[TTTState](data) }
+func AppendTTTWorld(dst []byte, v TTTWorld) []byte { return cborbind.AppendCBORInMapTo(dst, v) }
+func DecodeTTTWorld(data []byte) (TTTWorld, error) { return cborbind.DecodeCBORInMapFrom[TTTWorld](data) }
 ```
 
 宣言を書く場所は無く、**エントリポイントを呼ぶことが依頼**になる。そして呼んだ名前が
@@ -137,8 +191,8 @@ ebigent generate                          # 差分とスキーマ版
 
 ```go
 // tutorial/step2-lobby/game/bind.go — ルールの隣
-func Binding() run.Binding[State, Action, Sight] {
-	return run.Binding[State, Action, Sight]{
+func Binding() run.Binding[World, Action, Sight] {
+	return run.Binding[World, Action, Sight]{
 		Slots:             Slots(),
 		Config:            Config,
 		ProtocolVersion:   Protocol,
@@ -149,14 +203,18 @@ func Binding() run.Binding[State, Action, Sight] {
 
 ```go
 // tutorial/step2-lobby/main.go — ウィンドウの隣
-func network() run.Networking[game.State, game.Action, game.Sight] {
+func matchmaking() run.Matchmaking[game.World, game.Action, game.Sight] {
 	return lan.Preset(lan.Options[...]{ /* codec と入出力 */ })
 }
 ```
 
-`Networking` が `Discover` / `Host` / `Join` の3つに分かれているのは、**プレイヤーには
+`Matchmaking` が `Discover` / `Host` / `Match` の3つに分かれているのは、**プレイヤーには
 誰がいるかを見て決める権利がある**からだ。1つの呼び出しで済ませると、最初に応えた相手の
 試合に放り込むことになる。
+
+そして `Match` は席を取らない。部屋に入ってロスターを読み、それから `Sit` する——
+**入って、見て、やめる**が成立するように分けてある。ホストは条件を出して部屋を開くだけで、
+到着した人を1人ずつ審査したりはしない。
 
 ネットワークの宣言が**ルールの隣ではなくエントリポイントにある**のは意図的だ。どのトランスポートで
 相手に届くかは、そのビルドがどこで走るかの性質であって、ゲームが何であるかの性質ではない。

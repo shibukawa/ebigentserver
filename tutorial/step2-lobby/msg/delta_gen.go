@@ -24,12 +24,12 @@ var DecodeLimits = cbor.DecoderOptions{
 	RejectFloats:       true,
 }
 
-// TTTStateDelta is what changed between two TTTState values.
+// TTTWorldDelta is what changed between two TTTWorld values.
 //
 // Present names the fields carried: bit n is set when field n of the list
 // below changed, and every other field holds nothing meaningful. The bit
 // order is declaration order, so moving a field moves the wire.
-type TTTStateDelta struct {
+type TTTWorldDelta struct {
 	Present uint64
 	// bit 0
 	Cells []uint8
@@ -45,9 +45,9 @@ type TTTStateDelta struct {
 	Over bool
 }
 
-// DiffTTTStateInto fills d with what changed between baseline and
+// DiffTTTWorldInto fills d with what changed between baseline and
 // current, and reports whether anything did.
-func DiffTTTStateInto(d *TTTStateDelta, baseline, current TTTState) bool {
+func DiffTTTWorldInto(d *TTTWorldDelta, baseline, current TTTWorld) bool {
 	d.Present = 0
 	if string(baseline.Cells) != string(current.Cells) {
 		d.Present |= 1 << 0
@@ -76,16 +76,16 @@ func DiffTTTStateInto(d *TTTStateDelta, baseline, current TTTState) bool {
 	return d.Present != 0
 }
 
-// DiffTTTState returns what changed between baseline and current.
-func DiffTTTState(baseline, current TTTState) TTTStateDelta {
-	var d TTTStateDelta
-	DiffTTTStateInto(&d, baseline, current)
+// DiffTTTWorld returns what changed between baseline and current.
+func DiffTTTWorld(baseline, current TTTWorld) TTTWorldDelta {
+	var d TTTWorldDelta
+	DiffTTTWorldInto(&d, baseline, current)
 	return d
 }
 
-// ApplyTTTStateDelta puts d back onto v. A bit Present does not name
+// ApplyTTTWorldDelta puts d back onto v. A bit Present does not name
 // leaves that field as it stands, which is what makes a delta a delta.
-func ApplyTTTStateDelta(v *TTTState, d TTTStateDelta) error {
+func ApplyTTTWorldDelta(v *TTTWorld, d TTTWorldDelta) error {
 	if d.Present&(1<<0) != 0 {
 		v.Cells = d.Cells
 	}
@@ -109,7 +109,7 @@ func ApplyTTTStateDelta(v *TTTState, d TTTStateDelta) error {
 
 // AppendCBORTo appends d as one CBOR array: the mask, then the values it
 // names, in bit order. A field the mask omits costs nothing.
-func (v TTTStateDelta) AppendCBORTo(dst []byte) []byte {
+func (v TTTWorldDelta) AppendCBORTo(dst []byte) []byte {
 	n := 1
 	for bit := range 6 {
 		if v.Present&(1<<uint(bit)) != 0 {
@@ -142,7 +142,7 @@ func (v TTTStateDelta) AppendCBORTo(dst []byte) []byte {
 // DecodeCBORFrom reads one delta into v, and refuses anything after it:
 // a trailing item means the sender and the receiver disagree about the
 // shape, which concept:cbor-wire-profile cannot detect any other way.
-func (v *TTTStateDelta) DecodeCBORFrom(data []byte) error {
+func (v *TTTWorldDelta) DecodeCBORFrom(data []byte) error {
 	r, err := cbor.NewReader(data, DecodeLimits)
 	if err != nil {
 		return err
@@ -157,13 +157,13 @@ func (v *TTTStateDelta) DecodeCBORFrom(data []byte) error {
 }
 
 // decodeFrom reads one delta off r.
-func (v *TTTStateDelta) decodeFrom(r *cbor.Reader) error {
+func (v *TTTWorldDelta) decodeFrom(r *cbor.Reader) error {
 	n, indefinite, err := r.ReadArrayHeader()
 	if err != nil {
 		return err
 	}
 	if indefinite || n < 1 {
-		return &cbor.Error{Offset: int64(r.Offset()), Path: "TTTStateDelta", Err: cbor.ErrUnexpectedToken}
+		return &cbor.Error{Offset: int64(r.Offset()), Path: "TTTWorldDelta", Err: cbor.ErrUnexpectedToken}
 	}
 	present, err := r.ReadUint64()
 	if err != nil {
@@ -228,7 +228,7 @@ func (v *TTTStateDelta) decodeFrom(r *cbor.Reader) error {
 		read++
 	}
 	if read != n {
-		return &cbor.Error{Offset: int64(r.Offset()), Path: "TTTStateDelta", Err: cbor.ErrUnexpectedToken}
+		return &cbor.Error{Offset: int64(r.Offset()), Path: "TTTWorldDelta", Err: cbor.ErrUnexpectedToken}
 	}
 	return nil
 }

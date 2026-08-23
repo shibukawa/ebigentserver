@@ -11,4 +11,4 @@ package msg
 // is no ordering here and no partial compatibility to negotiate, because
 // concept:cbor-wire-profile puts no field names on the wire for a
 // mismatch to be noticed in (rule:game-version-must-match).
-const SchemaVersion = "2aa9440448a8cd87"
+const SchemaVersion = "0464a0ebb7358018"

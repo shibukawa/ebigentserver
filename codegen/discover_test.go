@@ -17,7 +17,7 @@ func TestDiscoverFindsTheWorldStates(t *testing.T) {
 	cases := map[string]struct {
 		want, absent []string
 	}{
-		"../tutorial/step2-lobby/msg": {want: []string{"TTTState"}, absent: []string{"Move"}},
+		"../tutorial/step2-lobby/msg": {want: []string{"TTTWorld"}, absent: []string{"Move"}},
 		"../samples/pong/msg":         {want: []string{"PongState"}, absent: []string{"PaddleInput"}},
 		"../samples/dungeon/msg": {
 			want:   []string{"AdventurerView", "DMView", "DungeonState"},

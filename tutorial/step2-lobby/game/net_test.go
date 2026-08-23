@@ -19,13 +19,13 @@ import (
 // the same code drives the host's match and the guest's link.
 type player struct {
 	mu    sync.Mutex
-	world game.State
+	world game.World
 	got   bool
 	you   session.SlotID
 	moves int
 }
 
-func (p *player) apply(_ session.Tick, world *game.State) {
+func (p *player) apply(_ session.Tick, world *game.World) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	p.world = *world
@@ -60,7 +60,7 @@ func (p *player) intake(seating run.Controls[game.Action]) {
 	}
 }
 
-func (p *player) board() (game.State, bool) {
+func (p *player) board() (game.World, bool) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	return p.world, p.got
@@ -68,8 +68,8 @@ func (p *player) board() (game.State, bool) {
 
 // lanOptions is what main.go declares at the entry point, repeated here
 // because a test is another entry point: it chooses a transport too.
-func lanOptions() lan.Options[game.State, game.Action, msg.TTTStateDelta, game.Sight] {
-	return lan.Options[game.State, game.Action, msg.TTTStateDelta, game.Sight]{
+func lanOptions() lan.Options[game.World, game.Action, msg.TTTWorldDelta, game.Sight] {
+	return lan.Options[game.World, game.Action, msg.TTTWorldDelta, game.Sight]{
 		Name:        "tictactoe",
 		Protocol:    game.Protocol,
 		Codec:       game.Codec(),
@@ -89,7 +89,7 @@ func TestTwoInstancesPlayOneBoard(t *testing.T) {
 	defer cancel()
 
 	opts := lanOptions()
-	roster, err := run.NewRoster[game.State, game.Action, game.Sight](
+	roster, err := run.NewRoster[game.World, game.Action, game.Sight](
 		game.Options(), game.Slots())
 	if err != nil {
 		t.Fatal(err)
@@ -104,7 +104,7 @@ func TestTwoInstancesPlayOneBoard(t *testing.T) {
 	}
 	defer host.Close()
 
-	guestReady := make(chan *lan.Guest[game.State, game.Action, msg.TTTStateDelta, game.Sight], 1)
+	guestReady := make(chan *lan.Guest[game.World, game.Action, msg.TTTWorldDelta, game.Sight], 1)
 	guestFail := make(chan error, 1)
 	go func() {
 		// Two acts, as the second instance really performs them: reach
@@ -129,7 +129,7 @@ func TestTwoInstancesPlayOneBoard(t *testing.T) {
 	hostPlayer := &player{}
 	cfg := game.Config("tutorial-step2-0000", 1)
 	appBroadcast := cfg.Broadcast
-	cfg.Broadcast = func(tick session.Tick, world *game.State) {
+	cfg.Broadcast = func(tick session.Tick, world *game.World) {
 		if appBroadcast != nil {
 			appBroadcast(tick, world)
 		}
@@ -146,7 +146,7 @@ func TestTwoInstancesPlayOneBoard(t *testing.T) {
 	}
 	match.Start(ctx, session.Paced)
 
-	var guest *lan.Guest[game.State, game.Action, msg.TTTStateDelta, game.Sight]
+	var guest *lan.Guest[game.World, game.Action, msg.TTTWorldDelta, game.Sight]
 	select {
 	case guest = <-guestReady:
 	case err := <-guestFail:

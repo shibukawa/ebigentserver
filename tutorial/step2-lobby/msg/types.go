@@ -18,8 +18,8 @@ type Move struct {
 	Cell uint8 `json:"cell"`
 }
 
-// TTTState is the authoritative board on the world profile.
-type TTTState struct {
+// TTTWorld is the authoritative board on the world profile.
+type TTTWorld struct {
 	// Cells is the grid, 9 entries: 0 empty, 1 X, 2 O.
 	Cells []uint8 `json:"cells"`
 	// Turn is the slot to move, 0 once the game is over.
@@ -51,9 +51,9 @@ func AppendMove(dst []byte, v Move) []byte { return cborbind.AppendCBORInArrayTo
 func DecodeMove(data []byte) (Move, error) { return cborbind.DecodeCBORInArrayFrom[Move](data) }
 
 // AppendTTTState writes one board in the map shape.
-func AppendTTTState(dst []byte, v TTTState) []byte { return cborbind.AppendCBORInMapTo(dst, v) }
+func AppendTTTState(dst []byte, v TTTWorld) []byte { return cborbind.AppendCBORInMapTo(dst, v) }
 
 // DecodeTTTState reads one board.
-func DecodeTTTState(data []byte) (TTTState, error) {
-	return cborbind.DecodeCBORInMapFrom[TTTState](data)
+func DecodeTTTState(data []byte) (TTTWorld, error) {
+	return cborbind.DecodeCBORInMapFrom[TTTWorld](data)
 }
