@@ -2,7 +2,7 @@
 
 一人が二体の敵に追われ、時間切れまで捕まらなければ勝ち。それだけのゲームだが、**敵が席(`concept:player-slot`)に座っている**。
 
-ソロゲームにセッションフレームワークを使う理由はそこにある。敵は遠隔プレイヤーと同じ `api:agent-interface` を通して決める。したがって敵の判断は一つ残らず、**判断の材料になった観測と一緒に** `data:episode-log` に残る。これは手書きの敵更新関数が決して残さないものであり、`flow:behavior-tree-synthesis` が必要とするただ一つの入力でもある。
+ソロゲームにセッションフレームワークを使う理由はそこにある。敵は遠隔プレイヤーと同じ `api:agent-interface` を通して決める。したがって敵の判断は一つ残らず、**判断の材料になった視界と一緒に** `data:episode-log` に残る。これは手書きの敵更新関数が決して残さないものであり、`flow:behavior-tree-synthesis` が必要とするただ一つの入力でもある。
 
 `api:tick-hooks` の3つのフックのうち、非プレイヤーでも **入力(intake)** と **取り出し(apply)** は動く。中央で動くのは調停(arbitrate)だけで、ソロならそれも同じプロセスの中にある。
 
@@ -52,8 +52,8 @@ flanker  3739 decisions → 8 chips → examples/solo/distill/gen/flanker
 | 同じシードは同じ試合を produce する(チェックポイントをピン留め) | `TestMatchIsDeterministic` |
 | コーパスに勝ちと負けの両方が入る(片方だけでは学習素材にならない) | `TestCorpusCarriesBothOutcomes` |
 | 敵2種は本当に別物 | `TestEnemiesDisagree` |
-| 全敵の判断が観測つきで記録され、`analysis` が読める形になる | `TestSoloProducesATrainableCorpus` |
-| 記録された観測が蒸留に必要な中身を持っている | `TestRecordedDecisionCarriesItsObservation` |
+| 全敵の判断が視界つきで記録され、`analysis` が読める形になる | `TestSoloProducesATrainableCorpus` |
+| 記録された視界が蒸留に必要な中身を持っている | `TestRecordedDecisionCarriesItsObservation` |
 | 記録された判断が一つ残らず語彙で説明できる | `TestEveryDecisionIsCovered` |
 | **同じ語彙・同じコーパスから、2種の敵が別の決定リストになる** | `TestKindsDistillDifferently` |
 | コミット済み生成コードが古びていない | `TestGeneratedCodeMatchesTheCorpus` |
@@ -65,7 +65,7 @@ flanker  3739 decisions → 8 chips → examples/solo/distill/gen/flanker
 
 ```
 game/          ルール。エンジンをimportしない。両方のエントリが同じものをリンクする
-  game.go      世界・行動・観測・評価・validator・Canonical
+  game.go      世界・行動・視界・評価・validator・Canonical
   agent.go     Chaser / Flanker / Runner — 意図的に最小
   bind.go      run.Options と run.Binding。宣言はここ1箇所
 cmd/solo-client/   窓。ebitengineをimportする唯一のパッケージ

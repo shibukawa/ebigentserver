@@ -55,10 +55,10 @@ type Move struct {
 	Cell uint8 // 0..8
 }
 
-// Observation is the game's concept:observation. It is deliberately a
+// Sight is the game's concept:sight. It is deliberately a
 // distinct type from State even though tic-tac-toe has global visibility
 // (plan.md seam table): later games change the projection, not the loop.
-type Observation struct {
+type Sight struct {
 	// You is the observing slot and Mark its symbol.
 	You  session.SlotID
 	Mark Cell
@@ -67,7 +67,7 @@ type Observation struct {
 	// NextTurn is the slot to move; 0 when the game is over.
 	NextTurn session.SlotID
 	// Signal is the slot's data:evaluation-signal, delivered with the
-	// observation so every controller has a criterion.
+	// sight so every controller has a criterion.
 	Signal session.EvaluationSignal
 }
 
@@ -104,9 +104,9 @@ func (RuleSet) Apply(s *State, slot session.SlotID, m Move) {
 	s.Next = opponent(slot)
 }
 
-// Project builds a slot's observation.
-func (g RuleSet) Project(s *State, slot session.SlotID) Observation {
-	return Observation{
+// Project builds a slot's sight.
+func (g RuleSet) Project(s *State, slot session.SlotID) Sight {
+	return Sight{
 		You:      slot,
 		Mark:     mark(slot),
 		Board:    s.Board,

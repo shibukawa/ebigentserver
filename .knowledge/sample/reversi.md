@@ -12,7 +12,7 @@ timing: turn based
 synchronization: command oriented
 visibility: global scope
 exercises:
-  - legal concept:action enumeration as part of concept:observation, so a bot needs no private rule engine
+  - legal concept:action enumeration as part of concept:sight, so a bot needs no private rule engine
   - search AI, actor:script-bot-agent, and actor:llm-agent behind one api:agent-interface
   - ai versus ai matches, first use of decision:samples-as-test-infrastructure
   - determinism of a full game from recorded actions, verifying actor:replay-agent

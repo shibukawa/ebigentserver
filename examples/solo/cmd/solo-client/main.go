@@ -46,7 +46,7 @@ func main() {
 	defer stop()
 
 	c := &client{}
-	err := eb.Run(ctx, eb.Options[game.State, game.Action, game.Observation]{
+	err := eb.Run(ctx, eb.Options[game.State, game.Action, game.Sight]{
 		Options: game.Options(),
 		Binding: game.Binding(),
 		Client:  c,
@@ -89,7 +89,7 @@ type client struct {
 	you session.SlotID
 }
 
-var _ eb.Client[game.State, game.Action, game.Observation] = (*client)(nil)
+var _ eb.Client[game.State, game.Action, game.Sight] = (*client)(nil)
 
 // Intake submits this frame's direction for every seat at this machine.
 //

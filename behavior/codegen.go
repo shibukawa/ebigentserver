@@ -13,8 +13,8 @@ type CodegenSpec struct {
 	Package string
 	// Imports are the import paths the expressions need.
 	Imports []string
-	// ObsType and ActionType are the game's observation and action
-	// types as written in code, e.g. "ttt.Observation".
+	// ObsType and ActionType are the game's sight and action
+	// types as written in code, e.g. "ttt.Sight".
 	ObsType    string
 	ActionType string
 	// AgentName names the generated agent type.
@@ -32,7 +32,7 @@ type CodegenSpec struct {
 //
 // Determinism (rule:generated-agent-code-is-deterministic) holds because
 // every emitted expression comes from the vocabulary's GoExpr strings,
-// which judge the observation with the same integer math the simulation
+// which judge the sight with the same integer math the simulation
 // uses — no clock, no randomness, no float enters here.
 func GenerateAgent(spec CodegenSpec, v *Vocabulary, lib *Library) ([]byte, error) {
 	features := map[string]Feature{}
@@ -81,7 +81,7 @@ func GenerateAgent(spec CodegenSpec, v *Vocabulary, lib *Library) ([]byte, error
 	fmt.Fprintf(&b, "// %s seats the compiled policy behind api:agent-interface: an\n", spec.AgentName)
 	b.WriteString("// ordinary agent, indistinguishable from a hand-written bot.\n")
 	fmt.Fprintf(&b, "type %s struct {\n\tlast %s\n\thas  bool\n}\n\n", spec.AgentName, spec.ObsType)
-	fmt.Fprintf(&b, "func (*%s) Guest(session.SlotID) {}\n\n", spec.AgentName)
+	fmt.Fprintf(&b, "func (*%s) Joined(session.SlotID) {}\n\n", spec.AgentName)
 	fmt.Fprintf(&b, "func (a *%s) Observe(obs %s) { a.last, a.has = obs, true }\n\n", spec.AgentName, spec.ObsType)
 	fmt.Fprintf(&b, "func (a *%s) Decide(context.Context) (%s, bool) {\n\tif !a.has {\n\t\tvar zero %s\n\t\treturn zero, false\n\t}\n\treturn Decide(a.last)\n}\n\n",
 		spec.AgentName, spec.ActionType, spec.ActionType)

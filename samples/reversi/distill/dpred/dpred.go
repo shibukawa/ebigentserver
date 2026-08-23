@@ -8,7 +8,7 @@
 // computation into one named term a developer can read in a chip and a
 // generated decision list can call.
 //
-// Everything here judges only Observation fields the slot can see
+// Everything here judges only Sight fields the slot can see
 // (rule:analysis-restricted-to-visible-fields holds by construction),
 // and uses only integer math, so generated agents that call these stay
 // deterministic (rule:generated-agent-code-is-deterministic).
@@ -16,12 +16,12 @@ package dpred
 
 import "github.com/shibukawa/ebigentserver/samples/reversi/reversi"
 
-// BestMoveIs reports whether the greedy choice over Observation.Legal —
+// BestMoveIs reports whether the greedy choice over Sight.Legal —
 // maximum Flips, ties broken by the first (lowest-cell) entry, exactly
 // GreedyBot's argmax — is a placement on the given cell. False when the
-// observation carries no legal moves (not this slot's turn) or when the
+// sight carries no legal moves (not this slot's turn) or when the
 // only legal move is the forced pass.
-func BestMoveIs(obs reversi.Observation, cell uint8) bool {
+func BestMoveIs(obs reversi.Sight, cell uint8) bool {
 	if len(obs.Legal) == 0 || obs.Legal[0].Move.Pass {
 		return false
 	}
@@ -35,8 +35,8 @@ func BestMoveIs(obs reversi.Observation, cell uint8) bool {
 }
 
 // MustPass reports whether the observing slot is to move with no legal
-// placement: Observation.Legal is the single forced-pass entry (the
+// placement: Sight.Legal is the single forced-pass entry (the
 // only position a pass entry can occupy, per reversi.LegalMoves).
-func MustPass(obs reversi.Observation) bool {
+func MustPass(obs reversi.Sight) bool {
 	return len(obs.Legal) > 0 && obs.Legal[0].Move.Pass
 }

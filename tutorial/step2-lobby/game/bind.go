@@ -30,8 +30,8 @@ func Options() run.Options {
 // NewAgent is absent on purpose. The empty seat is not a seat for a bot:
 // it belongs to the other person, who cannot exist until this game is
 // already running. Step 3 is where a bot gets a name.
-func Binding() run.Binding[State, Action, Observation] {
-	return run.Binding[State, Action, Observation]{
+func Binding() run.Binding[State, Action, Sight] {
+	return run.Binding[State, Action, Sight]{
 		Slots:             Slots(),
 		Config:            Config,
 		ProtocolVersion:   Protocol,

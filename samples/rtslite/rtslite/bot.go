@@ -12,17 +12,17 @@ import (
 // issues several orders per decision — the command-stream shape
 // IntakeAll exists for. Minimal on purpose.
 type Bot struct {
-	last Observation
+	last Sight
 	// OrdersPerDecide bounds the burst; 0 means 4.
 	OrdersPerDecide int
 	queue           []Input
 }
 
-var _ session.Agent[Observation, Input] = (*Bot)(nil)
+var _ session.Agent[Sight, Input] = (*Bot)(nil)
 
-func (*Bot) Guest(session.SlotID)      {}
-func (b *Bot) Observe(obs Observation) { b.last = obs; b.plan() }
-func (*Bot) Ended(session.Result)      {}
+func (*Bot) Joined(session.SlotID) {}
+func (b *Bot) Observe(obs Sight)   { b.last = obs; b.plan() }
+func (*Bot) Ended(session.Result)  {}
 
 // Decide pops one planned order per call; the client loop sends one per
 // received view, so plans drain over a few ticks.

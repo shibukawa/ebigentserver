@@ -37,7 +37,7 @@ type State struct {
 
 type Action struct{ Raise int32 }
 
-type Observation struct {
+type Sight struct {
 	You    session.SlotID
 	Score  [3]int32
 	Over   bool
@@ -50,7 +50,7 @@ type Delta struct{ To State }
 
 type rules struct{}
 
-var _ session.TickStageRuleSet[State, Action, Observation] = rules{}
+var _ session.TickStageRuleSet[State, Action, Sight] = rules{}
 
 func (rules) Start(uint64) State                  { return State{} }
 func (rules) ActingSlots(*State) []session.SlotID { return []session.SlotID{slotHost, slotGuest} }
@@ -77,8 +77,8 @@ func (rules) Advance(s *State) {
 	}
 }
 
-func (rules) Project(s *State, slot session.SlotID) Observation {
-	return Observation{You: slot, Score: s.Score, Over: s.Over, Winner: s.Winner}
+func (rules) Project(s *State, slot session.SlotID) Sight {
+	return Sight{You: slot, Score: s.Score, Over: s.Over, Winner: s.Winner}
 }
 
 func (rules) Evaluate(s *State, slot session.SlotID) session.EvaluationSignal {
@@ -148,8 +148,8 @@ func tuning() session.TuningProfile {
 	}
 }
 
-func options() lan.Options[State, Action, Delta, Observation] {
-	return lan.Options[State, Action, Delta, Observation]{
+func options() lan.Options[State, Action, Delta, Sight] {
+	return lan.Options[State, Action, Delta, Sight]{
 		Name:        "lan-test",
 		Protocol:    protocol,
 		Codec:       codec(),
@@ -164,13 +164,13 @@ func options() lan.Options[State, Action, Delta, Observation] {
 // and a bot are the same kind of object; this one just always raises.
 type raiser struct {
 	mu   sync.Mutex
-	last Observation
+	last Sight
 	seen int
 }
 
-func (*raiser) Guest(session.SlotID) {}
+func (*raiser) Joined(session.SlotID) {}
 
-func (r *raiser) Observe(obs Observation) {
+func (r *raiser) Observe(obs Sight) {
 	r.mu.Lock()
 	r.last, r.seen = obs, r.seen+1
 	r.mu.Unlock()
@@ -188,7 +188,7 @@ func (r *raiser) Decide(context.Context) (Action, bool) {
 
 func (*raiser) Ended(session.Result) {}
 
-func (r *raiser) snapshot() (Observation, int) {
+func (r *raiser) snapshot() (Sight, int) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	return r.last, r.seen
@@ -202,7 +202,7 @@ func TestTwoInstancesPlayOverTheLink(t *testing.T) {
 	defer cancel()
 
 	opts := options()
-	roster, err := run.NewRoster[State, Action, Observation](
+	roster, err := run.NewRoster[State, Action, Sight](
 		run.Options{Name: "lan-test", Devices: run.Keyboard, MaxLocalSeats: 1},
 		[]session.SlotID{slotHost, slotGuest})
 	if err != nil {
@@ -222,7 +222,7 @@ func TestTwoInstancesPlayOverTheLink(t *testing.T) {
 	// inside the handshake until the host admits, which is the point of
 	// the parking: nobody has to poll.
 	guestAgent := &raiser{}
-	joined := make(chan *lan.Guest[State, Action, Delta, Observation], 1)
+	arrived := make(chan *lan.Guest[State, Action, Delta, Sight], 1)
 	joinErr := make(chan error, 1)
 	go func() {
 		g, err := lan.JoinAt(ctx, opts, host.Endpoint())
@@ -230,12 +230,12 @@ func TestTwoInstancesPlayOverTheLink(t *testing.T) {
 			joinErr <- err
 			return
 		}
-		joined <- g
+		arrived <- g
 	}()
 
-	var guest *lan.Guest[State, Action, Delta, Observation]
+	var guest *lan.Guest[State, Action, Delta, Sight]
 	select {
-	case guest = <-joined:
+	case guest = <-arrived:
 	case err := <-joinErr:
 		t.Fatalf("join: %v", err)
 	case <-time.After(5 * time.Second):
@@ -269,7 +269,7 @@ func TestTwoInstancesPlayOverTheLink(t *testing.T) {
 	}
 
 	tune := tuning()
-	cfg := session.Config[State, Action, Observation]{
+	cfg := session.Config[State, Action, Sight]{
 		ID:      "lan-test-0000",
 		Slots:   []session.SlotID{slotHost, slotGuest},
 		RuleSet: rules{},
@@ -326,7 +326,7 @@ func TestTwoInstancesPlayOverTheLink(t *testing.T) {
 	// from state it reconstructed rather than simulated.
 	obs, seen := guestAgent.snapshot()
 	if seen == 0 {
-		t.Fatal("the guest never received an observation")
+		t.Fatal("the guest never received an sight")
 	}
 	if obs.You != slotGuest {
 		t.Fatalf("guest observed itself as slot %d", obs.You)
@@ -371,7 +371,7 @@ func TestBrowseFindsTheHost(t *testing.T) {
 	opts := options()
 	opts.BeaconAddr, opts.DiscoveryAddr = addr, addr
 
-	roster, err := run.NewRoster[State, Action, Observation](
+	roster, err := run.NewRoster[State, Action, Sight](
 		run.Options{Name: "lan-test", Devices: run.Keyboard, MaxLocalSeats: 1},
 		[]session.SlotID{slotHost, slotGuest})
 	if err != nil {
@@ -405,10 +405,10 @@ func TestBrowseFindsTheHost(t *testing.T) {
 	}
 
 	// The endpoint the beacon carried is enough to take a seat.
-	joined := make(chan error, 1)
+	guest := make(chan error, 1)
 	go func() {
 		_, err := lan.JoinAt(ctx, opts, b.Endpoint)
-		joined <- err
+		guest <- err
 	}()
 	deadline := time.Now().Add(5 * time.Second)
 	for !roster.Complete() {
@@ -416,7 +416,7 @@ func TestBrowseFindsTheHost(t *testing.T) {
 			t.Fatalf("browse-then-join never seated: %v", roster.Seats())
 		}
 		select {
-		case err := <-joined:
+		case err := <-guest:
 			t.Fatalf("join after browse: %v", err)
 		default:
 		}
@@ -431,7 +431,7 @@ func TestProtocolMismatchIsRefusedAtTheSeat(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
 
-	roster, err := run.NewRoster[State, Action, Observation](
+	roster, err := run.NewRoster[State, Action, Sight](
 		run.Options{Name: "lan-test", Devices: run.Keyboard, MaxLocalSeats: 1},
 		[]session.SlotID{slotHost, slotGuest})
 	if err != nil {
@@ -466,8 +466,8 @@ func TestPresetDiscoversThenJoins(t *testing.T) {
 	opts.BeaconAddr, opts.DiscoveryAddr = addr, addr
 	opts.BrowseWindow = 300 * time.Millisecond
 
-	newRoster := func() *run.Roster[State, Action, Observation] {
-		r, err := run.NewRoster[State, Action, Observation](
+	newRoster := func() *run.Roster[State, Action, Sight] {
+		r, err := run.NewRoster[State, Action, Sight](
 			run.Options{Name: "lan-test", Devices: run.Keyboard, MaxLocalSeats: 1},
 			[]session.SlotID{slotHost, slotGuest})
 		if err != nil {
@@ -537,7 +537,7 @@ func TestRebindMovesTheOfferToTheNextMatch(t *testing.T) {
 	defer cancel()
 
 	opts := options()
-	first, err := run.NewRoster[State, Action, Observation](
+	first, err := run.NewRoster[State, Action, Sight](
 		run.Options{Name: "lan-test", Devices: run.Keyboard, MaxLocalSeats: 1},
 		[]session.SlotID{slotHost, slotGuest})
 	if err != nil {
@@ -550,7 +550,7 @@ func TestRebindMovesTheOfferToTheNextMatch(t *testing.T) {
 	defer host.Close()
 
 	// The next match brings a fresh roster.
-	second, err := run.NewRoster[State, Action, Observation](
+	second, err := run.NewRoster[State, Action, Sight](
 		run.Options{Name: "lan-test", Devices: run.Keyboard, MaxLocalSeats: 1},
 		[]session.SlotID{slotHost, slotGuest})
 	if err != nil {
@@ -598,7 +598,7 @@ func TestGuestLearnsTheMatchEnded(t *testing.T) {
 	defer cancel()
 
 	opts := options()
-	roster, err := run.NewRoster[State, Action, Observation](
+	roster, err := run.NewRoster[State, Action, Sight](
 		run.Options{Name: "lan-test", Devices: run.Keyboard, MaxLocalSeats: 1},
 		[]session.SlotID{slotHost, slotGuest})
 	if err != nil {
@@ -623,7 +623,7 @@ func TestGuestLearnsTheMatchEnded(t *testing.T) {
 	go func() { played <- guest.Play(ctx) }()
 
 	tune := tuning()
-	cfg := session.Config[State, Action, Observation]{
+	cfg := session.Config[State, Action, Sight]{
 		ID: "lan-end", Slots: []session.SlotID{slotHost, slotGuest},
 		RuleSet: rules{}, Tuning: &tune, Seed: 7,
 	}

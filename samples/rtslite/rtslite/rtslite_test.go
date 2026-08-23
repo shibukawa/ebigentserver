@@ -159,14 +159,14 @@ type logs struct{ decisions, events, outcomes, world bytes.Buffer }
 func record(t *testing.T, src func(session.Tick, session.SlotID) (rtslite.Input, bool)) (*logs, session.Tick) {
 	t.Helper()
 	var l logs
-	w := episode.NewWriter[rtslite.State, rtslite.Input, rtslite.Observation](
+	w := episode.NewWriter[rtslite.State, rtslite.Input, rtslite.Sight](
 		episode.Streams{Decisions: &l.decisions, Events: &l.events, Outcomes: &l.outcomes, World: &l.world},
 		episode.ReplayComplete,
 		episode.Meta{EpisodeID: "rts-ep", ProtocolVersion: msg.SchemaVersion},
 	)
 	g := rtslite.RuleSet{Players: 2, TickLimit: 400}
 	tuning := testTuning
-	s, err := session.New(session.Config[rtslite.State, rtslite.Input, rtslite.Observation]{
+	s, err := session.New(session.Config[rtslite.State, rtslite.Input, rtslite.Sight]{
 		ID: "rts-test", Slots: rtslite.Slots(2), RuleSet: g,
 		Validator: rtslite.Validator{}, Canonical: rtslite.Canonical,
 		Tuning: &tuning, Clock: func() int64 { return 0 },
@@ -179,7 +179,7 @@ func record(t *testing.T, src func(session.Tick, session.SlotID) (rtslite.Input,
 		t.Fatal(err)
 	}
 	for _, slot := range rtslite.Slots(2) {
-		if err := s.Admit(slot, session.Detached[rtslite.Observation, rtslite.Input]{}); err != nil {
+		if err := s.Admit(slot, session.Detached[rtslite.Sight, rtslite.Input]{}); err != nil {
 			t.Fatal(err)
 		}
 	}

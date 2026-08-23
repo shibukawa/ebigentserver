@@ -3,13 +3,13 @@ id: data:derived-predicate
 type: data
 title: Derived Predicate
 ---
-Named function over concept:observation that turns raw fields into a judgement a behavior condition can use.
+Named function over concept:sight that turns raw fields into a judgement a behavior condition can use.
 
 ```yaml
 problem: an observation carries enemy position and own position; a useful condition needs in_range, which no field states
 fields:
   - name: the vocabulary term a developer reads, for example in_weapon_range
-  - inputs: which concept:observation fields it reads
+  - inputs: which concept:sight fields it reads
   - body: generated Go code
   - parameters: thresholds a developer can tune without regenerating
   - evidence: the concept:behavior-evidence situations where it discriminates

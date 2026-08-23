@@ -22,7 +22,7 @@ import (
 //
 // It plays matches nobody watched and then checks the corpus for what
 // flow:behavior-tree-synthesis will need from it: a decision per enemy
-// per tick, each carrying the observation it was made from, labelled by
+// per tick, each carrying the sight it was made from, labelled by
 // who decided and separable by episode outcome. Nothing in the game
 // arranges any of that — it falls out of the enemies being seats.
 func TestSoloProducesATrainableCorpus(t *testing.T) {
@@ -94,7 +94,7 @@ func TestSoloProducesATrainableCorpus(t *testing.T) {
 }
 
 // TestRecordedDecisionCarriesItsObservation checks the content of one
-// decision row rather than the shape of the corpus. The observation as
+// decision row rather than the shape of the corpus. The sight as
 // delivered is the record (data:decision-record): a distilled predicate
 // is written against these fields, so if the quarry's position were
 // missing here, no enemy could be distilled from this log at all.
@@ -120,9 +120,9 @@ func TestRecordedDecisionCarriesItsObservation(t *testing.T) {
 	defer f.Close()
 
 	type row struct {
-		Slot        uint16           `json:"slot"`
-		Observation game.Observation `json:"observation"`
-		Action      *game.Action     `json:"action"`
+		Slot   uint16       `json:"slot"`
+		Sight  game.Sight   `json:"observation"`
+		Action *game.Action `json:"action"`
 	}
 	scanner := bufio.NewScanner(f)
 	scanner.Buffer(make([]byte, 0, 64*1024), 1<<20)
@@ -139,16 +139,16 @@ func TestRecordedDecisionCarriesItsObservation(t *testing.T) {
 		if session.SlotID(r.Slot) != game.Enemy1 || r.Action == nil {
 			continue
 		}
-		if r.Observation.You != game.Enemy1 {
-			t.Fatalf("row for slot %d carries an observation belonging to slot %d",
-				r.Slot, r.Observation.You)
+		if r.Sight.You != game.Enemy1 {
+			t.Fatalf("row for slot %d carries an sight belonging to slot %d",
+				r.Slot, r.Sight.You)
 		}
-		if r.Observation.Quarry.X == 0 && r.Observation.Quarry.Y == 0 {
-			t.Fatal("the recorded observation has no quarry position, so nothing could be learned from it")
+		if r.Sight.Quarry.X == 0 && r.Sight.Quarry.Y == 0 {
+			t.Fatal("the recorded sight has no quarry position, so nothing could be learned from it")
 		}
-		if len(r.Observation.Others) != game.Seats-1 {
-			t.Fatalf("the recorded observation holds %d other actors, wanted %d",
-				len(r.Observation.Others), game.Seats-1)
+		if len(r.Sight.Others) != game.Seats-1 {
+			t.Fatalf("the recorded sight holds %d other actors, wanted %d",
+				len(r.Sight.Others), game.Seats-1)
 		}
 		found = true
 		break

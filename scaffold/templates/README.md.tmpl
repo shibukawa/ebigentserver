@@ -24,7 +24,7 @@ networked game uses, and it is deliberately small enough to throw away.
 |---|---|
 | `State` | the world; everything the session commits |
 | `Action` | what one decision is — here, one boolean |
-| `Observation` | what one slot may see — narrow this before shipping |
+| `Sight` | what one slot may see — narrow this before shipping |
 | `RuleSet.Advance` | one simulation step; the physics |
 | `RuleSet.Apply` | how a validated action changes the world |
 | `RuleSet.Project` | how the world becomes an observation |
@@ -51,7 +51,7 @@ netcode. A stray `float64` in `Advance` compiles and then desyncs.
 seed alone, so the same seed replays the same episode. Calling
 `rand.Intn` from anywhere would break that quietly.
 
-`Observation` is the piece worth attention early. It is a separate type
+`Sight` is the piece worth attention early. It is a separate type
 from `State` even though this placeholder copies the whole pipe list into
 it, because narrowing what a slot can see later is a change to `Project`
 alone — and every controller, human or not, reads only its observation.

@@ -55,7 +55,7 @@ func main() {
 	if err != nil {
 		fatal(err)
 	}
-	s, err := session.New(session.Config[pong.State, pong.Input, pong.Observation]{
+	s, err := session.New(session.Config[pong.State, pong.Input, pong.Sight]{
 		ID:        "pong-client",
 		Slots:     pong.Slots(),
 		RuleSet:   pong.RuleSet{},
@@ -71,7 +71,7 @@ func main() {
 		fatal(err)
 	}
 	for _, slot := range pong.Slots() {
-		if err := s.Admit(slot, session.Detached[pong.Observation, pong.Input]{}); err != nil {
+		if err := s.Admit(slot, session.Detached[pong.Sight, pong.Input]{}); err != nil {
 			fatal(err)
 		}
 	}

@@ -8,7 +8,7 @@ Authoritative game state owned by concept:session and never exposed to agents di
 ```yaml
 representation: plain Go structs, see decision:go-struct-world-state
 numerics: scaled integers, see decision:fixed-point-numeric-representation
-exposure: only through concept:observation, materialized as concept:agent-view
+exposure: only through concept:sight, materialized as concept:agent-view
 distribution_forms:
   - data:state-delta
   - data:snapshot

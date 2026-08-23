@@ -11,7 +11,7 @@ fields:
   - tick, see term:tick
   - agent_id and seat
   - agent_kind, so human and actor:llm-agent rows are separable
-  - observation: the concept:observation as delivered, not the world state
+  - observation: the concept:sight as delivered, not the world state
   - visibility: data:visibility-annotation
   - action: the concept:action taken, or none
   - evaluation: the data:evaluation-signal at this decision point

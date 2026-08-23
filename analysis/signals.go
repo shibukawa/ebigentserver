@@ -36,10 +36,10 @@ type Report struct {
 	DecisionRows int
 	// DecisionsPerEpisodeMean is DecisionRows / Episodes.
 	DecisionsPerEpisodeMean float64
-	// ActionRows counts rows where the slot acted; ObservationRows
-	// counts observation-only deliveries (null action).
-	ActionRows      int
-	ObservationRows int
+	// ActionRows counts rows where the slot acted; SightRows
+	// counts sight-only deliveries (null action).
+	ActionRows int
+	SightRows  int
 	// Rejections ranks validator rejection reasons (from the events
 	// stream) by count.
 	Rejections map[string]int
@@ -138,7 +138,7 @@ func Compute(c *Corpus) Report {
 			if d.HasAction {
 				r.ActionRows++
 			} else {
-				r.ObservationRows++
+				r.SightRows++
 			}
 		}
 		for reason, n := range ep.Rejections {
@@ -239,7 +239,7 @@ func (r Report) WriteText(w io.Writer) {
 	fmt.Fprintf(w, "decision rows: %d (mean %.2f per episode)\n",
 		r.DecisionRows, r.DecisionsPerEpisodeMean)
 	fmt.Fprintf(w, "  with action: %d\n", r.ActionRows)
-	fmt.Fprintf(w, "  observation-only: %d\n", r.ObservationRows)
+	fmt.Fprintf(w, "  sight-only: %d\n", r.SightRows)
 	fmt.Fprintf(w, "checkpoints: %d\n", r.Checkpoints)
 
 	fmt.Fprintln(w, "rejection reasons:")

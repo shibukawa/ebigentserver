@@ -1,6 +1,6 @@
 ---
 title: エピソードログの収集
-description: 4つの JSONL ストリーム、2つの記録モード、そして「世界ではなく観測を記録する」ことがなぜ正しいのか。
+description: 4つの JSONL ストリーム、2つの記録モード、そして「世界ではなく視界を記録する」ことがなぜ正しいのか。
 ---
 
 import { Aside, LinkCard, FileTree } from '@astrojs/starlight/components';
@@ -8,8 +8,8 @@ import { Aside, LinkCard, FileTree } from '@astrojs/starlight/components';
 分析のために対局を記録するとき、つい世界状態を全部保存したくなる。だが、それは学習用の
 データとしてはむしろ**間違っている**。
 
-ランタイムの agent が読めるのは観測だけだ。世界状態を根拠にルールを作れば、実行時に評価できない
-条件が出来上がる。だから記録するのは、**実際に配られた観測そのもの**になっている。
+ランタイムの agent が読めるのは視界だけだ。世界状態を根拠にルールを作れば、実行時に評価できない
+条件が出来上がる。だから記録するのは、**実際に配られた視界そのもの**になっている。
 これは一番安く捕まえられる地点でもあり、スコープが自動的に正しくなる地点でもある。
 
 ## 4つのストリーム
@@ -45,7 +45,7 @@ type Decision struct {
 	Tick          uint64
 	Slot          uint16
 	AgentKind     string          // "human" / "bot" / "replay" — 行を分離できる
-	Observation   json.RawMessage // 配られた観測そのもの。世界状態ではない
+	Sight   json.RawMessage // 配られた視界そのもの。世界状態ではない
 	Action        json.RawMessage // 取った行動、または null
 	Evaluation    Evaluation      // この判断点での評価シグナル
 	LatencyMicros int64           // 判断にかかった実時間。測定メタデータ
@@ -58,7 +58,7 @@ type Decision struct {
 `LatencyMicros` は反応の速さの軸として使う。**シミュレーションの入力には決してならない**。
 
 <Aside type="note" title="判断していない tick も記録される">
-その席が判断しない tick の観測も `Observed` として残る（`action` が null の行）。何が見えていて
+その席が判断しない tick の視界も `Observed` として残る（`action` が null の行）。何が見えていて
 何もしなかったのか、は分析上の情報になる。
 </Aside>
 
@@ -66,7 +66,7 @@ type Decision struct {
 
 | モード | 内容 |
 |---|---|
-| `replay_complete` | 配られた観測、受理された行動、ライフサイクル遷移、シード、定期チェックポイント。**必須レコードを省けない** |
+| `replay_complete` | 配られた視界、受理された行動、ライフサイクル遷移、シード、定期チェックポイント。**必須レコードを省けない** |
 | `analysis_sampled` | world ストリームとチェックポイントを落とし、長いセッションを間引ける。集計専用 |
 
 サンプルされたログが再生可能を騙ることはできない。`NewWriter` は `analysis_sampled` を渡された
@@ -76,7 +76,7 @@ type Decision struct {
 ## 記録は失敗しても対局を止めない
 
 ```go
-w := episode.NewWriter[State, Move, Observation](streams, episode.ReplayComplete, meta)
+w := episode.NewWriter[State, Move, Sight](streams, episode.ReplayComplete, meta)
 cfg.Recorder = w
 // ...
 if err := w.Err(); err != nil {
@@ -94,8 +94,8 @@ if err := w.Err(); err != nil {
 | フック | いつ |
 |---|---|
 | `EpisodeStarted` | エピソード開始 |
-| `Observed` | 判断しない席に観測を配ったとき |
-| `Decided` | 行動が受理されたとき。観測・評価・レイテンシと一緒に |
+| `Observed` | 判断しない席に視界を配ったとき |
+| `Decided` | 行動が受理されたとき。視界・評価・レイテンシと一緒に |
 | `Rejected` | validator が行動を拒否したとき |
 | `Lifecycle` | 状態遷移 |
 | `WorldCommitted` | tick 確定後の世界（任意の ground truth ストリーム） |

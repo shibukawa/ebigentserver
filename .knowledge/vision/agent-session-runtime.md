@@ -6,7 +6,7 @@ title: Agent Session Runtime
 Build a runtime that lets any agent join a game session, not a game-specific dedicated server.
 
 ```yaml
-core_claim: human, bot, and replay players are the same concept:agent; they differ only in how concept:observation becomes concept:action
+core_claim: human, bot, and replay players are the same concept:agent; they differ only in how concept:sight becomes concept:action
 topology_claim: standalone, listen server, dedicated server, and p2p are placements of concept:agent and concept:session, expressed by concept:execution-topology
 language: go
 first_target: system:ebitengine

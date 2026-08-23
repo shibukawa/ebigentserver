@@ -52,7 +52,7 @@ func playEpisode(t *testing.T, root string, seed uint64, spec epSpec) {
 	if spec.withWorld {
 		streams.World = open("world.jsonl")
 	}
-	w := episode.NewWriter[ttt.State, ttt.Move, ttt.Observation](
+	w := episode.NewWriter[ttt.State, ttt.Move, ttt.Sight](
 		streams, spec.mode,
 		episode.Meta{
 			EpisodeID:       spec.id,
@@ -60,7 +60,7 @@ func playEpisode(t *testing.T, root string, seed uint64, spec epSpec) {
 			AgentKinds:      map[session.SlotID]string{ttt.SlotX: "bot", ttt.SlotO: spec.oKind},
 		},
 	)
-	cfg := session.Config[ttt.State, ttt.Move, ttt.Observation]{
+	cfg := session.Config[ttt.State, ttt.Move, ttt.Sight]{
 		ID: spec.id, Slots: ttt.Slots(),
 		RuleSet: ttt.RuleSet{}, Validator: ttt.Validator{},
 		Recorder: w, Seed: seed,
@@ -85,7 +85,7 @@ func playEpisode(t *testing.T, root string, seed uint64, spec epSpec) {
 	if err := s.Admit(ttt.SlotX, &ttt.Bot{}); err != nil {
 		t.Fatal(err)
 	}
-	var opponent session.Agent[ttt.Observation, ttt.Move] = &ttt.Bot{}
+	var opponent session.Agent[ttt.Sight, ttt.Move] = &ttt.Bot{}
 	if spec.oMoves != nil {
 		opponent = &ttt.Script{Moves: spec.oMoves}
 	}
@@ -197,11 +197,11 @@ func TestComputeOverGeneratedCorpus(t *testing.T) {
 	}
 
 	// Per tick both slots get a row (one Decided, one Observed), 7
-	// ticks, plus the final observation delivered to both at drain:
+	// ticks, plus the final sight delivered to both at drain:
 	// 16 rows per episode, 7 of them with actions.
-	if r.DecisionRows != 128 || r.ActionRows != 56 || r.ObservationRows != 72 {
+	if r.DecisionRows != 128 || r.ActionRows != 56 || r.SightRows != 72 {
 		t.Errorf("decision rows = %d (action %d, obs %d), want 128/56/72",
-			r.DecisionRows, r.ActionRows, r.ObservationRows)
+			r.DecisionRows, r.ActionRows, r.SightRows)
 	}
 	if r.DecisionsPerEpisodeMean != 16 {
 		t.Errorf("decisions per episode mean = %v, want 16", r.DecisionsPerEpisodeMean)
@@ -254,7 +254,7 @@ func TestWriteTextIsReadableAndDeterministic(t *testing.T) {
 		"0-9: 8",
 		"decision rows: 128 (mean 16.00 per episode)",
 		"with action: 56",
-		"observation-only: 72",
+		"sight-only: 72",
 		"checkpoints: 42",
 		"1  ttt: cell 0 is occupied",
 		"decisions: ",

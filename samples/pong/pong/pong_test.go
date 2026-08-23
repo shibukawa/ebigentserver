@@ -32,9 +32,9 @@ func patternInput(tick session.Tick, slot session.SlotID) (pong.Input, bool) {
 	return pong.Input{Tick: uint32(tick), MoveY: move}, true
 }
 
-func newSession(t *testing.T, cfg func(*session.Config[pong.State, pong.Input, pong.Observation])) *session.Session[pong.State, pong.Input, pong.Observation] {
+func newSession(t *testing.T, cfg func(*session.Config[pong.State, pong.Input, pong.Sight])) *session.Session[pong.State, pong.Input, pong.Sight] {
 	t.Helper()
-	c := session.Config[pong.State, pong.Input, pong.Observation]{
+	c := session.Config[pong.State, pong.Input, pong.Sight]{
 		ID:        "pong-test",
 		Slots:     pong.Slots(),
 		RuleSet:   pong.RuleSet{},
@@ -54,7 +54,7 @@ func newSession(t *testing.T, cfg func(*session.Config[pong.State, pong.Input, p
 		t.Fatal(err)
 	}
 	for _, slot := range pong.Slots() {
-		if err := s.Admit(slot, session.Detached[pong.Observation, pong.Input]{}); err != nil {
+		if err := s.Admit(slot, session.Detached[pong.Sight, pong.Input]{}); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -68,12 +68,12 @@ type logs struct {
 func record(t *testing.T, src func(session.Tick, session.SlotID) (pong.Input, bool)) (*logs, session.Tick) {
 	t.Helper()
 	var l logs
-	w := episode.NewWriter[pong.State, pong.Input, pong.Observation](
+	w := episode.NewWriter[pong.State, pong.Input, pong.Sight](
 		episode.Streams{Decisions: &l.decisions, Events: &l.events, Outcomes: &l.outcomes, World: &l.world},
 		episode.ReplayComplete,
 		episode.Meta{EpisodeID: "pong-ep", ProtocolVersion: msg.SchemaVersion},
 	)
-	s := newSession(t, func(c *session.Config[pong.State, pong.Input, pong.Observation]) {
+	s := newSession(t, func(c *session.Config[pong.State, pong.Input, pong.Sight]) {
 		c.Seed = 7
 		c.Recorder = w
 		c.InputSource = src
@@ -150,7 +150,7 @@ func TestLoopbackBotMatch(t *testing.T) {
 	}
 	fast := testTuning
 	fast.TickRate, fast.SendRate = 240, 240 // tight loop so the test finishes quickly
-	s := newSession(t, func(c *session.Config[pong.State, pong.Input, pong.Observation]) {
+	s := newSession(t, func(c *session.Config[pong.State, pong.Input, pong.Sight]) {
 		c.Tuning = &fast
 		c.Broadcast = hub.Broadcast
 	})

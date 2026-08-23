@@ -12,7 +12,7 @@ flow:
   steps:
     - id: observe
       actor: concept:session
-      action: project concept:world-state into per-agent concept:observation
+      action: project concept:world-state into per-agent concept:sight
     - id: decide
       actor: concept:agent
       action: return concept:action for the current tick

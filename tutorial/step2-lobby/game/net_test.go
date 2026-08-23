@@ -68,8 +68,8 @@ func (p *player) board() (game.State, bool) {
 
 // lanOptions is what main.go declares at the entry point, repeated here
 // because a test is another entry point: it chooses a transport too.
-func lanOptions() lan.Options[game.State, game.Action, msg.TTTStateDelta, game.Observation] {
-	return lan.Options[game.State, game.Action, msg.TTTStateDelta, game.Observation]{
+func lanOptions() lan.Options[game.State, game.Action, msg.TTTStateDelta, game.Sight] {
+	return lan.Options[game.State, game.Action, msg.TTTStateDelta, game.Sight]{
 		Name:        "tictactoe",
 		Protocol:    game.Protocol,
 		Codec:       game.Codec(),
@@ -89,7 +89,7 @@ func TestTwoInstancesPlayOneBoard(t *testing.T) {
 	defer cancel()
 
 	opts := lanOptions()
-	roster, err := run.NewRoster[game.State, game.Action, game.Observation](
+	roster, err := run.NewRoster[game.State, game.Action, game.Sight](
 		game.Options(), game.Slots())
 	if err != nil {
 		t.Fatal(err)
@@ -104,7 +104,7 @@ func TestTwoInstancesPlayOneBoard(t *testing.T) {
 	}
 	defer host.Close()
 
-	guestReady := make(chan *lan.Guest[game.State, game.Action, msg.TTTStateDelta, game.Observation], 1)
+	guestReady := make(chan *lan.Guest[game.State, game.Action, msg.TTTStateDelta, game.Sight], 1)
 	guestFail := make(chan error, 1)
 	go func() {
 		g, err := lan.JoinAt(ctx, opts, host.Endpoint())
@@ -139,7 +139,7 @@ func TestTwoInstancesPlayOneBoard(t *testing.T) {
 	}
 	match.Start(ctx, session.Paced)
 
-	var guest *lan.Guest[game.State, game.Action, msg.TTTStateDelta, game.Observation]
+	var guest *lan.Guest[game.State, game.Action, msg.TTTStateDelta, game.Sight]
 	select {
 	case guest = <-guestReady:
 	case err := <-guestFail:

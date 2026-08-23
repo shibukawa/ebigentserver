@@ -51,7 +51,7 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()
 
-	err := eb.Run(ctx, eb.Options[game.State, game.Action, game.Observation]{
+	err := eb.Run(ctx, eb.Options[game.State, game.Action, game.Sight]{
 		Options:     game.Options(),
 		Binding:     game.Binding(),
 		Client:      &view{hover: noCell},
@@ -80,8 +80,8 @@ func main() {
 // It lives here rather than beside the rules because which transport
 // reaches the other player is a property of where this build runs. A
 // browser build of the same rules would name a different one.
-func matchmaking() run.Matchmaking[game.State, game.Action, game.Observation] {
-	return lan.Preset(lan.Options[game.State, game.Action, msg.TTTStateDelta, game.Observation]{
+func matchmaking() run.Matchmaking[game.State, game.Action, game.Sight] {
+	return lan.Preset(lan.Options[game.State, game.Action, msg.TTTStateDelta, game.Sight]{
 		Name:        "tictactoe",
 		Protocol:    game.Protocol,
 		Codec:       game.Codec(),

@@ -35,24 +35,24 @@ func netTicket(t *testing.T, priv ed25519.PrivateKey, jti, role string, seat ses
 	return tok
 }
 
-func clientConfig(tuning session.TuningProfile) netplay.ClientConfig[tron.State, tron.Input, msg.TronStateDelta, tron.Observation] {
-	return netplay.ClientConfig[tron.State, tron.Input, msg.TronStateDelta, tron.Observation]{
+func clientConfig(tuning session.TuningProfile) netplay.ClientConfig[tron.State, tron.Input, msg.TronStateDelta, tron.Sight] {
+	return netplay.ClientConfig[tron.State, tron.Input, msg.TronStateDelta, tron.Sight]{
 		Protocol:    msg.SchemaVersion,
 		Tuning:      tuning,
 		Codec:       tron.Codec(),
 		EncodeInput: func(dst []byte, a tron.Input) []byte { return a.AppendCBORTo(dst) },
-		Project:     func(w *tron.State, slot session.SlotID) tron.Observation { return tron.RuleSet{}.Project(w, slot) },
+		Project:     func(w *tron.State, slot session.SlotID) tron.Sight { return tron.RuleSet{}.Project(w, slot) },
 	}
 }
 
 // watcher is the spectator's passive agent.
 type watcher struct {
 	mu   sync.Mutex
-	last tron.Observation
+	last tron.Sight
 }
 
-func (*watcher) Guest(session.SlotID) {}
-func (w *watcher) Observe(o tron.Observation) {
+func (*watcher) Joined(session.SlotID) {}
+func (w *watcher) Observe(o tron.Sight) {
 	w.mu.Lock()
 	w.last = o
 	w.mu.Unlock()
@@ -91,7 +91,7 @@ func TestEightPlayersSpectatorsAndInjectedFailures(t *testing.T) {
 
 	// The session: 8 seats, plausibility on, escalation declared.
 	sim := tron.RuleSet{SlotIDs: slots(8)}
-	var s *session.Session[tron.State, tron.Input, tron.Observation]
+	var s *session.Session[tron.State, tron.Input, tron.Sight]
 
 	takeover := make(chan session.SlotID, 8)
 	server, err := netplay.NewServer(ctx, netplay.ServerConfig[tron.State, tron.Input]{
@@ -119,7 +119,7 @@ func TestEightPlayersSpectatorsAndInjectedFailures(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	s, err = session.New(session.Config[tron.State, tron.Input, tron.Observation]{
+	s, err = session.New(session.Config[tron.State, tron.Input, tron.Sight]{
 		ID: "tron-1", Slots: slots(8), RuleSet: sim,
 		Validator: tron.Validator{}, Plausibility: tron.Plausibility{FutureWindow: 240},
 		Canonical: tron.Canonical, Tuning: &tuning, Seed: 9,
@@ -132,7 +132,7 @@ func TestEightPlayersSpectatorsAndInjectedFailures(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, slot := range slots(8) {
-		if err := s.Admit(slot, session.Detached[tron.Observation, tron.Input]{}); err != nil {
+		if err := s.Admit(slot, session.Detached[tron.Sight, tron.Input]{}); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -158,10 +158,10 @@ func TestEightPlayersSpectatorsAndInjectedFailures(t *testing.T) {
 	}
 
 	// Six honest bots, and slot 3's original human who will vanish.
-	clients := map[session.SlotID]*netplay.Client[tron.State, tron.Input, msg.TronStateDelta, tron.Observation]{}
+	clients := map[session.SlotID]*netplay.Client[tron.State, tron.Input, msg.TronStateDelta, tron.Sight]{}
 	var clientConns []transport.Conn
 	var mu sync.Mutex
-	startClient := func(seat session.SlotID, jti string, agent session.Agent[tron.Observation, tron.Input], f pipe.Faults) transport.Conn {
+	startClient := func(seat session.SlotID, jti string, agent session.Agent[tron.Sight, tron.Input], f pipe.Faults) transport.Conn {
 		conn := dial(f)
 		wg.Add(1)
 		go func() {

@@ -14,5 +14,5 @@ rationale:
   - a local issuer would duplicate concept:control-plane for the case with the least to protect
   - identity has no meaning without a persistent account, which is control plane scope
 consequence: any reachable client may join, so reachability becomes the control, see rule:unauthenticated-admission-requires-scope-or-capability
-unchanged: policy:observation-scoped-information still applies, so a joining peer sees only its own concept:observation
+unchanged: policy:sight-scoped-information still applies, so a joining peer sees only its own concept:sight
 ```

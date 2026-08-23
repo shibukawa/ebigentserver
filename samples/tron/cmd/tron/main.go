@@ -63,7 +63,7 @@ func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), *duration)
 	defer cancel()
 
-	var s *session.Session[tron.State, tron.Input, tron.Observation]
+	var s *session.Session[tron.State, tron.Input, tron.Sight]
 	server, err := netplay.NewServer(ctx, netplay.ServerConfig[tron.State, tron.Input]{
 		SessionID: "tron-local", Protocol: msg.SchemaVersion,
 		Verifier: verifier, Seed: uint64(time.Now().UnixNano()), Tuning: tuning, Budget: bud,
@@ -81,7 +81,7 @@ func main() {
 	if err != nil {
 		fatal(err)
 	}
-	s, err = session.New(session.Config[tron.State, tron.Input, tron.Observation]{
+	s, err = session.New(session.Config[tron.State, tron.Input, tron.Sight]{
 		ID: "tron-local", Slots: slotIDs,
 		RuleSet:   tron.RuleSet{SlotIDs: slotIDs},
 		Validator: tron.Validator{}, Plausibility: tron.Plausibility{FutureWindow: 120},
@@ -95,7 +95,7 @@ func main() {
 		fatal(err)
 	}
 	for _, slot := range slotIDs {
-		if err := s.Admit(slot, session.Detached[tron.Observation, tron.Input]{}); err != nil {
+		if err := s.Admit(slot, session.Detached[tron.Sight, tron.Input]{}); err != nil {
 			fatal(err)
 		}
 	}
@@ -129,10 +129,10 @@ func main() {
 		wg.Add(1)
 		go func(slot session.SlotID) {
 			defer wg.Done()
-			c, err := netplay.Connect(ctx, clientConn, ticket, netplay.ClientConfig[tron.State, tron.Input, msg.TronStateDelta, tron.Observation]{
+			c, err := netplay.Connect(ctx, clientConn, ticket, netplay.ClientConfig[tron.State, tron.Input, msg.TronStateDelta, tron.Sight]{
 				Protocol: msg.SchemaVersion, Tuning: tuning, Codec: tron.Codec(),
 				EncodeInput: func(dst []byte, a tron.Input) []byte { return a.AppendCBORTo(dst) },
-				Project:     func(w *tron.State, sl session.SlotID) tron.Observation { return tron.RuleSet{}.Project(w, sl) },
+				Project:     func(w *tron.State, sl session.SlotID) tron.Sight { return tron.RuleSet{}.Project(w, sl) },
 			})
 			if err != nil {
 				fmt.Fprintln(os.Stderr, "tron: connect:", err)

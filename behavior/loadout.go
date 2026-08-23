@@ -128,7 +128,7 @@ func GenerateLoadoutAgent(spec CodegenSpec, v *Vocabulary, lib *Library, l *Load
 
 	fmt.Fprintf(&b, "// %s seats the loadout behind api:agent-interface.\n", agentName)
 	fmt.Fprintf(&b, "type %s struct {\n\tlast %s\n\thas  bool\n}\n\n", agentName, spec.ObsType)
-	fmt.Fprintf(&b, "func (*%s) Guest(session.SlotID) {}\n\n", agentName)
+	fmt.Fprintf(&b, "func (*%s) Joined(session.SlotID) {}\n\n", agentName)
 	fmt.Fprintf(&b, "func (a *%s) Observe(obs %s) { a.last, a.has = obs, true }\n\n", agentName, spec.ObsType)
 	fmt.Fprintf(&b, "func (a *%s) Decide(context.Context) (%s, bool) {\n\tif !a.has {\n\t\tvar zero %s\n\t\treturn zero, false\n\t}\n\treturn %s(a.last)\n}\n\n",
 		agentName, spec.ActionType, spec.ActionType, funcName)

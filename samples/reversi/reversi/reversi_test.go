@@ -66,9 +66,9 @@ func TestApplyFlips(t *testing.T) {
 	}
 }
 
-func newMatch(t *testing.T, black, white session.Agent[reversi.Observation, reversi.Move], cfg func(*session.Config[reversi.State, reversi.Move, reversi.Observation])) *session.Session[reversi.State, reversi.Move, reversi.Observation] {
+func newMatch(t *testing.T, black, white session.Agent[reversi.Sight, reversi.Move], cfg func(*session.Config[reversi.State, reversi.Move, reversi.Sight])) *session.Session[reversi.State, reversi.Move, reversi.Sight] {
 	t.Helper()
-	c := session.Config[reversi.State, reversi.Move, reversi.Observation]{
+	c := session.Config[reversi.State, reversi.Move, reversi.Sight]{
 		ID:        "reversi-test",
 		Slots:     reversi.Slots(),
 		RuleSet:   reversi.RuleSet{},

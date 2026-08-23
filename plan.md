@@ -182,7 +182,7 @@ Phase 0 の決定性がここで初めて実証される。ここが赤いまま
   1. `data:derived-predicate` の提案（語彙層）
   2. 述語の上で条件を書く（`data:behavior-candidate`）
 - `decision:shared-chip-library` — 承認済み候補は `data:behavior-chip` として共有ライブラリに入る。AI 1体 = `data:agent-loadout`（チップ選択 + `concept:behavior-profile`）
-- `concept:tactic-selector` — ルートの作戦切り替え層。観測駆動・決定的、味方への作戦指示は普通の action
+- `concept:tactic-selector` — ルートの作戦切り替え層。視界駆動・決定的、味方への作戦指示は普通の action
 - `decision:behavior-tree-compiled-to-go` — loadout ごとに Go ソース生成
 - `rule:predicate-tests-generated-from-episodes` — エピソードからのテスト自動生成
 - `ui:behavior-tree-editor` — 4ペイン（ツリー / 候補 / エビデンス / 述語）+ レベル行列 + 差分
@@ -218,7 +218,7 @@ Phase 0 の決定性がここで初めて実証される。ここが赤いまま
 
 | 継ぎ目 | Phase 1 での実装 | 分けなかった場合 |
 |---|---|---|
-| `Observation` と `WorldState` を別型にする | 投影は恒等関数でよい | Phase 5 で全ゲームコードを書き換え |
+| `Sight` と `WorldState` を別型にする | 投影は恒等関数でよい | Phase 5 で全ゲームコードを書き換え |
 | `data:evaluation-signal` のフィールドを置く | 勝敗だけでよい | Phase 7 で信用割当ができず corpus が無価値になる |
 | `api:action-validator` のフック位置を作る | 常に通す実装でよい | Phase 4 で決定ループに手を入れることになる |
 | `data:progress-report` の発行点を作る | terminal 1件だけでよい | Control Plane 連携が後付けの横断改修になる |

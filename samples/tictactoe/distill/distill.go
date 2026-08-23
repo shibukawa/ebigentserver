@@ -66,16 +66,16 @@ func Vocabulary() *behavior.Vocabulary {
 // spreads the bot's decisions across many boards.
 type randomAgent struct {
 	rng  fixmath.Rand
-	last ttt.Observation
+	last ttt.Sight
 }
 
 func newRandomAgent(seed uint64) *randomAgent {
 	return &randomAgent{rng: fixmath.NewRand(seed | 1)}
 }
 
-func (*randomAgent) Guest(session.SlotID)        {}
-func (a *randomAgent) Observe(o ttt.Observation) { a.last = o }
-func (*randomAgent) Ended(session.Result)        {}
+func (*randomAgent) Joined(session.SlotID) {}
+func (a *randomAgent) Observe(o ttt.Sight) { a.last = o }
+func (*randomAgent) Ended(session.Result)  {}
 
 func (a *randomAgent) Decide(context.Context) (ttt.Move, bool) {
 	var empty []uint8
@@ -92,7 +92,7 @@ func (a *randomAgent) Decide(context.Context) (ttt.Move, bool) {
 
 // NewRandomOpponent exposes the seeded random-legal player for
 // playtests.
-func NewRandomOpponent(seed uint64) session.Agent[ttt.Observation, ttt.Move] {
+func NewRandomOpponent(seed uint64) session.Agent[ttt.Sight, ttt.Move] {
 	return newRandomAgent(seed)
 }
 
@@ -105,13 +105,13 @@ func Corpus(n int) ([]behavior.Record, error) {
 	var records []behavior.Record
 	for i := 0; i < n; i++ {
 		var decisions bytes.Buffer
-		w := episode.NewWriter[ttt.State, ttt.Move, ttt.Observation](
+		w := episode.NewWriter[ttt.State, ttt.Move, ttt.Sight](
 			episode.Streams{Decisions: &decisions},
 			episode.ReplayComplete,
 			episode.Meta{EpisodeID: fmt.Sprintf("ttt-%03d", i),
 				AgentKinds: map[session.SlotID]string{ttt.SlotX: "bot", ttt.SlotO: "random"}},
 		)
-		s, err := session.New(session.Config[ttt.State, ttt.Move, ttt.Observation]{
+		s, err := session.New(session.Config[ttt.State, ttt.Move, ttt.Sight]{
 			ID: fmt.Sprintf("ttt-%03d", i), Slots: ttt.Slots(),
 			RuleSet: ttt.RuleSet{}, Validator: ttt.Validator{},
 			Recorder: w, Seed: uint64(i)*2654435761 + 1,
@@ -209,7 +209,7 @@ func ExportCorpus(root string, n int) ([]behavior.Record, error) {
 		if err != nil {
 			return nil, err
 		}
-		w := episode.NewWriter[ttt.State, ttt.Move, ttt.Observation](
+		w := episode.NewWriter[ttt.State, ttt.Move, ttt.Sight](
 			streams, episode.ReplayComplete,
 			episode.Meta{EpisodeID: id,
 				AgentKinds: map[session.SlotID]string{ttt.SlotX: "bot", ttt.SlotO: "random"}},
@@ -239,8 +239,8 @@ func ExportCorpus(root string, n int) ([]behavior.Record, error) {
 }
 
 // playMatch runs one recorded bot-vs-random match.
-func playMatch(i int, w *episode.Writer[ttt.State, ttt.Move, ttt.Observation]) error {
-	s, err := session.New(session.Config[ttt.State, ttt.Move, ttt.Observation]{
+func playMatch(i int, w *episode.Writer[ttt.State, ttt.Move, ttt.Sight]) error {
+	s, err := session.New(session.Config[ttt.State, ttt.Move, ttt.Sight]{
 		ID: fmt.Sprintf("ttt-%03d", i), Slots: ttt.Slots(),
 		RuleSet: ttt.RuleSet{}, Validator: ttt.Validator{},
 		Recorder: w, Seed: uint64(i)*2654435761 + 1,
@@ -292,7 +292,7 @@ func Spec() behavior.CodegenSpec {
 	return behavior.CodegenSpec{
 		Package:       "gen",
 		Imports:       []string{"github.com/shibukawa/ebigentserver/samples/tictactoe/ttt"},
-		ObsType:       "ttt.Observation",
+		ObsType:       "ttt.Sight",
 		ActionType:    "ttt.Move",
 		AgentName:     "DistilledAgent",
 		SessionImport: "github.com/shibukawa/ebigentserver/session",

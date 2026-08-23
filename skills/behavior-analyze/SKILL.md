@@ -44,7 +44,7 @@ scripts are Python stdlib only — never install packages.
  ],
  "predicates": [
   {"name": "new_predicate_name", "doc": "what it judges and why it is needed",
-   "go_draft": "func NewPredicate(obs game.Observation) bool { ... }",
+   "go_draft": "func NewPredicate(obs game.Sight) bool { ... }",
    "rationale": "which decisions the current vocabulary cannot separate"}
  ],
  "notes": "summary for the reviewer"

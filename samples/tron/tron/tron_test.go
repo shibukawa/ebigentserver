@@ -84,7 +84,7 @@ func TestPlausibilityRejectsFutureInputs(t *testing.T) {
 	suspects := 0
 	tuning := testTuning
 	tuning.RejectionThreshold = 1
-	s, err := session.New(session.Config[tron.State, tron.Input, tron.Observation]{
+	s, err := session.New(session.Config[tron.State, tron.Input, tron.Sight]{
 		ID:           "tron-plausibility",
 		Slots:        slots(2),
 		RuleSet:      tron.RuleSet{SlotIDs: slots(2)},
@@ -108,7 +108,7 @@ func TestPlausibilityRejectsFutureInputs(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, slot := range slots(2) {
-		if err := s.Admit(slot, session.Detached[tron.Observation, tron.Input]{}); err != nil {
+		if err := s.Admit(slot, session.Detached[tron.Sight, tron.Input]{}); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -134,13 +134,13 @@ func patternInput(tick session.Tick, slot session.SlotID) (tron.Input, bool) {
 func TestEightPlayerDigestPinned(t *testing.T) {
 	run := func() (session.Tick, episode.Event) {
 		var events bytes.Buffer
-		w := episode.NewWriter[tron.State, tron.Input, tron.Observation](
+		w := episode.NewWriter[tron.State, tron.Input, tron.Sight](
 			episode.Streams{Events: &events},
 			episode.ReplayComplete,
 			episode.Meta{EpisodeID: "tron-8", ProtocolVersion: msg.SchemaVersion},
 		)
 		tuning := testTuning
-		s, err := session.New(session.Config[tron.State, tron.Input, tron.Observation]{
+		s, err := session.New(session.Config[tron.State, tron.Input, tron.Sight]{
 			ID: "tron-8", Slots: slots(8),
 			RuleSet:   tron.RuleSet{SlotIDs: slots(8)},
 			Validator: tron.Validator{}, Canonical: tron.Canonical,
@@ -154,7 +154,7 @@ func TestEightPlayerDigestPinned(t *testing.T) {
 			t.Fatal(err)
 		}
 		for _, slot := range slots(8) {
-			if err := s.Admit(slot, session.Detached[tron.Observation, tron.Input]{}); err != nil {
+			if err := s.Admit(slot, session.Detached[tron.Sight, tron.Input]{}); err != nil {
 				t.Fatal(err)
 			}
 		}

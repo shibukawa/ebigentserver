@@ -121,12 +121,12 @@ type Action struct {
 	Flap bool
 }
 
-// Observation is what one slot may see (concept:observation).
+// Sight is what one slot may see (concept:observation).
 //
 // It is a separate type from State on purpose. Narrowing what a slot can
 // know later is a change to Project alone, and no controller can read
 // around it because none ever receives a State.
-type Observation struct {
+type Sight struct {
 	You session.SlotID
 	// Self is the observing slot's bird; Others holds every other seat,
 	// in slot order.
@@ -149,7 +149,7 @@ func index(slot session.SlotID) int { return int(slot) - 1 }
 // what a realtime session needs.
 type RuleSet struct{}
 
-var _ session.TickStageRuleSet[State, Action, Observation] = RuleSet{}
+var _ session.TickStageRuleSet[State, Action, Sight] = RuleSet{}
 
 // Start returns the opening position, derived from the session's shared
 // RNG seed (rule:shared-rng-seed). Two runs with the same seed produce
@@ -269,7 +269,7 @@ func overlapsX(x fixmath.F64) bool {
 }
 
 // Project builds a slot's observation.
-func (g RuleSet) Project(s *State, slot session.SlotID) Observation {
+func (g RuleSet) Project(s *State, slot session.SlotID) Sight {
 	me := index(slot)
 	others := make([]Bird, 0, Seats-1)
 	for i, b := range s.Bird {
@@ -277,7 +277,7 @@ func (g RuleSet) Project(s *State, slot session.SlotID) Observation {
 			others = append(others, b)
 		}
 	}
-	return Observation{
+	return Sight{
 		You:    slot,
 		Self:   s.Bird[me],
 		Others: others,
@@ -364,9 +364,9 @@ func Tuning() session.TuningProfile {
 // broadcast receives the committed world at the send cadence: it is the
 // seam where a renderer takes a copy and where local controllers are
 // pumped. Pass nil for a session nobody is watching.
-func Config(id string, seed uint64, broadcast func(session.Tick, *State)) session.Config[State, Action, Observation] {
+func Config(id string, seed uint64, broadcast func(session.Tick, *State)) session.Config[State, Action, Sight] {
 	tuning := Tuning()
-	return session.Config[State, Action, Observation]{
+	return session.Config[State, Action, Sight]{
 		ID:        id,
 		Slots:     Slots(),
 		RuleSet:      RuleSet{},
@@ -381,19 +381,19 @@ func Config(id string, seed uint64, broadcast func(session.Tick, *State)) sessio
 // height. Deliberately minimal — this project's AI depth is meant to come
 // from episode distillation, not from hand-written play.
 type Bot struct {
-	last Observation
+	last Sight
 	// Result is the outcome the session delivers at the end, kept so an
 	// entry point can report it.
 	Result session.Result
 }
 
-var _ session.Agent[Observation, Action] = (*Bot)(nil)
+var _ session.Agent[Sight, Action] = (*Bot)(nil)
 
 // Joined does nothing; the observation carries the slot.
 func (*Bot) Joined(session.SlotID) {}
 
 // Observe retains the latest observation.
-func (b *Bot) Observe(obs Observation) { b.last = obs }
+func (b *Bot) Observe(obs Sight) { b.last = obs }
 
 // Decide flaps when the bird has fallen below the next gap's centre.
 func (b *Bot) Decide(context.Context) (Action, bool) {
@@ -430,7 +430,7 @@ func (b *Bot) Ended(r session.Result) { b.Result = r }
 // (decision:dual-mode-agent-pacing).
 type Driver struct {
 	Slot  session.SlotID
-	Agent session.Agent[Observation, Action]
+	Agent session.Agent[Sight, Action]
 	Inbox *session.Inbox[Action]
 }
 

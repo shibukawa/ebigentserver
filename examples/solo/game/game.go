@@ -5,7 +5,7 @@
 // It is a solo game, and it is on this framework anyway. The reason is
 // the enemies. Each one occupies a concept:player-slot and decides
 // through api:agent-interface exactly as a remote player would, so every
-// enemy decision is recorded into data:episode-log with the observation
+// enemy decision is recorded into data:episode-log with the sight
 // it was made from. That corpus is what
 // flow:behavior-tree-synthesis distills into data:behavior-chip, and it
 // is the one thing a hand-written enemy loop never produces.
@@ -158,13 +158,13 @@ type State struct {
 	Over bool
 }
 
-// Observation is what one slot may see (concept:observation).
+// Sight is what one slot may see (concept:sight).
 //
 // It is a separate type from State on purpose. Every seat sees the whole
 // field here, which is the global scope of concept:visibility-scope;
 // giving an enemy a limited view later is a change to Project alone, and
 // no controller can read around it because none ever receives a State.
-type Observation struct {
+type Sight struct {
 	You session.SlotID `json:"you"`
 	// Self is the observing seat's body.
 	Self Actor `json:"self"`
@@ -177,23 +177,23 @@ type Observation struct {
 	Others []Actor      `json:"others"`
 	Tick   session.Tick `json:"tick"`
 	Over   bool         `json:"over"`
-	// Signal travels with the observation so every controller has a
+	// Signal travels with the sight so every controller has a
 	// criterion without asking for one.
 	Signal session.EvaluationSignal `json:"signal"`
 }
 
 // GapX and GapY are the vector from the observer to the quarry: how far,
-// and in which sign, the player lies. They are facts about an observation
+// and in which sign, the player lies. They are facts about an sight
 // and nothing more — no policy is expressed by measuring a distance.
 //
 // They exist as named functions because a distilled predicate is written
 // against them (data:derived-predicate), and a rule reading
 // "GapX(obs) > 0" survives review in a way that the same subtraction
 // spelled out inline does not.
-func GapX(o Observation) fixmath.F64 { return o.Quarry.X.Sub(o.Self.X) }
+func GapX(o Sight) fixmath.F64 { return o.Quarry.X.Sub(o.Self.X) }
 
 // GapY is the vertical half of GapX.
-func GapY(o Observation) fixmath.F64 { return o.Quarry.Y.Sub(o.Self.Y) }
+func GapY(o Sight) fixmath.F64 { return o.Quarry.Y.Sub(o.Self.Y) }
 
 // index maps a slot to its array position.
 func index(slot session.SlotID) int { return int(slot) - 1 }
@@ -202,7 +202,7 @@ func index(slot session.SlotID) int { return int(slot) - 1 }
 // what a realtime session needs.
 type RuleSet struct{}
 
-var _ session.TickStageRuleSet[State, Action, Observation] = RuleSet{}
+var _ session.TickStageRuleSet[State, Action, Sight] = RuleSet{}
 
 // Start returns the opening position, derived from the session's shared
 // RNG seed. Two runs with the same seed place the same enemies, which is
@@ -308,8 +308,8 @@ func manhattan(a, b Actor) fixmath.F64 {
 	return a.X.Sub(b.X).Abs().Add(a.Y.Sub(b.Y).Abs())
 }
 
-// Project builds a slot's observation.
-func (g RuleSet) Project(s *State, slot session.SlotID) Observation {
+// Project builds a slot's sight.
+func (g RuleSet) Project(s *State, slot session.SlotID) Sight {
 	me := index(slot)
 	others := make([]Actor, 0, Seats-1)
 	for i, a := range s.Actor {
@@ -317,7 +317,7 @@ func (g RuleSet) Project(s *State, slot session.SlotID) Observation {
 			others = append(others, a)
 		}
 	}
-	return Observation{
+	return Sight{
 		You:    slot,
 		Self:   s.Actor[me],
 		Quarry: s.Actor[index(Player)],
@@ -435,9 +435,9 @@ func Canonical(s *State) []byte {
 
 // Config assembles a session over these rules. Every entry point builds
 // its session through here, so a rule change reaches all of them.
-func Config(id string, seed uint64) session.Config[State, Action, Observation] {
+func Config(id string, seed uint64) session.Config[State, Action, Sight] {
 	tuning := Tuning()
-	return session.Config[State, Action, Observation]{
+	return session.Config[State, Action, Sight]{
 		ID:              id,
 		Slots:           Slots(),
 		RuleSet:         RuleSet{},

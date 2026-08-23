@@ -7,6 +7,6 @@ One session instance owns concept:world-state and all other participants accept 
 
 ```yaml
 holders: concept:dedicated-server-mode process, or the host in concept:listen-server-mode
-enables: cheat resistance together with policy:observation-scoped-information
+enables: cheat resistance together with policy:sight-scoped-information
 pairs_with: concept:state-synchronization
 ```

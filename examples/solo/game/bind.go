@@ -34,8 +34,8 @@ func Options() run.Options {
 }
 
 // Binding hands the rules to the wrapper.
-func Binding() run.Binding[State, Action, Observation] {
-	return run.Binding[State, Action, Observation]{
+func Binding() run.Binding[State, Action, Sight] {
+	return run.Binding[State, Action, Sight]{
 		Slots:             Slots(),
 		Config:            Config,
 		NewAgent:          NewAgent,

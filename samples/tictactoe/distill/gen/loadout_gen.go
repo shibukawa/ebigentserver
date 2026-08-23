@@ -11,7 +11,7 @@ import (
 )
 
 // TacticDecide selects a tactic from the observation, then runs its chips.
-func TacticDecide(obs ttt.Observation) (ttt.Move, bool) {
+func TacticDecide(obs ttt.Sight) (ttt.Move, bool) {
 	switch {
 	case obs.Board[4] == ttt.Empty:
 		// tactic claim_center
@@ -55,13 +55,13 @@ func TacticDecide(obs ttt.Observation) (ttt.Move, bool) {
 
 // TacticAgent seats the loadout behind api:agent-interface.
 type TacticAgent struct {
-	last ttt.Observation
+	last ttt.Sight
 	has  bool
 }
 
-func (*TacticAgent) Guest(session.SlotID) {}
+func (*TacticAgent) Joined(session.SlotID) {}
 
-func (a *TacticAgent) Observe(obs ttt.Observation) { a.last, a.has = obs, true }
+func (a *TacticAgent) Observe(obs ttt.Sight) { a.last, a.has = obs, true }
 
 func (a *TacticAgent) Decide(context.Context) (ttt.Move, bool) {
 	if !a.has {

@@ -58,14 +58,14 @@ func (r *recordingConn) Receive(ctx context.Context) (transport.Message, error) 
 // client uses.
 type script struct {
 	moves []dungeon.Input
-	last  Observation
+	last  Sight
 }
 
-type Observation = dungeon.Observation
+type Sight = dungeon.Sight
 
-func (*script) Guest(session.SlotID)    {}
-func (s *script) Observe(o Observation) { s.last = o }
-func (*script) Ended(session.Result)    {}
+func (*script) Joined(session.SlotID) {}
+func (s *script) Observe(o Sight)     { s.last = o }
+func (*script) Ended(session.Result)  {}
 func (s *script) Decide(context.Context) (dungeon.Input, bool) {
 	if len(s.moves) == 0 {
 		return dungeon.Input{}, false
@@ -79,7 +79,7 @@ type dungeonNet struct {
 	t       *testing.T
 	priv    ed25519.PrivateKey
 	server  *netplay.Server[dungeon.State, dungeon.Input]
-	sess    *session.Session[dungeon.State, dungeon.Input, Observation]
+	sess    *session.Session[dungeon.State, dungeon.Input, Sight]
 	ctx     context.Context
 	cancel  context.CancelFunc
 	wg      sync.WaitGroup
@@ -96,7 +96,7 @@ func newDungeonNet(t *testing.T, adventurers int, tickLimit uint32, d time.Durat
 	ctx, cancel := context.WithTimeout(context.Background(), d)
 	n := &dungeonNet{t: t, priv: priv, ctx: ctx, cancel: cancel, tickLim: tickLimit}
 
-	var s *session.Session[dungeon.State, dungeon.Input, Observation]
+	var s *session.Session[dungeon.State, dungeon.Input, Sight]
 	server, err := netplay.NewServer(ctx, netplay.ServerConfig[dungeon.State, dungeon.Input]{
 		SessionID: "dungeon-1", Protocol: msg.SchemaVersion,
 		Verifier: &admission.Verifier{Keys: map[string]ed25519.PublicKey{"k1": pub}, Audience: dgAudience, Leeway: time.Minute},
@@ -113,7 +113,7 @@ func newDungeonNet(t *testing.T, adventurers int, tickLimit uint32, d time.Durat
 		t.Fatal(err)
 	}
 	sim := dungeon.RuleSet{Adventurers: adventurers, TickLimit: tickLimit}
-	s, err = session.New(session.Config[dungeon.State, dungeon.Input, Observation]{
+	s, err = session.New(session.Config[dungeon.State, dungeon.Input, Sight]{
 		ID: "dungeon-1", Slots: dungeon.Slots(adventurers), RuleSet: sim,
 		Validator: dungeon.Validator{}, Canonical: dungeon.Canonical,
 		Tuning: &dgTuning, Seed: 77, Broadcast: server.Broadcast,
@@ -125,7 +125,7 @@ func newDungeonNet(t *testing.T, adventurers int, tickLimit uint32, d time.Durat
 		t.Fatal(err)
 	}
 	for _, slot := range dungeon.Slots(adventurers) {
-		if err := s.Admit(slot, session.Detached[Observation, dungeon.Input]{}); err != nil {
+		if err := s.Admit(slot, session.Detached[Sight, dungeon.Input]{}); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -163,22 +163,22 @@ func (n *dungeonNet) serveSide(conn transport.Conn) {
 
 // dmClientCfg and advClientCfg differ in their view types — the two
 // sides of the asymmetry.
-func dmClientCfg() netplay.ClientConfig[msg.DMView, dungeon.Input, msg.DMViewDelta, Observation] {
-	return netplay.ClientConfig[msg.DMView, dungeon.Input, msg.DMViewDelta, Observation]{
+func dmClientCfg() netplay.ClientConfig[msg.DMView, dungeon.Input, msg.DMViewDelta, Sight] {
+	return netplay.ClientConfig[msg.DMView, dungeon.Input, msg.DMViewDelta, Sight]{
 		Protocol: msg.SchemaVersion, Tuning: dgTuning, Codec: dungeon.DMCodec(),
 		EncodeInput: func(dst []byte, a dungeon.Input) []byte { return a.AppendCBORTo(dst) },
-		Project: func(v *msg.DMView, slot session.SlotID) Observation {
-			return Observation{You: slot, Role: msg.RoleDM, DM: v, Annotation: dungeon.DMAnnotation(v)}
+		Project: func(v *msg.DMView, slot session.SlotID) Sight {
+			return Sight{You: slot, Role: msg.RoleDM, DM: v, Annotation: dungeon.DMAnnotation(v)}
 		},
 	}
 }
 
-func advClientCfg() netplay.ClientConfig[msg.AdventurerView, dungeon.Input, msg.AdventurerViewDelta, Observation] {
-	return netplay.ClientConfig[msg.AdventurerView, dungeon.Input, msg.AdventurerViewDelta, Observation]{
+func advClientCfg() netplay.ClientConfig[msg.AdventurerView, dungeon.Input, msg.AdventurerViewDelta, Sight] {
+	return netplay.ClientConfig[msg.AdventurerView, dungeon.Input, msg.AdventurerViewDelta, Sight]{
 		Protocol: msg.SchemaVersion, Tuning: dgTuning, Codec: dungeon.AdventurerCodec(),
 		EncodeInput: func(dst []byte, a dungeon.Input) []byte { return a.AppendCBORTo(dst) },
-		Project: func(v *msg.AdventurerView, slot session.SlotID) Observation {
-			return Observation{You: slot, Role: v.Role, Adventurer: v, Annotation: dungeon.AdventurerAnnotation(v)}
+		Project: func(v *msg.AdventurerView, slot session.SlotID) Sight {
+			return Sight{You: slot, Role: v.Role, Adventurer: v, Annotation: dungeon.AdventurerAnnotation(v)}
 		},
 	}
 }
@@ -308,14 +308,14 @@ func TestAllFourControllerCombos(t *testing.T) {
 			n := newDungeonNet(t, 1, 75, 8*time.Second) // short crawl; DM wins by timeout unless the party escapes
 			defer n.cancel()
 
-			var dmAgent session.Agent[Observation, dungeon.Input] = &dungeon.DMBot{}
+			var dmAgent session.Agent[Sight, dungeon.Input] = &dungeon.DMBot{}
 			if combo.dmHuman {
 				dmAgent = &script{moves: []dungeon.Input{
 					{Kind: msg.ActPlaceTrap, X: msg.GridW - 4, Y: msg.GridH - 4},
 					{Kind: msg.ActPlaceTrap, X: msg.GridW - 6, Y: msg.GridH - 6},
 				}}
 			}
-			var advAgent session.Agent[Observation, dungeon.Input] = &dungeon.AdventurerBot{}
+			var advAgent session.Agent[Sight, dungeon.Input] = &dungeon.AdventurerBot{}
 			if combo.advHuman {
 				moves := make([]dungeon.Input, 0, 60)
 				for i := 0; i < 30; i++ {
@@ -326,7 +326,7 @@ func TestAllFourControllerCombos(t *testing.T) {
 
 			var dmKind, advKind bool
 			var mu sync.Mutex
-			run := func(seat session.SlotID, agent session.Agent[Observation, dungeon.Input]) {
+			run := func(seat session.SlotID, agent session.Agent[Sight, dungeon.Input]) {
 				serverConn, clientConn := pipe.Pair(pipe.Faults{}, pipe.Faults{})
 				n.serveSide(serverConn)
 				tok := n.ticket(seat) // minted before the goroutine: jti issuance is not concurrent-safe

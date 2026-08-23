@@ -14,5 +14,5 @@ encoding: concept:cbor-wire-profile, small fixed layout
 rate: independent of tick rate, usually lower; a presence_rate field of data:session-tuning-profile
 delivery: rule:presence-superseded-not-retransmitted
 analysis: rule:presence-excluded-from-simulation-and-analysis
-visibility: still filtered through concept:agent-view; see the leak note in policy:observation-scoped-information
+visibility: still filtered through concept:agent-view; see the leak note in policy:sight-scoped-information
 ```

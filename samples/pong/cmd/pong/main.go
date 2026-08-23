@@ -41,7 +41,7 @@ func main() {
 		fatal(err)
 	}
 
-	cfg := session.Config[pong.State, pong.Input, pong.Observation]{
+	cfg := session.Config[pong.State, pong.Input, pong.Sight]{
 		ID:        "pong-cli",
 		Slots:     pong.Slots(),
 		RuleSet:   pong.RuleSet{},
@@ -56,7 +56,7 @@ func main() {
 			fatal(err)
 		}
 		defer closeAll()
-		w := episode.NewWriter[pong.State, pong.Input, pong.Observation](
+		w := episode.NewWriter[pong.State, pong.Input, pong.Sight](
 			streams, episode.ReplayComplete,
 			episode.Meta{ProtocolVersion: msg.SchemaVersion,
 				AgentKinds: map[session.SlotID]string{pong.SlotLeft: "bot", pong.SlotRight: "bot"}},
@@ -78,7 +78,7 @@ func main() {
 		fatal(err)
 	}
 	for _, slot := range pong.Slots() {
-		if err := s.Admit(slot, session.Detached[pong.Observation, pong.Input]{}); err != nil {
+		if err := s.Admit(slot, session.Detached[pong.Sight, pong.Input]{}); err != nil {
 			fatal(err)
 		}
 	}

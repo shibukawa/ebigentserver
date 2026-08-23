@@ -8,9 +8,9 @@ import (
 	"github.com/shibukawa/ebigentserver/session"
 )
 
-func newGame(t *testing.T, x, o session.Agent[ttt.Observation, ttt.Move]) *session.Session[ttt.State, ttt.Move, ttt.Observation] {
+func newGame(t *testing.T, x, o session.Agent[ttt.Sight, ttt.Move]) *session.Session[ttt.State, ttt.Move, ttt.Sight] {
 	t.Helper()
-	s, err := session.New(session.Config[ttt.State, ttt.Move, ttt.Observation]{
+	s, err := session.New(session.Config[ttt.State, ttt.Move, ttt.Sight]{
 		ID:        "ttt-test",
 		Slots:     ttt.Slots(),
 		RuleSet:   ttt.RuleSet{},

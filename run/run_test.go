@@ -76,7 +76,7 @@ func (rules) Evaluate(s *state, slot session.SlotID) session.EvaluationSignal {
 // seat it was given rather than by anything random.
 type stepper struct{ by int }
 
-func (*stepper) Guest(session.SlotID)                    {}
+func (*stepper) Joined(session.SlotID)                   {}
 func (*stepper) Observe(observation)                     {}
 func (s *stepper) Decide(context.Context) (action, bool) { return action{Step: s.by}, true }
 func (*stepper) Ended(session.Result)                    {}
@@ -133,7 +133,7 @@ func TestSeatingRules(t *testing.T) {
 		t.Fatalf("first join: %v", err)
 	}
 	if _, err := r.SitLocal("also me"); err == nil {
-		t.Error("a second person joined a game declaring one local seat")
+		t.Error("a second person guest a game declaring one local seat")
 	}
 	if err := r.SitRemote(1, "someone"); err == nil {
 		t.Error("an occupied seat was taken again")
@@ -246,7 +246,7 @@ func TestLocalHumanSeatTakesInputFromSubmit(t *testing.T) {
 		t.Fatal(err)
 	}
 	if seats := r.Seats(); !seats[0].LocalHuman() {
-		t.Fatalf("the joined seat is %v (local=%v)", seats[0].Kind, seats[0].Local)
+		t.Fatalf("the guest seat is %v (local=%v)", seats[0].Kind, seats[0].Local)
 	}
 
 	cfg := config("submitting", 1)

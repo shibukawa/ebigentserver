@@ -11,16 +11,16 @@ import (
 // sample — it sits behind the exact api:agent-interface a human does, and
 // the game cannot tell.
 type Bot struct {
-	last Observation
+	last Sight
 }
 
-var _ session.Agent[Observation, Move] = (*Bot)(nil)
+var _ session.Agent[Sight, Move] = (*Bot)(nil)
 
-// Guest records nothing; the bot learns its slot from observations.
-func (*Bot) Guest(session.SlotID) {}
+// Joined records nothing; the bot learns its slot from observations.
+func (*Bot) Joined(session.SlotID) {}
 
-// Observe retains the latest observation; policy runs in Decide.
-func (b *Bot) Observe(obs Observation) { b.last = obs }
+// Observe retains the latest sight; policy runs in Decide.
+func (b *Bot) Observe(obs Sight) { b.last = obs }
 
 // Decide takes the first empty cell of the last observed board.
 func (b *Bot) Decide(context.Context) (Move, bool) {
@@ -49,16 +49,16 @@ type Script struct {
 	slot session.SlotID
 }
 
-var _ session.Agent[Observation, Move] = (*Script)(nil)
+var _ session.Agent[Sight, Move] = (*Script)(nil)
 
-// Guest records the assigned slot.
-func (s *Script) Guest(slot session.SlotID) { s.slot = slot }
+// Joined records the assigned slot.
+func (s *Script) Joined(slot session.SlotID) { s.slot = slot }
 
 // Slot returns the slot assigned at admission.
 func (s *Script) Slot() session.SlotID { return s.slot }
 
 // Observe counts the delivery.
-func (s *Script) Observe(Observation) { s.Seen++ }
+func (s *Script) Observe(Sight) { s.Seen++ }
 
 // Decide pops the next scripted move.
 func (s *Script) Decide(context.Context) (Move, bool) {

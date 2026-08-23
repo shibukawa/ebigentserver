@@ -217,7 +217,7 @@ func (s *Session[S, A, O]) OpenAdmission() error {
 
 // Admit attaches an agent to an empty slot. Only legal while admitting
 // (concept:session-lifecycle forbids admission in created; running-state
-// re-admission is a later-phase policy). Guest completes before the
+// re-admission is a later-phase policy). Joined completes before the
 // agent's first Observe.
 func (s *Session[S, A, O]) Admit(slot SlotID, agent Agent[O, A]) error {
 	if s.state != StateAdmitting {
@@ -230,7 +230,7 @@ func (s *Session[S, A, O]) Admit(slot SlotID, agent Agent[O, A]) error {
 		return fmt.Errorf("%w: %d", ErrSlotTaken, slot)
 	}
 	s.agents[slot] = agent
-	agent.Guest(slot)
+	agent.Joined(slot)
 	return nil
 }
 

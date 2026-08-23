@@ -1,7 +1,7 @@
 ---
-id: concept:observation
+id: concept:sight
 type: concept
-title: Observation
+title: Sight
 ---
 Per-agent projection of concept:world-state, the only world view an agent may read.
 
@@ -14,13 +14,13 @@ parts:
   - recent events
   - environment
 materialization: retained and incrementally updated as concept:agent-view
-content_scope: chosen by the game, see rule:observation-content-owned-by-game
+content_scope: chosen by the game, see rule:sight-content-owned-by-game
 projection_rule: concept:visibility-scope
 expresses:
   - fog of war, see term:fog-of-war
   - sight range
   - AI difficulty via information limits
-  - cheat prevention, see policy:observation-scoped-information
+  - cheat prevention, see policy:sight-scoped-information
 human_path: rendered by system:ebitengine before a human reads it
 llm_path: serialized to text in flow:llm-teacher-episode-generation
 ```

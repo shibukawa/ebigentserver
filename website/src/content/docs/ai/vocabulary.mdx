@@ -5,7 +5,7 @@ description: 座標の算術を判断語に変える派生述語と、条件→�
 
 import { Aside, LinkCard } from '@astrojs/starlight/components';
 
-観測には敵の位置と自分の位置が入っている。だが役に立つ条件は `in_weapon_range` の方であって、
+視界には敵の位置と自分の位置が入っている。だが役に立つ条件は `in_weapon_range` の方であって、
 そんなフィールドはどこにもない。
 
 この差を埋めるのが**派生述語**だ。生のフィールドを、条件が使える判断に変換する名前付きの関数。
@@ -17,12 +17,12 @@ type Feature struct {
 	Name   string // 開発者が読む語彙の項目。"cell_4_empty"
 	GoExpr string // 生成コードでの Go 式。"obs.Board[4] == ttt.Empty"
 	Doc    string // 外部の分析役に渡す散文の説明
-	Eval   func(obs json.RawMessage) (bool, error) // 記録済み観測の判定
+	Eval   func(obs json.RawMessage) (bool, error) // 記録済み視界の判定
 }
 ```
 
-**評価器と Go 式が対になっている**のがこの型の要点だ。`Eval` は記録された JSON の観測を
-採掘するときに使い、`GoExpr` は生成されたコードが本物の観測型に対して使う。同じ判断を
+**評価器と Go 式が対になっている**のがこの型の要点だ。`Eval` は記録された JSON の視界を
+採掘するときに使い、`GoExpr` は生成されたコードが本物の視界型に対して使う。同じ判断を
 2つの経路で表現しているので、採掘した条件がそのまま実行時のコードになる。
 
 語彙の例を挙げると、`in_weapon_range`、`outnumbered_locally`、`escape_route_exists`、
@@ -36,9 +36,9 @@ type Feature struct {
 代わりに代償もある。述語を変えると、それを読んでいる全ノードが無効になる。だから
 `Parameters`（しきい値）は、再生成せずに開発者が調整できる場所として分けてある。
 
-<Aside type="caution" title="観測の外は書けない">
-述語が読めるのは記録された観測だけだ。これは規約ではなく構造で担保されている——`Eval` に
-渡ってくるのが観測の JSON しかないので、世界状態を参照する述語は**書きようがない**。
+<Aside type="caution" title="視界の外は書けない">
+述語が読めるのは記録された視界だけだ。これは規約ではなく構造で担保されている——`Eval` に
+渡ってくるのが視界の JSON しかないので、世界状態を参照する述語は**書きようがない**。
 </Aside>
 
 ## 行動の語彙
@@ -63,7 +63,7 @@ type ActionDef struct {
 records, err := behavior.Segment(vocab, "ep-001", decisionsFile, keep)
 ```
 
-decisions ストリームを読み、語彙が受け付けた行を特徴量化する。観測だけの行（行動が null）と、
+decisions ストリームを読み、語彙が受け付けた行を特徴量化する。視界だけの行（行動が null）と、
 語彙の外の行動はスキップされる。
 
 出てくるのはこれだ。
@@ -90,7 +90,7 @@ type Chip struct {
 	Condition       string     // 派生述語の名前だけで書かれた条件
 	Action          string     // 行動、または小さなサブツリー
 	Priority        int        // 兄弟間の既定の順序
-	Coverage        int        // このルールが再現する観測済み決定の数
+	Coverage        int        // このルールが再現する視界済み決定の数
 	Counterexamples int        // 条件は成立したが別の行動が取られた数
 	Evidence        []Evidence // 蒸留時に保持した証拠（episode + tick）
 	Rationale       string     // なぜこの条件がこの行動を選ぶのか
@@ -151,8 +151,8 @@ loadout := behavior.Loadout{
 }
 ```
 
-作戦セレクタの条件も観測の述語なので、切り替えは決定的で、再生でも完全に同じ順序をたどる。
-そして条件が観測の一部である以上、**プレイヤーが味方 agent に出した指示**が観測に載っていれば、
+作戦セレクタの条件も視界の述語なので、切り替えは決定的で、再生でも完全に同じ順序をたどる。
+そして条件が視界の一部である以上、**プレイヤーが味方 agent に出した指示**が視界に載っていれば、
 それがそのまま作戦を切り替える。
 
 `Validate` は、全てのキーが承認済みチップに解決すること、条件なしの作戦が最後にしかないことを

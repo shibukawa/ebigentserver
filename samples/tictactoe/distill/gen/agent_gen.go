@@ -13,7 +13,7 @@ import (
 
 // Decide is the compiled decision list. Earlier cases take precedence,
 // exactly as the chips were mined and approved.
-func Decide(obs ttt.Observation) (ttt.Move, bool) {
+func Decide(obs ttt.Sight) (ttt.Move, bool) {
 	switch {
 	case obs.Board[0] == ttt.Empty:
 		// chip cell_0_empty → play_0 (coverage 200, counterexamples 0)
@@ -50,13 +50,13 @@ func Decide(obs ttt.Observation) (ttt.Move, bool) {
 // DistilledAgent seats the compiled policy behind api:agent-interface: an
 // ordinary agent, indistinguishable from a hand-written bot.
 type DistilledAgent struct {
-	last ttt.Observation
+	last ttt.Sight
 	has  bool
 }
 
-func (*DistilledAgent) Guest(session.SlotID) {}
+func (*DistilledAgent) Joined(session.SlotID) {}
 
-func (a *DistilledAgent) Observe(obs ttt.Observation) { a.last, a.has = obs, true }
+func (a *DistilledAgent) Observe(obs ttt.Sight) { a.last, a.has = obs, true }
 
 func (a *DistilledAgent) Decide(context.Context) (ttt.Move, bool) {
 	if !a.has {

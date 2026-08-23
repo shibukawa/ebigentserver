@@ -11,7 +11,7 @@ src/
 │   ├── index.mdx            ランディング
 │   ├── overview.mdx         全体像（agent 抽象、層構造、直交する2軸）
 │   ├── connection/          接続方法（トポロジ・トランスポート・シグナリング・同期）
-│   ├── integration/         ゲームとの接点（Game / Agent / 観測 / 境界）
+│   ├── integration/         ゲームとの接点（Game / Agent / 視界 / 境界）
 │   └── ai/                  ログの収集、蒸留パイプライン、コード生成
 └── styles/custom.css        テーマ対応の図版スタイル
 ```

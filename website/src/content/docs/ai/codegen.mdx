@@ -48,7 +48,7 @@ go run ./cmd/behavior-editor -library chips.json
 // but edits belong upstream in the chips or predicates.
 package gen
 
-func Decide(obs ttt.Observation) (ttt.Move, bool) {
+func Decide(obs ttt.Sight) (ttt.Move, bool) {
 	switch {
 	case obs.Board[0] == ttt.Empty:
 		// chip cell_0_empty → play_0 (coverage 200, counterexamples 0)

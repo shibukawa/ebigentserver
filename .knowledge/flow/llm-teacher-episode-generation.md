@@ -11,7 +11,7 @@ flow:
   steps:
     - id: serialize
       actor: concept:session
-      action: render concept:observation into model-readable form
+      action: render concept:sight into model-readable form
     - id: reason
       actor: actor:llm-agent
       action: choose concept:action, taking seconds if needed

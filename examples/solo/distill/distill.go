@@ -8,7 +8,7 @@
 // left a record, and a record can be learned from.
 //
 // The vocabulary below is shared by both enemy kinds on purpose. The
-// predicates are facts about an observation — where the quarry lies, and
+// predicates are facts about an sight — where the quarry lies, and
 // on which axis it is further away — and each kind maps those same facts
 // to different moves. That the mined decision lists come out different is
 // the proof that the vocabulary is not quietly the policy.
@@ -28,10 +28,10 @@ import (
 	"github.com/shibukawa/ebigentserver/session"
 )
 
-// obsShape is the part of a recorded observation the miner reads. The
+// obsShape is the part of a recorded sight the miner reads. The
 // coordinates are the raw fixed-point bits, which is what the log holds
 // and what the simulation compared (rule:analysis-restricted-to-visible-
-// fields: nothing outside the observation is reachable from here).
+// fields: nothing outside the sight is reachable from here).
 type obsShape struct {
 	Self struct {
 		X int64 `json:"x"`
@@ -262,7 +262,7 @@ func Spec(pkg, agentName string) behavior.CodegenSpec {
 	return behavior.CodegenSpec{
 		Package:       pkg,
 		Imports:       []string{"github.com/shibukawa/ebigentserver/examples/solo/game"},
-		ObsType:       "game.Observation",
+		ObsType:       "game.Sight",
 		ActionType:    "game.Action",
 		AgentName:     agentName,
 		SessionImport: "github.com/shibukawa/ebigentserver/session",

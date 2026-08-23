@@ -14,7 +14,7 @@ import (
 
 // Decide is the compiled decision list. Earlier cases take precedence,
 // exactly as the chips were mined and approved.
-func Decide(obs reversi.Observation) (reversi.Move, bool) {
+func Decide(obs reversi.Sight) (reversi.Move, bool) {
 	switch {
 	case dpred.MustPass(obs):
 		// chip must_pass → pass (coverage 70, counterexamples 0)
@@ -207,13 +207,13 @@ func Decide(obs reversi.Observation) (reversi.Move, bool) {
 // DistilledGreedy seats the compiled policy behind api:agent-interface: an
 // ordinary agent, indistinguishable from a hand-written bot.
 type DistilledGreedy struct {
-	last reversi.Observation
+	last reversi.Sight
 	has  bool
 }
 
-func (*DistilledGreedy) Guest(session.SlotID) {}
+func (*DistilledGreedy) Joined(session.SlotID) {}
 
-func (a *DistilledGreedy) Observe(obs reversi.Observation) { a.last, a.has = obs, true }
+func (a *DistilledGreedy) Observe(obs reversi.Sight) { a.last, a.has = obs, true }
 
 func (a *DistilledGreedy) Decide(context.Context) (reversi.Move, bool) {
 	if !a.has {

@@ -71,7 +71,7 @@ func (RuleSet) Start(uint64) State { ... }
 func (RuleSet) ActingSlots(s *State) []session.SlotID { ... }
 func (RuleSet) Apply(s *State, slot session.SlotID, a Action) { ... }
 func (RuleSet) Advance(*State) {}
-func (g RuleSet) Project(s *State, slot session.SlotID) Observation { ... }
+func (g RuleSet) Project(s *State, slot session.SlotID) Sight { ... }
 func (RuleSet) Evaluate(s *State, slot session.SlotID) session.EvaluationSignal { ... }
 ```
 
@@ -137,8 +137,8 @@ ebigent generate                          # 差分とスキーマ版
 
 ```go
 // tutorial/step2-lobby/game/bind.go — ルールの隣
-func Binding() run.Binding[State, Action, Observation] {
-	return run.Binding[State, Action, Observation]{
+func Binding() run.Binding[State, Action, Sight] {
+	return run.Binding[State, Action, Sight]{
 		Slots:             Slots(),
 		Config:            Config,
 		ProtocolVersion:   Protocol,
@@ -149,7 +149,7 @@ func Binding() run.Binding[State, Action, Observation] {
 
 ```go
 // tutorial/step2-lobby/main.go — ウィンドウの隣
-func network() run.Networking[game.State, game.Action, game.Observation] {
+func network() run.Networking[game.State, game.Action, game.Sight] {
 	return lan.Preset(lan.Options[...]{ /* codec と入出力 */ })
 }
 ```

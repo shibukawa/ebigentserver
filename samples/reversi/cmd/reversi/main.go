@@ -30,7 +30,7 @@ func main() {
 	record := flag.String("record", "", "directory to write the episode log into")
 	flag.Parse()
 
-	cfg := session.Config[reversi.State, reversi.Move, reversi.Observation]{
+	cfg := session.Config[reversi.State, reversi.Move, reversi.Sight]{
 		ID:        "reversi-cli",
 		Slots:     reversi.Slots(),
 		RuleSet:   reversi.RuleSet{},
@@ -38,14 +38,14 @@ func main() {
 		Canonical: reversi.Canonical,
 	}
 
-	var recorder *episode.Writer[reversi.State, reversi.Move, reversi.Observation]
+	var recorder *episode.Writer[reversi.State, reversi.Move, reversi.Sight]
 	if *record != "" {
 		files, closeAll, err := openStreams(*record)
 		if err != nil {
 			fatal(err)
 		}
 		defer closeAll()
-		recorder = episode.NewWriter[reversi.State, reversi.Move, reversi.Observation](
+		recorder = episode.NewWriter[reversi.State, reversi.Move, reversi.Sight](
 			files, episode.ReplayComplete,
 			episode.Meta{AgentKinds: map[session.SlotID]string{
 				reversi.SlotBlack: *blackKind,
@@ -119,7 +119,7 @@ func openStreams(dir string) (episode.Streams, func(), error) {
 	return s, closeAll, nil
 }
 
-func makeAgent(kind string, stdin *bufio.Scanner) session.Agent[reversi.Observation, reversi.Move] {
+func makeAgent(kind string, stdin *bufio.Scanner) session.Agent[reversi.Sight, reversi.Move] {
 	switch kind {
 	case "human":
 		return &consoleAgent{stdin: stdin}
@@ -139,14 +139,14 @@ func fatal(err error) {
 }
 
 type watchedAgent struct {
-	inner  session.Agent[reversi.Observation, reversi.Move]
-	last   reversi.Observation
+	inner  session.Agent[reversi.Sight, reversi.Move]
+	last   reversi.Sight
 	result session.Result
 }
 
-func (w *watchedAgent) Guest(slot session.SlotID) { w.inner.Guest(slot) }
+func (w *watchedAgent) Joined(slot session.SlotID) { w.inner.Joined(slot) }
 
-func (w *watchedAgent) Observe(obs reversi.Observation) {
+func (w *watchedAgent) Observe(obs reversi.Sight) {
 	w.last = obs
 	w.inner.Observe(obs)
 }
@@ -158,21 +158,21 @@ func (w *watchedAgent) Ended(r session.Result) {
 	w.inner.Ended(r)
 }
 
-// consoleAgent is the human seat: it renders the observation and parses
-// coordinates like "d3". It chooses only from Observation.Legal, exactly
+// consoleAgent is the human seat: it renders the sight and parses
+// coordinates like "d3". It chooses only from Sight.Legal, exactly
 // like the bots — no private rule engine anywhere.
 type consoleAgent struct {
 	stdin *bufio.Scanner
-	last  reversi.Observation
+	last  reversi.Sight
 	slot  session.SlotID
 }
 
-func (c *consoleAgent) Guest(slot session.SlotID) {
+func (c *consoleAgent) Joined(slot session.SlotID) {
 	c.slot = slot
 	fmt.Printf("You are %s\n", discName(slot))
 }
 
-func (c *consoleAgent) Observe(obs reversi.Observation) {
+func (c *consoleAgent) Observe(obs reversi.Sight) {
 	c.last = obs
 	if obs.NextTurn == c.slot || obs.NextTurn == 0 {
 		fmt.Println(render(obs.Board))

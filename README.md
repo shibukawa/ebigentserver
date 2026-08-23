@@ -59,7 +59,7 @@
 |---|---|---|
 | `concept:agent-view` | 済 | [statesync/view.go](statesync/view.go) — `ProjectedSender`: world→**slot別view**→保持→diff→送信。deltaの機構をそのまま再利用 |
 | `concept:visibility-scope` | 済 | self / team / role を dungeon サンプルで実証(global は既存サンプル)。**投影がシリアライズより前**なので、隠れた状態はエンコードすらされない |
-| `data:visibility-annotation` | 済 | [session/visibility.go](session/visibility.go) — scope / schema / visible_entities / derived / affordances / evaluation_scope。ゲームが明示発行し、観測に埋めて記録される |
+| `data:visibility-annotation` | 済 | [session/visibility.go](session/visibility.go) — scope / schema / visible_entities / derived / affordances / evaluation_scope。ゲームが明示発行し、視界に埋めて記録される |
 | `rule:observation-content-owned-by-game` | 済 | 可視性述語とフィールド選択は [project.go](samples/dungeon/dungeon/project.go)(ゲーム側)、保持・diff・配送は framework |
 | 役割とチーム | 済 | scout(視界広) / engineer(罠解除) / carrier(宝運搬) / navigator(出口既知)。行動も情報も役割でゲート |
 | `rule:evaluation-respects-visibility-scope` | 済 | パーティのsignalはチーム可視の事実のみから計算(隠し罠を置いても不変、テストで検証)。DMはprivilegedをannotationで宣言 |
@@ -128,11 +128,11 @@
 
 | 項目 | 状態 | 実装 |
 |---|---|---|
-| 合法手列挙を observation に載せる | 済 | [reversi.go](samples/reversi/reversi/reversi.go) — `Observation.Legal`（flip数=affordance付き）。botはルールエンジンを持たない |
+| 合法手列挙を sight に載せる | 済 | [reversi.go](samples/reversi/reversi/reversi.go) — `Sight.Legal`（flip数=affordance付き）。botはルールエンジンを持たない |
 | 探索AIと AI vs AI 対戦 | 済 | [bot.go](samples/reversi/reversi/bot.go) — GreedyBot(1-ply) vs FirstBot。方針: AIの深さはBT蒸留(Phase 7)で得るため意図的に最小 |
 | `data:episode-log`（JSONL 4ストリーム） | 済 | [episode/](episode/) — decisions / events / outcomes / world、全ストリーム共通ヘッダ行 |
 | `concept:episode-recording-mode` | 済 | replay_complete / analysis_sampled。sampledはworld+checkpointを落とし、replay readerが拒否 |
-| `data:decision-record` | 済 | 配信された観測そのものを記録、action/evaluation/agent_kind/latency付き |
+| `data:decision-record` | 済 | 配信された視界そのものを記録、action/evaluation/agent_kind/latency付き |
 | `actor:replay-agent` | 済 | [session/replay.go](session/replay.go) + [episode/reader.go](episode/reader.go) — 記録から着席する通常のagent |
 | `rule:shared-rng-seed` | 済 | `Config.Seed` → `StageRuleSet.Start(seed)`、ヘッダに記録 |
 | `data:state-checkpoint` | 済 | [session/record.go](session/record.go) — tick + world hash + accepted action hash、毎tick発行 |
@@ -206,10 +206,10 @@
 - `transport` — トランスポート抽象とその実装(pipe/ws/wt)、framing、sequence/ack層。
 - `admission` — Ed25519署名のsession ticketとhandshake(バージョン照合→ローカル検証→着席)。
 - `statesync` — framework側delta生成。生成コーデックを差し込む`Codec`、受信者ごとの`Sender`/`Receiver`(双方が履歴保持)、baseline mode 3種、ループバック`Hub`。
-- `samples/reversi` — 合法手列挙つき観測と記録/再生の実証。`go run ./samples/reversi/cmd/reversi` で人間対greedy bot、`-record=DIR` でエピソード記録。
+- `samples/reversi` — 合法手列挙つき視界と記録/再生の実証。`go run ./samples/reversi/cmd/reversi` で人間対greedy bot、`-record=DIR` でエピソード記録。
 - `samples/pong` — 最小リアルタイム。`go run ./samples/pong/cmd/pong` でbot対bot(観戦チャネルがスコア表示)、`-record=DIR` 対応。`go run ./samples/pong/cmd/pong-client` でEbitengine描画クライアント(W/S・↑/↓で左パドル操作、`-left=bot`で観戦)。clientエントリだけがengineをimportできる(`samples/*/cmd/*client*`)。
 - `importcheck` — 依存の閉じ込め検査。ゲームモジュールは `importcheck.Enforce(t, ".", importcheck.Default())` を 1 テスト持つ。
-- `examples/solo` — **ソロゲームで一周が閉じることの証明**([README](examples/solo/README.md))。一人が二体の敵に追われるだけのゲームだが、敵が席に座っているので判断が観測つきで記録される。`solo-client`(窓)/ `solo-sim`(ヘッドレス)/ `solo-distill`(コーパス→チップ→Go)の3エントリ。**蒸留した敵を座らせると手書きの敵と1tickも違わない試合になる**(`TestDistilledEnemiesPlayTheSameMatch`)。同じ語彙・同じコーパスから敵2種が別の決定リストになることもテストで担保している。
+- `examples/solo` — **ソロゲームで一周が閉じることの証明**([README](examples/solo/README.md))。一人が二体の敵に追われるだけのゲームだが、敵が席に座っているので判断が視界つきで記録される。`solo-client`(窓)/ `solo-sim`(ヘッドレス)/ `solo-distill`(コーパス→チップ→Go)の3エントリ。**蒸留した敵を座らせると手書きの敵と1tickも違わない試合になる**(`TestDistilledEnemiesPlayTheSameMatch`)。同じ語彙・同じコーパスから敵2種が別の決定リストになることもテストで担保している。
 - `examples/phase0` — Phase 0 の証明: 固定小数点型 + 生成 CBOR コーデック + delta、build target ごとの cmd エントリポイント。
 - `examples/phase0/sim` — Phase 0 スタック全体（fixmath の Sin/Atan2/Sqrt → 宣言スケール量子化 → 生成 delta エンコード）を通した決定的エピソード。digest をテストで固定しており、これが Phase 2 のクロスアーキテクチャ検証の種になる。
 

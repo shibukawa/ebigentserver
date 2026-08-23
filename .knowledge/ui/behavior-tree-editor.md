@@ -49,7 +49,7 @@ ui:
             columns:
               - episode
               - tick
-              - observation summary
+              - sight summary
               - action taken
               - outcome
           - kind: table
@@ -70,7 +70,7 @@ ui:
             id: predicate.list
             columns:
               - name
-              - observation fields read
+              - sight fields read
               - nodes using it
               - test status
           - kind: text

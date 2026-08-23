@@ -90,7 +90,7 @@ func (w *Writer[S, A, O]) EpisodeStarted(start session.EpisodeStart) {
 	}
 }
 
-// Observed writes an observation-only decision row.
+// Observed writes a sight-only decision row.
 func (w *Writer[S, A, O]) Observed(tick session.Tick, slot session.SlotID, obs O, sig session.EvaluationSignal) {
 	w.decision(tick, slot, obs, nil, sig, 0)
 }
@@ -106,7 +106,7 @@ func (w *Writer[S, A, O]) decision(tick session.Tick, slot session.SlotID, obs O
 		Tick:          uint64(tick),
 		Slot:          uint16(slot),
 		AgentKind:     w.meta.AgentKinds[slot],
-		Observation:   w.raw(obs),
+		Sight:         w.raw(obs),
 		Evaluation:    evaluation(sig),
 		LatencyMicros: latency,
 	}

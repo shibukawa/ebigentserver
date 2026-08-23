@@ -32,7 +32,7 @@ func main() {
 	yKind := flag.String("y", "bot", "controller for Y (the O slot): human or bot")
 	flag.Parse()
 
-	s, err := session.New(session.Config[ttt.State, ttt.Move, ttt.Observation]{
+	s, err := session.New(session.Config[ttt.State, ttt.Move, ttt.Sight]{
 		ID:        "ttt-cli",
 		Slots:     ttt.Slots(),
 		RuleSet:   ttt.RuleSet{},
@@ -65,16 +65,16 @@ func main() {
 }
 
 // watchedAgent forwards everything to the wrapped agent while retaining
-// the last observation and result for the spectator printout.
+// the last sight and result for the spectator printout.
 type watchedAgent struct {
-	inner  session.Agent[ttt.Observation, ttt.Move]
-	last   ttt.Observation
+	inner  session.Agent[ttt.Sight, ttt.Move]
+	last   ttt.Sight
 	result session.Result
 }
 
-func (w *watchedAgent) Guest(slot session.SlotID) { w.inner.Guest(slot) }
+func (w *watchedAgent) Joined(slot session.SlotID) { w.inner.Joined(slot) }
 
-func (w *watchedAgent) Observe(obs ttt.Observation) {
+func (w *watchedAgent) Observe(obs ttt.Sight) {
 	w.last = obs
 	w.inner.Observe(obs)
 }
@@ -86,7 +86,7 @@ func (w *watchedAgent) Ended(r session.Result) {
 	w.inner.Ended(r)
 }
 
-func makeAgent(kind string, stdin *bufio.Scanner) session.Agent[ttt.Observation, ttt.Move] {
+func makeAgent(kind string, stdin *bufio.Scanner) session.Agent[ttt.Sight, ttt.Move] {
 	switch kind {
 	case "human":
 		return &consoleAgent{stdin: stdin}
@@ -104,20 +104,20 @@ func fatal(err error) {
 }
 
 // consoleAgent is actor:human-agent for a terminal: it renders the
-// observation and turns typed cell numbers into moves. It sees exactly
-// what the bot sees — the Observation, never the world state.
+// sight and turns typed cell numbers into moves. It sees exactly
+// what the bot sees — the Sight, never the world state.
 type consoleAgent struct {
 	stdin *bufio.Scanner
-	last  ttt.Observation
+	last  ttt.Sight
 	slot  session.SlotID
 }
 
-func (c *consoleAgent) Guest(slot session.SlotID) {
+func (c *consoleAgent) Joined(slot session.SlotID) {
 	c.slot = slot
 	fmt.Printf("You are %s\n", markName(slot))
 }
 
-func (c *consoleAgent) Observe(obs ttt.Observation) {
+func (c *consoleAgent) Observe(obs ttt.Sight) {
 	c.last = obs
 	// Only narrate when something is worth showing: our turn, or the end.
 	if obs.NextTurn == c.slot || obs.NextTurn == 0 {

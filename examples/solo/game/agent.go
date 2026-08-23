@@ -27,7 +27,7 @@ const (
 // pursuit style. Deliberately minimal play: this project's AI depth is
 // meant to come from distilling these episodes, not from hand-written
 // cleverness.
-func NewAgent(slot session.SlotID) (string, session.Agent[Observation, Action]) {
+func NewAgent(slot session.SlotID) (string, session.Agent[Sight, Action]) {
 	switch {
 	case slot == Player:
 		return KindRunner, &Runner{}
@@ -41,19 +41,19 @@ func NewAgent(slot session.SlotID) (string, session.Agent[Observation, Action]) 
 // Chaser closes whichever axis it is furthest off on — the blunt pursuit,
 // and the one whose weakness a player learns first.
 type Chaser struct {
-	last Observation
+	last Sight
 	// Result is the outcome the session delivers at the end, kept so an
 	// entry point can report it.
 	Result session.Result
 }
 
-var _ session.Agent[Observation, Action] = (*Chaser)(nil)
+var _ session.Agent[Sight, Action] = (*Chaser)(nil)
 
-// Guest does nothing; the observation carries the slot.
-func (*Chaser) Guest(session.SlotID) {}
+// Joined does nothing; the sight carries the slot.
+func (*Chaser) Joined(session.SlotID) {}
 
-// Observe retains the latest observation.
-func (c *Chaser) Observe(obs Observation) { c.last = obs }
+// Observe retains the latest sight.
+func (c *Chaser) Observe(obs Sight) { c.last = obs }
 
 // Decide moves along the axis with the larger remaining gap.
 func (c *Chaser) Decide(context.Context) (Action, bool) {
@@ -71,17 +71,17 @@ func (c *Chaser) Ended(r session.Result) { c.Result = r }
 // path rather than behind them. Against the Runner below the two kinds
 // fail in different situations, which is the whole reason for having two.
 type Flanker struct {
-	last   Observation
+	last   Sight
 	Result session.Result
 }
 
-var _ session.Agent[Observation, Action] = (*Flanker)(nil)
+var _ session.Agent[Sight, Action] = (*Flanker)(nil)
 
-// Guest does nothing.
-func (*Flanker) Guest(session.SlotID) {}
+// Joined does nothing.
+func (*Flanker) Joined(session.SlotID) {}
 
-// Observe retains the latest observation.
-func (f *Flanker) Observe(obs Observation) { f.last = obs }
+// Observe retains the latest sight.
+func (f *Flanker) Observe(obs Sight) { f.last = obs }
 
 // Decide moves along the axis with the smaller remaining gap, until that
 // axis is closed and only the other one is left.
@@ -106,17 +106,17 @@ func (f *Flanker) Ended(r session.Result) { f.Result = r }
 // sometimes gets cornered contains both outcomes, and a corpus of nothing
 // but escapes would teach an enemy nothing.
 type Runner struct {
-	last   Observation
+	last   Sight
 	Result session.Result
 }
 
-var _ session.Agent[Observation, Action] = (*Runner)(nil)
+var _ session.Agent[Sight, Action] = (*Runner)(nil)
 
-// Guest does nothing.
-func (*Runner) Guest(session.SlotID) {}
+// Joined does nothing.
+func (*Runner) Joined(session.SlotID) {}
 
-// Observe retains the latest observation.
-func (r *Runner) Observe(obs Observation) { r.last = obs }
+// Observe retains the latest sight.
+func (r *Runner) Observe(obs Sight) { r.last = obs }
 
 // Decide tries each direction and keeps the one that leaves the nearest
 // pursuer furthest away — one ply, no further.
@@ -139,7 +139,7 @@ func (r *Runner) Decide(context.Context) (Action, bool) {
 			nearest = nearest.Min(manhattan(cand, other))
 		}
 		// Ties keep the earlier direction, so the choice is a function
-		// of the observation and nothing else.
+		// of the sight and nothing else.
 		if d == Stay || nearest > bestRoom {
 			best, bestRoom = d, nearest
 		}

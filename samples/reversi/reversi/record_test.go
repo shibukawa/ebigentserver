@@ -17,15 +17,15 @@ type logs struct {
 
 // recordMatch plays one full match with the given agents, recording it in
 // the given mode, and returns the four streams.
-func recordMatch(t *testing.T, black, white session.Agent[reversi.Observation, reversi.Move], mode episode.Mode, kinds map[session.SlotID]string) *logs {
+func recordMatch(t *testing.T, black, white session.Agent[reversi.Sight, reversi.Move], mode episode.Mode, kinds map[session.SlotID]string) *logs {
 	t.Helper()
 	var l logs
-	w := episode.NewWriter[reversi.State, reversi.Move, reversi.Observation](
+	w := episode.NewWriter[reversi.State, reversi.Move, reversi.Sight](
 		episode.Streams{Decisions: &l.decisions, Events: &l.events, Outcomes: &l.outcomes, World: &l.world},
 		mode,
 		episode.Meta{EpisodeID: "reversi-ep-1", AgentKinds: kinds},
 	)
-	s := newMatch(t, black, white, func(c *session.Config[reversi.State, reversi.Move, reversi.Observation]) {
+	s := newMatch(t, black, white, func(c *session.Config[reversi.State, reversi.Move, reversi.Sight]) {
 		c.Seed = 42
 		c.Recorder = w
 	})
@@ -56,8 +56,8 @@ func TestRecordedMatchReplaysBitIdentical(t *testing.T) {
 		t.Fatalf("header seed = %d, want 42", rep.Header.Seed)
 	}
 	replayed := recordMatch(t,
-		&session.ReplayAgent[reversi.Observation, reversi.Move]{Actions: rep.Actions[reversi.SlotBlack]},
-		&session.ReplayAgent[reversi.Observation, reversi.Move]{Actions: rep.Actions[reversi.SlotWhite]},
+		&session.ReplayAgent[reversi.Sight, reversi.Move]{Actions: rep.Actions[reversi.SlotBlack]},
+		&session.ReplayAgent[reversi.Sight, reversi.Move]{Actions: rep.Actions[reversi.SlotWhite]},
 		episode.ReplayComplete, nil)
 
 	for _, cmp := range []struct {

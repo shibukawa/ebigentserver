@@ -8,7 +8,7 @@ Contract every concept:agent implements so concept:session can host any agent ki
 ```yaml
 operations:
   - name: observe
-    input: concept:observation for the current term:tick
+    input: concept:sight for the current term:tick
   - name: decide
     output: concept:action or none
   - name: lifecycle

@@ -18,7 +18,7 @@ cases:
     authority: whichever peer runs the authoritative concept:session
     guarantee: identity is unverified; the hosting peer can do anything
     access_control: network reachability only, enforced by rule:unauthenticated-admission-requires-scope-or-capability
-    note: policy:observation-scoped-information still limits what the joining peer learns
+    note: policy:sight-scoped-information still limits what the joining peer learns
   - name: invited_pair
     topology: concept:static-host-mode, no server of any kind
     authentication: none; the invitation is the credential

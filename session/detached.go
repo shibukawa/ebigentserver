@@ -12,8 +12,8 @@ type Detached[O, A any] struct{}
 
 var _ Agent[struct{}, struct{}] = Detached[struct{}, struct{}]{}
 
-// Guest does nothing.
-func (Detached[O, A]) Guest(SlotID) {}
+// Joined does nothing.
+func (Detached[O, A]) Joined(SlotID) {}
 
 // Observe does nothing; observations travel the state stream.
 func (Detached[O, A]) Observe(O) {}

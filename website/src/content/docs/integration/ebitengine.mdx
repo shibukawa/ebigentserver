@@ -120,13 +120,13 @@ Ebitengine は `Update` を毎秒 TPS 回（既定60）呼び、`Draw` は画面
 local := localSeats()
 for i, slot := range game.Slots() {
 	if i < local {
-		// この席の観測は、描画のために持っている world がすでに担っている
-		s.Admit(slot, session.Detached[game.Observation, game.Action]{})
+		// この席の視界は、描画のために持っている world がすでに担っている
+		s.Admit(slot, session.Detached[game.Sight, game.Action]{})
 		inbox, _ := s.Inbox(slot)
 		h.local = append(h.local, inbox)
 		continue
 	}
-	// ボットの席は直接着席する。最終観測と Ended を受け取りたいので
+	// ボットの席は直接着席する。最終視界と Ended を受け取りたいので
 	bot := &game.Bot{}
 	s.Admit(slot, bot)
 	inbox, _ := s.Inbox(slot)
@@ -135,15 +135,15 @@ for i, slot := range game.Slots() {
 ```
 
 理由は二重配送を避けることにある。窓は broadcast された世界をすでに持っているので、
-session が同じ観測をコールバックでも渡すと、**同じ情報が2経路で届いて競合する**。
+session が同じ視界をコールバックでも渡すと、**同じ情報が2経路で届いて競合する**。
 
 そしてこの形は、そのままネットワーク越しのプレイヤーの形でもある。リモートのピアが着席する
-ときも席は `Detached` で、観測は下りの状態ストリームで届き、行動は `Inbox` に入る。
+ときも席は `Detached` で、視界は下りの状態ストリームで届き、行動は `Inbox` に入る。
 だから `netplay` を前に置く作業は、この `cmd/` ディレクトリだけの話になり、`game/` の下は
 一行も動かない。
 
 <Aside type="note" title="ボットだけは直接 Admit">
-ローカルのボットは最終観測と `Ended` を受け取りたいので、`Detached` ではなく本体を着席させる。
+ローカルのボットは最終視界と `Ended` を受け取りたいので、`Detached` ではなく本体を着席させる。
 そのうえで `Driver` が broadcast された世界を投影して `Observe` / `Decide` に流す。
 </Aside>
 

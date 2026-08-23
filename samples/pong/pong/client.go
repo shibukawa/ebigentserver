@@ -12,7 +12,7 @@ import (
 
 // Client is the loopback client loop for one slot: it reconstructs the
 // world from the hub's snapshot/delta stream, projects it into the
-// agent's observation, and submits the agent's inputs to the session
+// agent's sight, and submits the agent's inputs to the session
 // inbox. This is flow:agent-decision-loop with the transport legs running
 // in-process; Phase 3b swaps the channel for a network link without
 // touching the agent.
@@ -21,7 +21,7 @@ import (
 // here, wholly fed by the state stream.
 type Client struct {
 	Slot   session.SlotID
-	Agent  session.Agent[Observation, Input]
+	Agent  session.Agent[Sight, Input]
 	Inbox  *session.Inbox[Input]
 	Hub    *statesync.Hub[State, msg.PongStateDelta]
 	Down   <-chan statesync.Packet

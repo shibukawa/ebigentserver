@@ -43,7 +43,7 @@ func TestCompiledPolicyReproducesRecordedDecisions(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			var obs reversi.Observation
+			var obs reversi.Sight
 			if err := json.Unmarshal([]byte(c.obs), &obs); err != nil {
 				t.Fatal(err)
 			}

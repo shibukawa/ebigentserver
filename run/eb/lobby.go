@@ -91,9 +91,9 @@ type Lobby[S, A, O any] struct {
 	lobby  LobbyOptions
 	binder run.Binding[S, A, O]
 
-	phase  phase
-	joined bool
-	err    error
+	phase phase
+	guest bool
+	err   error
 
 	mu    sync.Mutex
 	found []run.Found
@@ -132,7 +132,7 @@ func (l *Lobby[S, A, O]) seatHost() {
 		l.err = err
 		return
 	}
-	l.joined = true
+	l.guest = true
 }
 
 // ask puts the discovery on its own goroutine: it takes about as long as
@@ -232,7 +232,7 @@ func (l *Lobby[S, A, O]) updateSeated() error {
 	// elsewhere. When the last of them does, waiting for another press
 	// would mean somebody has to be watching the screen to notice —
 	// which is the job this scene was meant to do.
-	if l.lobby.NoBots && l.joined && l.roster.Complete() {
+	if l.lobby.NoBots && l.guest && l.roster.Complete() {
 		return l.start()
 	}
 	if !l.pressed() {
@@ -243,12 +243,12 @@ func (l *Lobby[S, A, O]) updateSeated() error {
 			l.err = err
 			return nil
 		}
-		l.joined = true
+		l.guest = true
 		if !l.lobby.AutoStart || l.canJoin() {
 			return nil
 		}
 	}
-	if !l.joined {
+	if !l.guest {
 		return nil
 	}
 	return l.start()
@@ -429,10 +429,10 @@ func (l *Lobby[S, A, O]) previous() string {
 // prompt is the instruction line, derived from what the lobby is
 // actually waiting for.
 func (l *Lobby[S, A, O]) prompt() string {
-	if l.joined && l.lobby.NoBots && !l.roster.Complete() {
+	if l.guest && l.lobby.NoBots && !l.roster.Complete() {
 		return "waiting for another player to join..."
 	}
-	if l.lobby.Prompt != "" && !l.joined {
+	if l.lobby.Prompt != "" && !l.guest {
 		return l.lobby.Prompt
 	}
 	verb := "press start"
@@ -444,7 +444,7 @@ func (l *Lobby[S, A, O]) prompt() string {
 	case l.opts.Devices.Has(run.Gamepad):
 		verb = "press a gamepad button"
 	}
-	if l.joined && !l.lobby.AutoStart {
+	if l.guest && !l.lobby.AutoStart {
 		return verb + " to start"
 	}
 	return verb + " to play"

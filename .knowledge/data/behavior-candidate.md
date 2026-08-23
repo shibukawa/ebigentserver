@@ -7,7 +7,7 @@ One proposed behavior rule produced by log analysis, carrying the evidence and r
 
 ```yaml
 fields:
-  - condition: the situation predicate, stated over concept:observation fields only
+  - condition: the situation predicate, stated over concept:sight fields only
   - action: the concept:action or subtree to run
   - priority: where it sits among sibling candidates
   - rationale: why the analyzer believes this condition selects this action
@@ -16,5 +16,5 @@ fields:
   - conflict: existing nodes it overlaps or contradicts
   - proposed_levels: which skill levels should enable it, see concept:skill-level-gating
 status: candidate until a developer accepts it, see rule:generated-behavior-requires-approval
-constraint: a condition referencing state outside concept:observation is invalid, since the agent cannot read it at runtime
+constraint: a condition referencing state outside concept:sight is invalid, since the agent cannot read it at runtime
 ```

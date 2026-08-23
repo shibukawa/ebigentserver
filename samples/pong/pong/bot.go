@@ -12,18 +12,18 @@ import (
 // zone. Deliberately minimal (the project's AI depth comes from episode
 // distillation, not hand-written play).
 type Bot struct {
-	last Observation
+	last Sight
 }
 
-var _ session.Agent[Observation, Input] = (*Bot)(nil)
+var _ session.Agent[Sight, Input] = (*Bot)(nil)
 
 var deadZone = fixmath.FromInt32(4)
 
-// Guest does nothing.
-func (*Bot) Guest(session.SlotID) {}
+// Joined does nothing.
+func (*Bot) Joined(session.SlotID) {}
 
-// Observe retains the latest observation.
-func (b *Bot) Observe(obs Observation) { b.last = obs }
+// Observe retains the latest sight.
+func (b *Bot) Observe(obs Sight) { b.last = obs }
 
 // Decide moves toward the ball's height.
 func (b *Bot) Decide(context.Context) (Input, bool) {

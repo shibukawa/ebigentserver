@@ -82,7 +82,7 @@ import { Aside, Steps, LinkCard } from '@astrojs/starlight/components';
 
 <Steps>
 
-1. **segment** — エピソードを決定点に割る。1つの決定点は「届いた観測」と「取った行動」の対。
+1. **segment** — エピソードを決定点に割る。1つの決定点は「届いた視界」と「取った行動」の対。
 
 2. **vocabulary** — 生のフィールドが表現していない区別に名前を付ける。座標の算術ではなく、
    `in_weapon_range` のような判断語にする。
@@ -144,4 +144,4 @@ LLM が出した提案は、Python の検証スクリプトと Go 側の `behavi
 オセロでは判断語そのものを蒸留している。`best_move_is_k`（argmax の判断）をレビュー可能な
 Go にして、61チップ（到達可能な最大）を得た。生成されたコードは GreedyBot とビット一致する。
 
-<LinkCard title="エピソードログの収集" href="/ai/episode-log/" description="4つの JSONL ストリーム、2つの記録モード、そして観測そのものを記録することの意味。" />
+<LinkCard title="エピソードログの収集" href="/ai/episode-log/" description="4つの JSONL ストリーム、2つの記録モード、そして視界そのものを記録することの意味。" />

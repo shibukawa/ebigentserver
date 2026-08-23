@@ -180,9 +180,9 @@ func TestGeneratedSourcesAreCurrent(t *testing.T) {
 // the bot's own play, the distilled agent's matches are move-for-move
 // identical to the bot's.
 func TestDistilledAgentPassesAutomatedPlaytest(t *testing.T) {
-	play := func(makeX func() session.Agent[ttt.Observation, ttt.Move]) func(int, uint64) (matchloop.Result, error) {
+	play := func(makeX func() session.Agent[ttt.Sight, ttt.Move]) func(int, uint64) (matchloop.Result, error) {
 		return func(match int, seed uint64) (matchloop.Result, error) {
-			s, err := session.New(session.Config[ttt.State, ttt.Move, ttt.Observation]{
+			s, err := session.New(session.Config[ttt.State, ttt.Move, ttt.Sight]{
 				ID: "playtest", Slots: ttt.Slots(), RuleSet: ttt.RuleSet{}, Validator: ttt.Validator{},
 				Seed: seed, Clock: func() int64 { return 0 },
 			})
@@ -214,12 +214,12 @@ func TestDistilledAgentPassesAutomatedPlaytest(t *testing.T) {
 
 	const n = 50
 	botSummary, err := matchloop.Run(n, 1000,
-		play(func() session.Agent[ttt.Observation, ttt.Move] { return &outcomeAgent{inner: &ttt.Bot{}} }))
+		play(func() session.Agent[ttt.Sight, ttt.Move] { return &outcomeAgent{inner: &ttt.Bot{}} }))
 	if err != nil {
 		t.Fatal(err)
 	}
 	genSummary, err := matchloop.Run(n, 1000,
-		play(func() session.Agent[ttt.Observation, ttt.Move] { return &outcomeAgent{inner: &gen.DistilledAgent{}} }))
+		play(func() session.Agent[ttt.Sight, ttt.Move] { return &outcomeAgent{inner: &gen.DistilledAgent{}} }))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -244,12 +244,12 @@ func TestDistilledAgentPassesAutomatedPlaytest(t *testing.T) {
 
 // outcomeAgent wraps an agent and remembers its final terminal.
 type outcomeAgent struct {
-	inner session.Agent[ttt.Observation, ttt.Move]
+	inner session.Agent[ttt.Sight, ttt.Move]
 	term  session.Terminal
 }
 
-func (a *outcomeAgent) Guest(s session.SlotID)                      { a.inner.Guest(s) }
-func (a *outcomeAgent) Observe(o ttt.Observation)                   { a.inner.Observe(o) }
+func (a *outcomeAgent) Joined(s session.SlotID)                     { a.inner.Joined(s) }
+func (a *outcomeAgent) Observe(o ttt.Sight)                         { a.inner.Observe(o) }
 func (a *outcomeAgent) Decide(ctx context.Context) (ttt.Move, bool) { return a.inner.Decide(ctx) }
 func (a *outcomeAgent) Ended(r session.Result) {
 	a.term = r.Signal.Terminal
@@ -262,7 +262,7 @@ func (a *outcomeAgent) Result() session.Terminal { return a.term }
 // without any new analysis (decision:shared-chip-library,
 // concept:tactic-selector).
 func TestLoadoutAssemblesADifferentPersonality(t *testing.T) {
-	var empty ttt.Observation // blank board
+	var empty ttt.Sight // blank board
 	if m, ok := gen.Decide(empty); !ok || m.Cell != 0 {
 		t.Fatalf("base list opens with %v, want cell 0", m)
 	}
@@ -277,7 +277,7 @@ func TestLoadoutAssemblesADifferentPersonality(t *testing.T) {
 	}
 	// The loadout agent completes real matches.
 	sum, err := matchloop.Run(10, 77, func(match int, seed uint64) (matchloop.Result, error) {
-		s, err := session.New(session.Config[ttt.State, ttt.Move, ttt.Observation]{
+		s, err := session.New(session.Config[ttt.State, ttt.Move, ttt.Sight]{
 			ID: "loadout", Slots: ttt.Slots(), RuleSet: ttt.RuleSet{}, Validator: ttt.Validator{},
 			Seed: seed, Clock: func() int64 { return 0 },
 		})

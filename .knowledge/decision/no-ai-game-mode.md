@@ -13,7 +13,7 @@ allowed_and_wanted:
   - its purpose is bulk data:episode-log harvesting, see concept:training-farm
   - no rendering, no realtime pacing, see concept:training-mode
 distinction: the mode chooses who occupies the slots; the game still cannot ask what occupies them
-game_defines: concept:player-slot set, roles, legal concept:action set, concept:observation projection, rules, data:evaluation-signal
+game_defines: concept:player-slot set, roles, legal concept:action set, concept:sight projection, rules, data:evaluation-signal
 follows_from: decision:agent-as-central-abstraction
 enables_without_extra_work:
   - human vs human, human vs ai, and ai vs ai from one implementation

@@ -6,7 +6,7 @@ title: Predicate Tests Generated From Episodes
 Every data:derived-predicate ships with tests built from recorded situations, not hand written fixtures.
 
 ```yaml
-source: data:decision-record rows already contain the concept:observation the predicate must judge
+source: data:decision-record rows already contain the concept:sight the predicate must judge
 generation: sample positive cases, negative cases, and boundary cases near the predicate threshold
 value:
   - a regenerated or hand edited predicate that changes meaning fails immediately

@@ -87,7 +87,7 @@ WHERE kind = 'rejected'
 GROUP BY reason
 ORDER BY rejections DESC, reason;
 
--- Action rows vs observation-only deliveries.
+-- Action rows vs sight-only deliveries.
 SELECT count(*) FILTER (WHERE action IS NOT NULL) AS action_rows,
        count(*) FILTER (WHERE action IS NULL) AS observation_rows
 FROM decisions;

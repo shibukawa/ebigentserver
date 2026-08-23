@@ -32,8 +32,8 @@ func Slots(n int) []session.SlotID {
 	return out
 }
 
-// Observation is the session-level observation: the player's fog view.
-type Observation struct {
+// Sight is the session-level sight: the player's fog view.
+type Sight struct {
 	You        session.SlotID
 	View       *msg.PlayerView
 	Signal     session.EvaluationSignal
@@ -46,7 +46,7 @@ type RuleSet struct {
 	TickLimit uint32
 }
 
-var _ session.TickStageRuleSet[State, Input, Observation] = RuleSet{}
+var _ session.TickStageRuleSet[State, Input, Sight] = RuleSet{}
 
 // Start deploys each player's army in its own corner block,
 // deterministically from the seed (jittered formation).
@@ -213,10 +213,10 @@ func ProjectPlayer(s *State, slot session.SlotID) msg.PlayerView {
 	return v
 }
 
-// Project builds the session observation.
-func (g RuleSet) Project(s *State, slot session.SlotID) Observation {
+// Project builds the session sight.
+func (g RuleSet) Project(s *State, slot session.SlotID) Sight {
 	v := ProjectPlayer(s, slot)
-	return Observation{
+	return Sight{
 		You: slot, View: &v, Signal: g.Evaluate(s, slot),
 		Annotation: Annotation(&v),
 	}

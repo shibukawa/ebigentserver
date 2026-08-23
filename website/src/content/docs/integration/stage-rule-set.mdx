@@ -54,12 +54,12 @@ terminal になっているときにだけ合法になる。まだ勝負が付�
 
 ## Project
 
-席が見てよい観測を組み立てる。
+席が見てよい視界を組み立てる。
 
 ```go
 // samples/tictactoe/ttt/ttt.go
-func (g RuleSet) Project(s *State, slot session.SlotID) Observation {
-	return Observation{
+func (g RuleSet) Project(s *State, slot session.SlotID) Sight {
+	return Sight{
 		You:      slot,
 		Mark:     mark(slot),
 		Board:    s.Board,   // 全員が同じ盤面を見る（global scope）
@@ -73,9 +73,9 @@ func (g RuleSet) Project(s *State, slot session.SlotID) Observation {
 そうしているのではない。ダンジョンでは同じ位置に別種の view を返す。ここを書き換えることが、
 fog of war にも、視界距離にも、AI の難易度調整にも、チート対策にもなる。
 
-観測に何を載せるかは全面的にゲームの権限だ。framework は中身を一度も検査しない。
+視界に何を載せるかは全面的にゲームの権限だ。framework は中身を一度も検査しない。
 
-<LinkCard title="観測と可視性" href="/integration/observation/" description="scope、可視性アノテーション、そして隠し情報がワイヤに載らないことの確かめ方。" />
+<LinkCard title="視界と可視性" href="/integration/sight/" description="scope、可視性アノテーション、そして隠し情報がワイヤに載らないことの確かめ方。" />
 
 ## Evaluate
 
@@ -101,7 +101,7 @@ type EvaluationSignal struct {
 ## Config で組み立てる
 
 ```go
-cfg := session.Config[State, Move, Observation]{
+cfg := session.Config[State, Move, Sight]{
 	ID:         "match-1",
 	Slots:      ttt.Slots(),
 	RuleSet: ttt.RuleSet{},

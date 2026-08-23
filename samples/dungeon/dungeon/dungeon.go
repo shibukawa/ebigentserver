@@ -40,7 +40,7 @@ type (
 )
 
 // Sight radii (Chebyshev): the scout sees wider — role-driven content
-// (rule:observation-content-owned-by-game).
+// (rule:sight-content-owned-by-game).
 const (
 	sightDefault = 2
 	sightScout   = 4
@@ -48,11 +48,11 @@ const (
 
 const startHP = 2
 
-// Observation is the session-level observation: one type for the session
+// Sight is the session-level sight: one type for the session
 // generics, carrying whichever view the slot's role earns — the payloads
 // differ in kind. The annotation is the game's explicit visibility
 // declaration (data:visibility-annotation), recorded with every decision.
-type Observation struct {
+type Sight struct {
 	You        session.SlotID
 	Role       uint8
 	DM         *msg.DMView
@@ -69,7 +69,7 @@ type RuleSet struct {
 	TickLimit uint32
 }
 
-var _ session.TickStageRuleSet[State, Input, Observation] = RuleSet{}
+var _ session.TickStageRuleSet[State, Input, Sight] = RuleSet{}
 
 // Start builds the maze from the shared seed (rule:shared-rng-seed): the
 // same seed reproduces the same dungeon on every peer and every replay.

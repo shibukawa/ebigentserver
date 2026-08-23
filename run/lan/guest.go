@@ -47,7 +47,7 @@ type local[S, A, D, O any] struct {
 	g *Guest[S, A, D, O]
 }
 
-func (l *local[S, A, D, O]) Guest(session.SlotID) {}
+func (l *local[S, A, D, O]) Joined(session.SlotID) {}
 
 // Observe runs on the link goroutine, immediately after the receiver
 // reconstructed this world — which is the only place it is safe to read.

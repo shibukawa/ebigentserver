@@ -1,7 +1,7 @@
 // Package distill wires reversi into the behavior pipeline. The point of
 // doing it twice (after tic-tac-toe) is the vocabulary: reversi's
 // predicates are judgements, not coordinates. "best_move_is_19" names the
-// greedy argmax over the observation's legal-move affordances — a
+// greedy argmax over the sight's legal-move affordances — a
 // data:derived-predicate whose body lives in the reviewed dpred package —
 // so the mined chips read as strategy ("when the best greedy move is d3,
 // play d3") instead of board arithmetic, and the generated decision list
@@ -24,12 +24,12 @@ import (
 
 // Vocabulary is reversi's predicate and action language: 64 best-move
 // judgements plus the forced pass, and the 64 placements plus the pass.
-// Each feature's Eval judges the recorded observation JSON with the same
+// Each feature's Eval judges the recorded sight JSON with the same
 // dpred function its GoExpr compiles to, so miner and generated agent
 // cannot disagree about what a term means.
 func Vocabulary() *behavior.Vocabulary {
 	v := &behavior.Vocabulary{}
-	// The recorded observation serializes reversi.Observation directly:
+	// The recorded sight serializes reversi.Sight directly:
 	// Legal keeps its Go field name, while LegalMove/Move carry their
 	// json tags (move/flips, cell/pass). Reusing reversi.LegalMove for
 	// the shape keeps the miner honest about that encoding.
@@ -40,12 +40,12 @@ func Vocabulary() *behavior.Vocabulary {
 		Cell uint8 `json:"cell"`
 		Pass bool  `json:"pass"`
 	}
-	legal := func(raw json.RawMessage) (reversi.Observation, error) {
+	legal := func(raw json.RawMessage) (reversi.Sight, error) {
 		var o obsShape
 		if err := json.Unmarshal(raw, &o); err != nil {
-			return reversi.Observation{}, err
+			return reversi.Sight{}, err
 		}
-		return reversi.Observation{Legal: o.Legal}, nil
+		return reversi.Sight{Legal: o.Legal}, nil
 	}
 	for k := uint8(0); k < 64; k++ {
 		v.Features = append(v.Features, behavior.Feature{
@@ -101,16 +101,16 @@ func Vocabulary() *behavior.Vocabulary {
 // spreads the greedy bot's decisions across many positions.
 type randomAgent struct {
 	rng  fixmath.Rand
-	last reversi.Observation
+	last reversi.Sight
 }
 
 func newRandomAgent(seed uint64) *randomAgent {
 	return &randomAgent{rng: fixmath.NewRand(seed | 1)}
 }
 
-func (*randomAgent) Guest(session.SlotID)            {}
-func (a *randomAgent) Observe(o reversi.Observation) { a.last = o }
-func (*randomAgent) Ended(session.Result)            {}
+func (*randomAgent) Joined(session.SlotID)     {}
+func (a *randomAgent) Observe(o reversi.Sight) { a.last = o }
+func (*randomAgent) Ended(session.Result)      {}
 
 func (a *randomAgent) Decide(context.Context) (reversi.Move, bool) {
 	if len(a.last.Legal) == 0 {
@@ -121,7 +121,7 @@ func (a *randomAgent) Decide(context.Context) (reversi.Move, bool) {
 
 // NewRandomOpponent exposes the seeded random-legal player for
 // playtests.
-func NewRandomOpponent(seed uint64) session.Agent[reversi.Observation, reversi.Move] {
+func NewRandomOpponent(seed uint64) session.Agent[reversi.Sight, reversi.Move] {
 	return newRandomAgent(seed)
 }
 
@@ -134,13 +134,13 @@ func Corpus(n int) ([]behavior.Record, error) {
 	var records []behavior.Record
 	for i := 0; i < n; i++ {
 		var decisions bytes.Buffer
-		w := episode.NewWriter[reversi.State, reversi.Move, reversi.Observation](
+		w := episode.NewWriter[reversi.State, reversi.Move, reversi.Sight](
 			episode.Streams{Decisions: &decisions},
 			episode.ReplayComplete,
 			episode.Meta{EpisodeID: fmt.Sprintf("reversi-%03d", i),
 				AgentKinds: map[session.SlotID]string{reversi.SlotBlack: "greedy", reversi.SlotWhite: "random"}},
 		)
-		s, err := session.New(session.Config[reversi.State, reversi.Move, reversi.Observation]{
+		s, err := session.New(session.Config[reversi.State, reversi.Move, reversi.Sight]{
 			ID: fmt.Sprintf("reversi-%03d", i), Slots: reversi.Slots(),
 			RuleSet: reversi.RuleSet{}, Validator: reversi.Validator{},
 			Recorder: w, Seed: uint64(i)*2654435761 + 1,
@@ -215,7 +215,7 @@ func Spec() behavior.CodegenSpec {
 			"github.com/shibukawa/ebigentserver/samples/reversi/distill/dpred",
 			"github.com/shibukawa/ebigentserver/samples/reversi/reversi",
 		},
-		ObsType:       "reversi.Observation",
+		ObsType:       "reversi.Sight",
 		ActionType:    "reversi.Move",
 		AgentName:     "DistilledGreedy",
 		SessionImport: "github.com/shibukawa/ebigentserver/session",
@@ -223,7 +223,7 @@ func Spec() behavior.CodegenSpec {
 }
 
 // TestSpec is Spec narrowed for behavior.GenerateTests: the generated
-// fixture test only ever names the observation type, so importing dpred
+// fixture test only ever names the sight type, so importing dpred
 // there would be an unused import and fail the build. The agent file
 // keeps both imports; the test file keeps only what it references.
 func TestSpec() behavior.CodegenSpec {

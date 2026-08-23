@@ -18,8 +18,8 @@ type ReplayAgent[O, A any] struct {
 
 var _ Agent[struct{}, struct{}] = (*ReplayAgent[struct{}, struct{}])(nil)
 
-// Guest does nothing.
-func (*ReplayAgent[O, A]) Guest(SlotID) {}
+// Joined does nothing.
+func (*ReplayAgent[O, A]) Joined(SlotID) {}
 
 // Observe discards the observation: the replayed decisions already
 // happened.

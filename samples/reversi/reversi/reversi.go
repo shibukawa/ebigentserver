@@ -3,8 +3,8 @@
 // differ meaningfully.
 //
 // The new capability (plan.md Phase 2): legal action enumeration is part
-// of the observation, so no controller carries a private rule engine — a
-// bot picks from Observation.Legal exactly as a human client renders it.
+// of the sight, so no controller carries a private rule engine — a
+// bot picks from Sight.Legal exactly as a human client renders it.
 // The flip count each legal move would earn ships as its affordance
 // (data:visibility-annotation's affordances field, in the simplest form).
 package reversi
@@ -63,8 +63,8 @@ type LegalMove struct {
 	Flips uint8 `json:"flips"`
 }
 
-// Observation is the game's concept:observation, global scope.
-type Observation struct {
+// Sight is the game's concept:sight, global scope.
+type Sight struct {
 	You  session.SlotID
 	Disc Cell
 	// Board is the full position.
@@ -121,10 +121,10 @@ func (RuleSet) Apply(s *State, slot session.SlotID, m Move) {
 	s.Next = next
 }
 
-// Project builds a slot's observation, including the enumerated legal
+// Project builds a slot's sight, including the enumerated legal
 // moves when it is the slot's turn.
-func (g RuleSet) Project(s *State, slot session.SlotID) Observation {
-	obs := Observation{
+func (g RuleSet) Project(s *State, slot session.SlotID) Sight {
+	obs := Sight{
 		You:      slot,
 		Disc:     disc(slot),
 		Board:    s.Board,

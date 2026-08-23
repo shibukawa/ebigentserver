@@ -56,9 +56,9 @@ visibility_constraint:
     split camera there is a convention, not a boundary — screen watching is
     the well known consequence.
   consequence: only per_agent cameras in separate processes make
-    policy:observation-scoped-information a real boundary
-  unchanged: rule:observation-content-owned-by-game still builds one
-    concept:observation per seat in every quadrant; what changes is whether
+    policy:sight-scoped-information a real boundary
+  unchanged: rule:sight-content-owned-by-game still builds one
+    concept:sight per seat in every quadrant; what changes is whether
     the arrangement can keep the promise
 not_an_axis: what controls a seat — actor:human-agent, a bot, or actor:remote-agent — is orthogonal again, since decision:agent-as-central-abstraction makes them indistinguishable to the session
 remote_controller_case:

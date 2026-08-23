@@ -10,7 +10,7 @@ flow:
   trigger: a corpus of data:episode-log exists from human or actor:llm-agent play
   steps:
     - id: segment
-      action: split episodes into decision points, each an concept:observation paired with the concept:action taken
+      action: split episodes into decision points, each an concept:sight paired with the concept:action taken
     - id: analyze
       actor: actor:llm-agent
       action: find recurring situation to action patterns and state each as a condition

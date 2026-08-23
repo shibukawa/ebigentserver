@@ -57,7 +57,7 @@ export default defineConfig({
 						{ label: '接点は4つしかない', slug: 'integration' },
 						{ label: 'StageRuleSet インターフェース', slug: 'integration/stage-rule-set' },
 						{ label: 'Agent インターフェース', slug: 'integration/agent' },
-						{ label: '観測と可視性', slug: 'integration/observation' },
+						{ label: '視界と可視性', slug: 'integration/sight' },
 						{ label: '越えてはいけない境界', slug: 'integration/boundaries' },
 						{ label: 'Ebitengine への統合', slug: 'integration/ebitengine' },
 					],

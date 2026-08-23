@@ -128,7 +128,7 @@ func TestTicketVerification(t *testing.T) {
 
 // runNetworkMatch drives a full match over the given per-player
 // connections: admission, peers, session, bot clients.
-func runNetworkMatch(t *testing.T, tuning session.TuningProfile, serverConns, clientConns map[session.SlotID]transport.Conn, d time.Duration) (*session.Session[pong.State, pong.Input, pong.Observation], map[session.SlotID]*pong.NetClient) {
+func runNetworkMatch(t *testing.T, tuning session.TuningProfile, serverConns, clientConns map[session.SlotID]transport.Conn, d time.Duration) (*session.Session[pong.State, pong.Input, pong.Sight], map[session.SlotID]*pong.NetClient) {
 	t.Helper()
 	priv, verifier := issuerKeys(t)
 
@@ -136,7 +136,7 @@ func runNetworkMatch(t *testing.T, tuning session.TuningProfile, serverConns, cl
 	defer cancel()
 
 	peers := pong.NewPeerSet(ctx)
-	s := newSession(t, func(c *session.Config[pong.State, pong.Input, pong.Observation]) {
+	s := newSession(t, func(c *session.Config[pong.State, pong.Input, pong.Sight]) {
 		c.Tuning = &tuning
 		c.Seed = 11
 		c.Broadcast = peers.Broadcast

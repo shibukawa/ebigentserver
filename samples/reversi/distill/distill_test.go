@@ -184,9 +184,9 @@ func TestGeneratedSourcesAreCurrent(t *testing.T) {
 // distilled agent's matches against the same seeded opponents are
 // move-for-move identical to the bot's.
 func TestDistilledGreedyPassesAutomatedPlaytest(t *testing.T) {
-	play := func(makeBlack func() session.Agent[reversi.Observation, reversi.Move]) func(int, uint64) (matchloop.Result, error) {
+	play := func(makeBlack func() session.Agent[reversi.Sight, reversi.Move]) func(int, uint64) (matchloop.Result, error) {
 		return func(match int, seed uint64) (matchloop.Result, error) {
-			s, err := session.New(session.Config[reversi.State, reversi.Move, reversi.Observation]{
+			s, err := session.New(session.Config[reversi.State, reversi.Move, reversi.Sight]{
 				ID: "playtest", Slots: reversi.Slots(), RuleSet: reversi.RuleSet{}, Validator: reversi.Validator{},
 				Seed: seed, Clock: func() int64 { return 0 },
 			})
@@ -218,14 +218,14 @@ func TestDistilledGreedyPassesAutomatedPlaytest(t *testing.T) {
 
 	const n = 30
 	botSummary, err := matchloop.Run(n, 1000,
-		play(func() session.Agent[reversi.Observation, reversi.Move] {
+		play(func() session.Agent[reversi.Sight, reversi.Move] {
 			return &outcomeAgent{inner: &reversi.GreedyBot{}}
 		}))
 	if err != nil {
 		t.Fatal(err)
 	}
 	genSummary, err := matchloop.Run(n, 1000,
-		play(func() session.Agent[reversi.Observation, reversi.Move] {
+		play(func() session.Agent[reversi.Sight, reversi.Move] {
 			return &outcomeAgent{inner: &gen.DistilledGreedy{}}
 		}))
 	if err != nil {
@@ -252,12 +252,12 @@ func TestDistilledGreedyPassesAutomatedPlaytest(t *testing.T) {
 
 // outcomeAgent wraps an agent and remembers its final terminal.
 type outcomeAgent struct {
-	inner session.Agent[reversi.Observation, reversi.Move]
+	inner session.Agent[reversi.Sight, reversi.Move]
 	term  session.Terminal
 }
 
-func (a *outcomeAgent) Guest(s session.SlotID)        { a.inner.Guest(s) }
-func (a *outcomeAgent) Observe(o reversi.Observation) { a.inner.Observe(o) }
+func (a *outcomeAgent) Joined(s session.SlotID) { a.inner.Joined(s) }
+func (a *outcomeAgent) Observe(o reversi.Sight) { a.inner.Observe(o) }
 func (a *outcomeAgent) Decide(ctx context.Context) (reversi.Move, bool) {
 	return a.inner.Decide(ctx)
 }

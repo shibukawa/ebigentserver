@@ -7,7 +7,7 @@ Game-emitted declaration of what an agent could perceive at a decision point.
 
 ```yaml
 emitted_by: the game, explicitly, not inferred by the framework
-rationale: only the game knows why something was visible, see rule:observation-content-owned-by-game
+rationale: only the game knows why something was visible, see rule:sight-content-owned-by-game
 fields:
   - observation_schema: which fields existed for this agent at this tick
   - visible_entities: ids the agent could perceive

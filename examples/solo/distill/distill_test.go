@@ -125,11 +125,11 @@ func TestGeneratedCodeMatchesTheCorpus(t *testing.T) {
 
 // TestCompiledPolicyMatchesTheOriginal is the equivalence claim, checked
 // against every situation the corpus actually holds: on each recorded
-// observation, the compiled decision list chooses what the hand-written
+// sight, the compiled decision list chooses what the hand-written
 // enemy chose.
 func TestCompiledPolicyMatchesTheOriginal(t *testing.T) {
 	root := corpus(t)
-	compiled := map[string]func(game.Observation) (game.Action, bool){
+	compiled := map[string]func(game.Sight) (game.Action, bool){
 		game.KindChaser:  chaser.Decide,
 		game.KindFlanker: flanker.Decide,
 	}
@@ -143,9 +143,9 @@ func TestCompiledPolicyMatchesTheOriginal(t *testing.T) {
 
 		undecided := 0
 		for _, rec := range records {
-			var obs game.Observation
+			var obs game.Sight
 			if err := json.Unmarshal(rec.Obs, &obs); err != nil {
-				t.Fatalf("%s: recorded observation is not decodable: %v", kind.Name, err)
+				t.Fatalf("%s: recorded sight is not decodable: %v", kind.Name, err)
 			}
 			original.Observe(obs)
 			want, ok := original.Decide(context.Background())
@@ -181,7 +181,7 @@ func TestCompiledPolicyMatchesTheOriginal(t *testing.T) {
 func TestDistilledEnemiesPlayTheSameMatch(t *testing.T) {
 	for seed := uint64(1); seed <= 4; seed++ {
 		original := playWith(t, seed, game.NewAgent)
-		generated := playWith(t, seed, func(slot session.SlotID) (string, session.Agent[game.Observation, game.Action]) {
+		generated := playWith(t, seed, func(slot session.SlotID) (string, session.Agent[game.Sight, game.Action]) {
 			switch slot {
 			case game.Enemy1:
 				return game.KindChaser, &chaser.Chaser{}
@@ -199,9 +199,9 @@ func TestDistilledEnemiesPlayTheSameMatch(t *testing.T) {
 }
 
 // playWith runs one unattended match and returns its last checkpoint.
-func playWith(t *testing.T, seed uint64, newAgent func(session.SlotID) (string, session.Agent[game.Observation, game.Action])) session.Checkpoint {
+func playWith(t *testing.T, seed uint64, newAgent func(session.SlotID) (string, session.Agent[game.Sight, game.Action])) session.Checkpoint {
 	t.Helper()
-	roster, err := run.NewRoster[game.State, game.Action, game.Observation](game.Options(), game.Slots())
+	roster, err := run.NewRoster[game.State, game.Action, game.Sight](game.Options(), game.Slots())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -224,9 +224,9 @@ func playWith(t *testing.T, seed uint64, newAgent func(session.SlotID) (string, 
 type checkpointTap struct{ last session.Checkpoint }
 
 func (c *checkpointTap) EpisodeStarted(session.EpisodeStart) {}
-func (c *checkpointTap) Observed(session.Tick, session.SlotID, game.Observation, session.EvaluationSignal) {
+func (c *checkpointTap) Observed(session.Tick, session.SlotID, game.Sight, session.EvaluationSignal) {
 }
-func (c *checkpointTap) Decided(session.Tick, session.SlotID, game.Observation, game.Action, session.EvaluationSignal, int64) {
+func (c *checkpointTap) Decided(session.Tick, session.SlotID, game.Sight, game.Action, session.EvaluationSignal, int64) {
 }
 func (c *checkpointTap) Rejected(session.Tick, session.SlotID, string)        {}
 func (c *checkpointTap) Lifecycle(session.Tick, session.State, session.State) {}

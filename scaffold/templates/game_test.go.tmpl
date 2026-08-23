@@ -9,7 +9,7 @@ import (
 
 // runHeadless plays a whole match with both slots on bots, as fast as the
 // machine allows. It is the shape every generated entry point uses.
-func runHeadless(t *testing.T, seed uint64) (*session.Session[State, Action, Observation], []*Bot) {
+func runHeadless(t *testing.T, seed uint64) (*session.Session[State, Action, Sight], []*Bot) {
 	t.Helper()
 	bots := make([]*Bot, 0, Seats)
 	var drivers []*Driver

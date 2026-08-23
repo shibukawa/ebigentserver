@@ -53,7 +53,7 @@ type gameState = game.State
 // host is what both linkage forms are handed: the session, the seats they
 // did not take, and the inbox of any seat they did.
 type host struct {
-	session *session.Session[game.State, game.Action, game.Observation]
+	session *session.Session[game.State, game.Action, game.Sight]
 	bots    []*game.Bot
 	// local holds the inbox of every seat this build plays, in slot
 	// order. It is empty in a headless build.
@@ -97,7 +97,7 @@ func main() {
 	local := localSeats()
 	for i, slot := range game.Slots() {
 		if i < local {
-			if err := s.Admit(slot, session.Detached[game.Observation, game.Action]{}); err != nil {
+			if err := s.Admit(slot, session.Detached[game.Sight, game.Action]{}); err != nil {
 				fatal(err)
 			}
 			inbox, err := s.Inbox(slot)

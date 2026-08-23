@@ -33,8 +33,8 @@ const (
 	DirLeft
 )
 
-// Observation is the game's concept:observation: global scope.
-type Observation struct {
+// Sight is the game's concept:sight: global scope.
+type Sight struct {
 	You    session.SlotID
 	State  State
 	Signal session.EvaluationSignal
@@ -46,7 +46,7 @@ type RuleSet struct {
 	SlotIDs []session.SlotID
 }
 
-var _ session.TickStageRuleSet[State, Input, Observation] = RuleSet{}
+var _ session.TickStageRuleSet[State, Input, Sight] = RuleSet{}
 
 // spawns places cycles evenly on the horizontal midline-ish rows facing
 // the field center, deterministic in slot order.
@@ -120,9 +120,9 @@ func (RuleSet) Advance(s *State) {
 	}
 }
 
-// Project builds a slot's observation.
-func (g RuleSet) Project(s *State, slot session.SlotID) Observation {
-	return Observation{You: slot, State: *s, Signal: g.Evaluate(s, slot)}
+// Project builds a slot's sight.
+func (g RuleSet) Project(s *State, slot session.SlotID) Sight {
+	return Sight{You: slot, State: *s, Signal: g.Evaluate(s, slot)}
 }
 
 // Evaluate: score is survival ticks; terminal win for the sole survivor,

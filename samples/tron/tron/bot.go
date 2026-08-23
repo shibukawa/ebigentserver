@@ -12,16 +12,16 @@ import (
 // search — per the project's policy the interesting AI comes from
 // distilling episodes, not from hand-writing survival heuristics.
 type Bot struct {
-	last Observation
+	last Sight
 }
 
-var _ session.Agent[Observation, Input] = (*Bot)(nil)
+var _ session.Agent[Sight, Input] = (*Bot)(nil)
 
-// Guest does nothing.
-func (*Bot) Guest(session.SlotID) {}
+// Joined does nothing.
+func (*Bot) Joined(session.SlotID) {}
 
-// Observe retains the latest observation.
-func (b *Bot) Observe(obs Observation) { b.last = obs }
+// Observe retains the latest sight.
+func (b *Bot) Observe(obs Sight) { b.last = obs }
 
 // Decide turns only when the current heading is doomed.
 func (b *Bot) Decide(context.Context) (Input, bool) {

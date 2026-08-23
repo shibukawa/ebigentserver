@@ -72,11 +72,11 @@ type State = msg.TTTState
 // Action is concept:action: claim a cell.
 type Action = msg.Move
 
-// Observation is what a seat is allowed to see. Tic-tac-toe has global
+// Sight is what a seat is allowed to see. Tic-tac-toe has global
 // visibility, so it is the same board for both — but it is still a
 // distinct type, because the projection is the seam every later game
 // changes.
-type Observation struct {
+type Sight struct {
 	// You is the observing seat and Mark its symbol.
 	You  session.SlotID
 	Mark Mark
@@ -91,7 +91,7 @@ type Observation struct {
 	Winner session.SlotID
 	Over   bool
 	// Signal is the seat's data:evaluation-signal, delivered with the
-	// observation so every controller has a criterion and not only a
+	// sight so every controller has a criterion and not only a
 	// legal move set.
 	Signal session.EvaluationSignal
 }
@@ -107,7 +107,7 @@ var Lines = [8][3]uint8{
 // ready to use.
 type RuleSet struct{}
 
-var _ session.TickStageRuleSet[State, Action, Observation] = RuleSet{}
+var _ session.TickStageRuleSet[State, Action, Sight] = RuleSet{}
 
 // Start deals an empty board with X to move. Tic-tac-toe is
 // deterministic, so the seed goes unused — it is still recorded, and a
@@ -164,9 +164,9 @@ func (RuleSet) Apply(s *State, slot session.SlotID, a Action) {
 // serve a board game and a shooter.
 func (RuleSet) Advance(*State) {}
 
-// Project builds the observation a seat is allowed to see.
-func (g RuleSet) Project(s *State, slot session.SlotID) Observation {
-	obs := Observation{
+// Project builds the sight a seat is allowed to see.
+func (g RuleSet) Project(s *State, slot session.SlotID) Sight {
+	obs := Sight{
 		You:    slot,
 		Mark:   MarkOf(slot),
 		Turn:   session.SlotID(s.Turn),
@@ -205,9 +205,9 @@ func (RuleSet) Evaluate(s *State, slot session.SlotID) session.EvaluationSignal 
 }
 
 // Config builds one match's session configuration.
-func Config(id string, seed uint64) session.Config[State, Action, Observation] {
+func Config(id string, seed uint64) session.Config[State, Action, Sight] {
 	tune := Tuning()
-	return session.Config[State, Action, Observation]{
+	return session.Config[State, Action, Sight]{
 		ID:        id,
 		Slots:     Slots(),
 		RuleSet:   RuleSet{},

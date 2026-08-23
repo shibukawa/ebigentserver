@@ -58,7 +58,7 @@ func parseReplay[A any](decisions io.Reader) (*parsedReplay[A], error) {
 			return nil, fmt.Errorf("episode: decisions line %d: %w", line, err)
 		}
 		if len(row.Action) == 0 || string(row.Action) == "null" {
-			continue // observation-only row
+			continue // sight-only row
 		}
 		var a A
 		if err := json.Unmarshal(row.Action, &a); err != nil {

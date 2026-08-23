@@ -29,7 +29,7 @@ const SchemaVersion = 1
 type Mode string
 
 const (
-	// ReplayComplete requires every delivered observation, accepted
+	// ReplayComplete requires every delivered sight, accepted
 	// action, lifecycle transition, the RNG seed, and periodic
 	// checkpoints: a replay agent can verify the episode without
 	// unrecorded game decisions.
@@ -63,7 +63,7 @@ type Evaluation struct {
 
 // Decision is one row of the decisions stream (data:decision-record): what
 // an agent could see, what it did, and how the position was judged. A row
-// with a null action is a delivered observation at a step where the slot
+// with a null action is a delivered sight at a step where the slot
 // did not decide.
 type Decision struct {
 	Tick uint64 `json:"tick"`
@@ -71,14 +71,18 @@ type Decision struct {
 	// AgentKind separates human and bot rows in analysis; filled from
 	// the writer's slot-kind table, empty when unknown.
 	AgentKind string `json:"agent_kind,omitempty"`
-	// Observation is the concept:observation as delivered — never the
-	// world state.
-	Observation json.RawMessage `json:"observation"`
+	// Sight is the concept:sight as delivered — never the world state.
+	//
+	// The key on disk stays "observation". data:episode-log is a format
+	// every recorded corpus already carries, so renaming the term does
+	// not get to rename the data — a corpus written last year has to keep
+	// reading.
+	Sight json.RawMessage `json:"observation"`
 	// Action is the action taken, or null.
 	Action json.RawMessage `json:"action,omitempty"`
 	// Evaluation is the data:evaluation-signal at this decision point.
 	Evaluation Evaluation `json:"evaluation"`
-	// LatencyMicros is wall-clock decision latency; observation-only
+	// LatencyMicros is wall-clock decision latency; sight-only
 	// rows carry 0.
 	LatencyMicros int64 `json:"latency_micros,omitempty"`
 }

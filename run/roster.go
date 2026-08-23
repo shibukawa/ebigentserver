@@ -75,7 +75,7 @@ func (r *Roster[S, A, O]) snapshot() []Seat {
 // OnChange registers a callback fired after every roster change, with the
 // new seat list. ui:lobby-scene renders from it; a game's own scene may
 // use it instead. Callbacks run on the goroutine that made the change, so
-// a callback that blocks stalls whoever joined.
+// a callback that blocks stalls whoever guest.
 func (r *Roster[S, A, O]) OnChange(f func([]Seat)) {
 	if f == nil {
 		return

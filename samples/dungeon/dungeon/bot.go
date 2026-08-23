@@ -10,15 +10,15 @@ import (
 // DMBot places a trap ahead of the party every interval — minimal, like
 // every sample bot; it decides purely from its DMView.
 type DMBot struct {
-	last     Observation
+	last     Sight
 	lastPlay uint64
 }
 
-var _ session.Agent[Observation, Input] = (*DMBot)(nil)
+var _ session.Agent[Sight, Input] = (*DMBot)(nil)
 
-func (*DMBot) Guest(session.SlotID)      {}
-func (b *DMBot) Observe(obs Observation) { b.last = obs }
-func (*DMBot) Ended(session.Result)      {}
+func (*DMBot) Joined(session.SlotID) {}
+func (b *DMBot) Observe(obs Sight)   { b.last = obs }
+func (*DMBot) Ended(session.Result)  {}
 
 // Decide drops a trap two cells ahead of the first living adventurer.
 func (b *DMBot) Decide(context.Context) (Input, bool) {
@@ -60,16 +60,16 @@ func occupied(v *msg.DMView, x, y uint8) bool {
 // heads for the exit, a carrier for a seen treasure, everyone else drifts
 // along the explored frontier. It reads only the AdventurerView.
 type AdventurerBot struct {
-	last  Observation
+	last  Sight
 	prevX uint8
 	prevY uint8
 }
 
-var _ session.Agent[Observation, Input] = (*AdventurerBot)(nil)
+var _ session.Agent[Sight, Input] = (*AdventurerBot)(nil)
 
-func (*AdventurerBot) Guest(session.SlotID)      {}
-func (b *AdventurerBot) Observe(obs Observation) { b.last = obs }
-func (*AdventurerBot) Ended(session.Result)      {}
+func (*AdventurerBot) Joined(session.SlotID) {}
+func (b *AdventurerBot) Observe(obs Sight)   { b.last = obs }
+func (*AdventurerBot) Ended(session.Result)  {}
 
 func (b *AdventurerBot) Decide(context.Context) (Input, bool) {
 	v := b.last.Adventurer

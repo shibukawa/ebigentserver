@@ -9,7 +9,7 @@ Contract a game implements so concept:session can host its rules.
 type_parameters:
   S: concept:world-state
   A: concept:action
-  O: concept:observation
+  O: concept:sight
 operations:
   - name: start
     input: the seed of rule:shared-rng-seed
@@ -21,7 +21,7 @@ operations:
     input: one concept:action already accepted by api:action-validator
     constraint: must not fail, since legality was settled before the call
   - name: project
-    output: one slot's concept:observation, see rule:observation-content-owned-by-game
+    output: one slot's concept:sight, see rule:sight-content-owned-by-game
   - name: evaluate
     output: data:evaluation-signal, see rule:evaluation-computed-by-session
   - name: advance

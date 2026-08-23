@@ -53,7 +53,6 @@
 {"category": "concept", "id": "concept:lag-compensation", "path": ".knowledge/concept/lag-compensation.md", "role": "supporting", "title": "Lag Compensation", "type": "concept"}
 {"category": "concept", "id": "concept:listen-server-mode", "path": ".knowledge/concept/listen-server-mode.md", "role": "supporting", "title": "Listen Server Mode", "type": "concept"}
 {"category": "concept", "id": "concept:match-lifecycle", "path": ".knowledge/concept/match-lifecycle.md", "role": "supporting", "title": "Match Lifecycle", "type": "concept"}
-{"category": "concept", "id": "concept:observation", "path": ".knowledge/concept/observation.md", "role": "supporting", "title": "Observation", "type": "concept"}
 {"category": "concept", "id": "concept:participant-shape", "path": ".knowledge/concept/participant-shape.md", "role": "supporting", "title": "Participant Shape", "type": "concept"}
 {"category": "concept", "id": "concept:player-slot", "path": ".knowledge/concept/player-slot.md", "role": "supporting", "title": "Player Slot", "type": "concept"}
 {"category": "concept", "id": "concept:realtime-intensity", "path": ".knowledge/concept/realtime-intensity.md", "role": "supporting", "title": "Realtime Intensity", "type": "concept"}
@@ -61,6 +60,7 @@
 {"category": "concept", "id": "concept:sample-progression", "path": ".knowledge/concept/sample-progression.md", "role": "supporting", "title": "Sample Progression", "type": "concept"}
 {"category": "concept", "id": "concept:session-lifecycle", "path": ".knowledge/concept/session-lifecycle.md", "role": "supporting", "title": "Session Lifecycle", "type": "concept"}
 {"category": "concept", "id": "concept:session", "path": ".knowledge/concept/session.md", "role": "supporting", "title": "Session", "type": "concept"}
+{"category": "concept", "id": "concept:sight", "path": ".knowledge/concept/sight.md", "role": "supporting", "title": "Sight", "type": "concept"}
 {"category": "concept", "id": "concept:signaling-method", "path": ".knowledge/concept/signaling-method.md", "role": "supporting", "title": "Signaling Method", "type": "concept"}
 {"category": "concept", "id": "concept:skill-level-gating", "path": ".knowledge/concept/skill-level-gating.md", "role": "supporting", "title": "Skill Level Gating", "type": "concept"}
 {"category": "concept", "id": "concept:standalone-mode", "path": ".knowledge/concept/standalone-mode.md", "role": "supporting", "title": "Standalone Mode", "type": "concept"}
@@ -156,10 +156,10 @@
 {"category": "constraint", "id": "permission:agent-seat-control", "path": ".knowledge/permission/agent-seat-control.md", "role": "supporting", "title": "Agent Seat Control", "type": "permission"}
 {"category": "constraint", "id": "permission:spectator-receive-only", "path": ".knowledge/permission/spectator-receive-only.md", "role": "supporting", "title": "Spectator Receive Only", "type": "permission"}
 {"category": "constraint", "id": "policy:episode-data-governance", "path": ".knowledge/policy/episode-data-governance.md", "role": "supporting", "title": "Episode Data Governance", "type": "policy"}
-{"category": "constraint", "id": "policy:observation-scoped-information", "path": ".knowledge/policy/observation-scoped-information.md", "role": "supporting", "title": "Observation Scoped Information", "type": "policy"}
 {"category": "constraint", "id": "policy:overload-handling", "path": ".knowledge/policy/overload-handling.md", "role": "supporting", "title": "Overload Handling", "type": "policy"}
 {"category": "constraint", "id": "policy:protocol-rollout", "path": ".knowledge/policy/protocol-rollout.md", "role": "supporting", "title": "Protocol Rollout", "type": "policy"}
 {"category": "constraint", "id": "policy:realtime-abuse-protection", "path": ".knowledge/policy/realtime-abuse-protection.md", "role": "supporting", "title": "Realtime Abuse Protection", "type": "policy"}
+{"category": "constraint", "id": "policy:sight-scoped-information", "path": ".knowledge/policy/sight-scoped-information.md", "role": "supporting", "title": "Sight Scoped Information", "type": "policy"}
 {"category": "objective", "id": "requirement:ai-autoplay-testing", "path": ".knowledge/requirement/ai-autoplay-testing.md", "role": "primary", "title": "AI Autoplay Testing", "type": "requirement"}
 {"category": "objective", "id": "requirement:behavior-learning-from-logs", "path": ".knowledge/requirement/behavior-learning-from-logs.md", "role": "primary", "title": "Behavior Learning From Play Logs", "type": "requirement"}
 {"category": "objective", "id": "requirement:cborbind-migration", "path": ".knowledge/requirement/cborbind-migration.md", "role": "primary", "title": "Cborbind Migration", "type": "requirement"}
@@ -212,7 +212,6 @@
 {"category": "constraint", "id": "rule:local-ticket-verification", "path": ".knowledge/rule/local-ticket-verification.md", "role": "supporting", "title": "Local Ticket Verification", "type": "rule"}
 {"category": "constraint", "id": "rule:no-engine-input-in-game-logic", "path": ".knowledge/rule/no-engine-input-in-game-logic.md", "role": "supporting", "title": "No Engine Input In Game Logic", "type": "rule"}
 {"category": "constraint", "id": "rule:no-float-in-simulation", "path": ".knowledge/rule/no-float-in-simulation.md", "role": "supporting", "title": "No Float In Simulation Path", "type": "rule"}
-{"category": "constraint", "id": "rule:observation-content-owned-by-game", "path": ".knowledge/rule/observation-content-owned-by-game.md", "role": "supporting", "title": "Observation Content Owned By Game", "type": "rule"}
 {"category": "constraint", "id": "rule:one-config-file-per-process", "path": ".knowledge/rule/one-config-file-per-process.md", "role": "supporting", "title": "One Config File Per Process", "type": "rule"}
 {"category": "constraint", "id": "rule:predicate-tests-generated-from-episodes", "path": ".knowledge/rule/predicate-tests-generated-from-episodes.md", "role": "supporting", "title": "Predicate Tests Generated From Episodes", "type": "rule"}
 {"category": "constraint", "id": "rule:presence-excluded-from-simulation-and-analysis", "path": ".knowledge/rule/presence-excluded-from-simulation-and-analysis.md", "role": "supporting", "title": "Presence Excluded From Simulation And Analysis", "type": "rule"}
@@ -223,6 +222,7 @@
 {"category": "constraint", "id": "rule:server-hooks-avoid-rendering-work", "path": ".knowledge/rule/server-hooks-avoid-rendering-work.md", "role": "supporting", "title": "Server Hooks Avoid Rendering Work", "type": "rule"}
 {"category": "constraint", "id": "rule:session-independent-of-transport-and-agent-kind", "path": ".knowledge/rule/session-independent-of-transport-and-agent-kind.md", "role": "supporting", "title": "Session Independent Of Transport And Agent Kind", "type": "rule"}
 {"category": "constraint", "id": "rule:shared-rng-seed", "path": ".knowledge/rule/shared-rng-seed.md", "role": "supporting", "title": "Shared RNG Seed", "type": "rule"}
+{"category": "constraint", "id": "rule:sight-content-owned-by-game", "path": ".knowledge/rule/sight-content-owned-by-game.md", "role": "supporting", "title": "Sight Content Owned By Game", "type": "rule"}
 {"category": "constraint", "id": "rule:ticket-bound-to-connection", "path": ".knowledge/rule/ticket-bound-to-connection.md", "role": "supporting", "title": "Ticket Bound To Connection", "type": "rule"}
 {"category": "constraint", "id": "rule:transport-selected-by-capability", "path": ".knowledge/rule/transport-selected-by-capability.md", "role": "supporting", "title": "Transport Selected By Capability", "type": "rule"}
 {"category": "constraint", "id": "rule:unauthenticated-admission-requires-scope-or-capability", "path": ".knowledge/rule/unauthenticated-admission-requires-scope-or-capability.md", "role": "supporting", "title": "Unauthenticated Admission Requires Scope Or Capability", "type": "rule"}

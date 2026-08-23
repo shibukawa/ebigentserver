@@ -8,7 +8,7 @@ import (
 )
 
 // ProjectAdventurer builds the party wire view: the visibility predicate
-// of rule:observation-content-owned-by-game. Everything absent here is
+// of rule:sight-content-owned-by-game. Everything absent here is
 // absent from the wire — undiscovered traps, unexplored walls, and the
 // exit for anyone but the navigator are never encoded.
 func ProjectAdventurer(s *State, slot session.SlotID) msg.AdventurerView {
@@ -68,10 +68,10 @@ func ProjectDM(s *State) msg.DMView {
 	}
 }
 
-// Project builds the session-level observation for a slot; the recorded
-// observation is therefore the same projection the wire carries.
-func (g RuleSet) Project(s *State, slot session.SlotID) Observation {
-	obs := Observation{You: slot, Role: RoleOf(slot), Signal: g.Evaluate(s, slot)}
+// Project builds the session-level sight for a slot; the recorded
+// sight is therefore the same projection the wire carries.
+func (g RuleSet) Project(s *State, slot session.SlotID) Sight {
+	obs := Sight{You: slot, Role: RoleOf(slot), Signal: g.Evaluate(s, slot)}
 	if slot == SlotDM {
 		v := ProjectDM(s)
 		obs.DM = &v

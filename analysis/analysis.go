@@ -29,7 +29,7 @@ type DecisionRow struct {
 	Tick      uint64
 	Slot      uint16
 	AgentKind string
-	// HasAction distinguishes decision rows from observation-only
+	// HasAction distinguishes decision rows from sight-only
 	// deliveries (a null/absent action in the stream).
 	HasAction bool
 }

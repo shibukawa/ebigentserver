@@ -51,7 +51,7 @@ type Client[S, A, O any] interface {
 	// goroutine.
 	//
 	// The seating is this machine's match when it hosts and its link
-	// when it joined somebody else's. A play scene never learns which,
+	// when it guest somebody else's. A play scene never learns which,
 	// because from here the difference is only where Submit ends up.
 	Intake(seating run.Controls[A])
 	// Apply receives each committed world. It runs on the session's
@@ -164,7 +164,7 @@ type app[S, A, O any] struct {
 	screen  Screen
 	roster  *run.Roster[S, A, O]
 	hosting run.Host[S, A, O]
-	joined  run.Guest[S, A, O]
+	guest   run.Guest[S, A, O]
 	match   *run.Match[S, A, O]
 	rec     *run.Recording[S, A, O]
 	watch   *run.Watcher[S, A, O]
@@ -190,11 +190,11 @@ func (a *app[S, A, O]) gather() error {
 	if a.hosting != nil {
 		a.hosting.Rebind(roster)
 	}
-	if a.joined != nil {
+	if a.guest != nil {
 		// The previous link is done with. Looking again is what lets
 		// the same window rejoin, or host, without being restarted.
-		_ = a.joined.Close()
-		a.joined = nil
+		_ = a.guest.Close()
+		a.guest = nil
 	}
 	if a.opts.Screen != nil {
 		a.screen = a.opts.Screen(roster)
@@ -227,7 +227,7 @@ func (a *app[S, A, O]) BecomeHost(h run.Host[S, A, O]) { a.hosting = h }
 // BecomeGuest records that this instance took a seat elsewhere, and
 // switches to the scene that renders a link instead of a match.
 func (a *app[S, A, O]) BecomeGuest(j run.Guest[S, A, O]) {
-	a.joined = j
+	a.guest = j
 	a.screen = newRemote(a, j)
 }
 

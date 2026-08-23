@@ -1,9 +1,9 @@
 ---
-id: policy:observation-scoped-information
+id: policy:sight-scoped-information
 type: policy
-title: Observation Scoped Information
+title: Sight Scoped Information
 ---
-An agent receives only its own concept:observation, never concept:world-state.
+An agent receives only its own concept:sight, never concept:world-state.
 
 ```yaml
 covers: term:fog-of-war, sight range, information based AI difficulty, cheat prevention

@@ -12,7 +12,7 @@ import { Aside, Card, CardGrid, LinkCard } from '@astrojs/starlight/components';
 
 <CardGrid>
 	<Card title="StageRuleSet[S, A, O]" icon="puzzle">
-		必須。世界を進め、観測を作り、評価する。5メソッド。
+		必須。世界を進め、視界を作り、評価する。5メソッド。
 	</Card>
 	<Card title="Agent[O, A]" icon="rocket">
 		人間クライアントや自作ボットを書くときに実装する。4メソッド。
@@ -27,7 +27,7 @@ import { Aside, Card, CardGrid, LinkCard } from '@astrojs/starlight/components';
 
 ## 型パラメータが3つある理由
 
-`S`（世界状態）、`A`（行動）、`O`（観測）。三目並べのように全員が同じ盤面を見るゲームでは、
+`S`（世界状態）、`A`（行動）、`O`（視界）。三目並べのように全員が同じ盤面を見るゲームでは、
 `S` と `O` はほとんど同じ形になる。それでも別の型として分けてある。
 
 分けておくと何が起きるかは、ダンジョンのサンプルを見ると分かりやすい。ダンジョンマスターは
@@ -50,7 +50,7 @@ scout のクライアントに届いた全バイト列を捕捉して独立に�
 
 | ゲームが決める | framework が持つ |
 |---|---|
-| 観測に何を載せるか | 観測をいつ届けるか |
+| 視界に何を載せるか | 視界をいつ届けるか |
 | 何が合法手か | 拒否されたときのエスカレーション |
 | 誰に何が見えるか（可視性の述語） | 保持・差分・送信 |
 | 評価をどう計算するか | 評価を**呼ぶこと**（agent は自分を採点しない） |
@@ -66,7 +66,7 @@ Start(seed)
   ↓
 ┌─ ActingSlots(state)          ← 今ステップ判断する席
 │    ↓
-│  Project(state, slot)        ← 席ごとの観測
+│  Project(state, slot)        ← 席ごとの視界
 │    ↓  Observe(obs)
 │  Decide(ctx) → action        ← agent
 │    ↓

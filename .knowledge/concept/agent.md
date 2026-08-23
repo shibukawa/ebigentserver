@@ -3,7 +3,7 @@ id: concept:agent
 type: concept
 title: Agent
 ---
-Participant that receives concept:observation and produces concept:action for a concept:session.
+Participant that receives concept:sight and produces concept:action for a concept:session.
 
 ```yaml
 identity: session-visible participant slot, independent of who or what drives it

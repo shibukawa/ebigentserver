@@ -46,9 +46,9 @@ type State = msg.PongState
 // Input aliases the wire input message.
 type Input = msg.PaddleInput
 
-// Observation is the game's concept:observation: global scope, the whole
+// Sight is the game's concept:sight: global scope, the whole
 // state plus the slot's evaluation signal.
-type Observation struct {
+type Sight struct {
 	You    session.SlotID
 	State  State
 	Signal session.EvaluationSignal
@@ -57,7 +57,7 @@ type Observation struct {
 // RuleSet implements session.TickStageRuleSet. The zero value is ready to use.
 type RuleSet struct{}
 
-var _ session.TickStageRuleSet[State, Input, Observation] = RuleSet{}
+var _ session.TickStageRuleSet[State, Input, Sight] = RuleSet{}
 
 // Start serves the first ball to the right; the shared seed is unused —
 // pong's serve pattern is score-driven, not random.
@@ -140,9 +140,9 @@ func (RuleSet) Advance(s *State) {
 	s.Tick++
 }
 
-// Project builds a slot's observation (global visibility).
-func (g RuleSet) Project(s *State, slot session.SlotID) Observation {
-	return Observation{You: slot, State: *s, Signal: g.Evaluate(s, slot)}
+// Project builds a slot's sight (global visibility).
+func (g RuleSet) Project(s *State, slot session.SlotID) Sight {
+	return Sight{You: slot, State: *s, Signal: g.Evaluate(s, slot)}
 }
 
 // Evaluate computes the slot's data:evaluation-signal.

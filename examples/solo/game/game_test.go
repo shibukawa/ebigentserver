@@ -14,7 +14,7 @@ import (
 // a session by hand, so the wrapper is on the path every test takes.
 func play(t *testing.T, seed uint64) (session.Checkpoint, []session.SlotOutcome) {
 	t.Helper()
-	roster, err := run.NewRoster[game.State, game.Action, game.Observation](game.Options(), game.Slots())
+	roster, err := run.NewRoster[game.State, game.Action, game.Sight](game.Options(), game.Slots())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -23,7 +23,7 @@ func play(t *testing.T, seed uint64) (session.Checkpoint, []session.SlotOutcome)
 	}
 	cfg := game.Config("test", seed)
 	tap := &checkpointTap{}
-	watch := run.Watch[game.State, game.Action, game.Observation](tap)
+	watch := run.Watch[game.State, game.Action, game.Sight](tap)
 	cfg.Recorder = watch
 
 	match, err := roster.Finalize(cfg)
@@ -139,12 +139,12 @@ func TestValidatorRejectsUndefinedDirection(t *testing.T) {
 // two runs committed the same state.
 type checkpointTap struct{ last session.Checkpoint }
 
-var _ session.Recorder[game.State, game.Action, game.Observation] = (*checkpointTap)(nil)
+var _ session.Recorder[game.State, game.Action, game.Sight] = (*checkpointTap)(nil)
 
 func (c *checkpointTap) EpisodeStarted(session.EpisodeStart) {}
-func (c *checkpointTap) Observed(session.Tick, session.SlotID, game.Observation, session.EvaluationSignal) {
+func (c *checkpointTap) Observed(session.Tick, session.SlotID, game.Sight, session.EvaluationSignal) {
 }
-func (c *checkpointTap) Decided(session.Tick, session.SlotID, game.Observation, game.Action, session.EvaluationSignal, int64) {
+func (c *checkpointTap) Decided(session.Tick, session.SlotID, game.Sight, game.Action, session.EvaluationSignal, int64) {
 }
 func (c *checkpointTap) Rejected(session.Tick, session.SlotID, string)        {}
 func (c *checkpointTap) Lifecycle(session.Tick, session.State, session.State) {}

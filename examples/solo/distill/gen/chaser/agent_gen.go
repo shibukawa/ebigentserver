@@ -13,7 +13,7 @@ import (
 
 // Decide is the compiled decision list. Earlier cases take precedence,
 // exactly as the chips were mined and approved.
-func Decide(obs game.Observation) (game.Action, bool) {
+func Decide(obs game.Sight) (game.Action, bool) {
 	switch {
 	case game.GapX(obs) < 0 && game.GapX(obs).Abs() >= game.GapY(obs).Abs():
 		// chip quarry_left_on_wide_axis → move_left (coverage 1180, counterexamples 0)
@@ -35,13 +35,13 @@ func Decide(obs game.Observation) (game.Action, bool) {
 // Chaser seats the compiled policy behind api:agent-interface: an
 // ordinary agent, indistinguishable from a hand-written bot.
 type Chaser struct {
-	last game.Observation
+	last game.Sight
 	has  bool
 }
 
-func (*Chaser) Guest(session.SlotID) {}
+func (*Chaser) Joined(session.SlotID) {}
 
-func (a *Chaser) Observe(obs game.Observation) { a.last, a.has = obs, true }
+func (a *Chaser) Observe(obs game.Sight) { a.last, a.has = obs, true }
 
 func (a *Chaser) Decide(context.Context) (game.Action, bool) {
 	if !a.has {

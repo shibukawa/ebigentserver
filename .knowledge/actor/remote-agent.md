@@ -9,5 +9,5 @@ concept:agent whose decision loop runs in another process and reaches the sessio
 transport: api:transport-interface
 admission: flow:session-admission with data:session-ticket
 opacity: session cannot tell whether the far side is human or bot
-trust: treated as untrusted, constrained by policy:observation-scoped-information
+trust: treated as untrusted, constrained by policy:sight-scoped-information
 ```

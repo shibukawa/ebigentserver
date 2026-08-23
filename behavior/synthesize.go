@@ -11,7 +11,7 @@ import (
 
 // Segment reads one episode's decisions stream and featurizes the rows
 // the filter accepts (the segment step of flow:behavior-tree-synthesis).
-// Observation-only rows and actions outside the vocabulary are skipped.
+// Sight-only rows and actions outside the vocabulary are skipped.
 func Segment(v *Vocabulary, episodeID string, decisions io.Reader, keep func(slot uint16) bool) ([]Record, error) {
 	sc := bufio.NewScanner(decisions)
 	sc.Buffer(make([]byte, 0, 64*1024), 16*1024*1024)
@@ -37,7 +37,7 @@ func Segment(v *Vocabulary, episodeID string, decisions io.Reader, keep func(slo
 		if keep != nil && !keep(row.Slot) {
 			continue
 		}
-		rec, err := v.Featurize(episodeID, row.Tick, row.Slot, row.Observation, row.Action)
+		rec, err := v.Featurize(episodeID, row.Tick, row.Slot, row.Sight, row.Action)
 		if err != nil {
 			return nil, err
 		}

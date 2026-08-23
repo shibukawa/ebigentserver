@@ -15,7 +15,7 @@ import { Aside, CardGrid, LinkCard } from '@astrojs/starlight/components';
 
 ## 一つの抽象で足りるのか
 
-観測を受け取って行動を返す。人間もボットもリプレイも、やっていることはそれだけだ——と言い切って
+視界を受け取って行動を返す。人間もボットもリプレイも、やっていることはそれだけだ——と言い切って
 しまうのは簡単だが、本当に足りるのかは疑わしい。人間には入力デバイスがあり、ボットには探索の時間が
 必要で、リプレイに至っては「判断」すらしていない。
 
@@ -41,12 +41,12 @@ type Agent[O, A any] interface {
 
 <Aside type="note" title="agent の種類">
 人間クライアント、スクリプトボット、蒸留された行動ツリー、LLM、リモートピア、リプレイストリーム。
-いずれも同じ `Agent` を実装する。違うのは「観測 → 行動」の中身だけで、session からは区別が付かない。
+いずれも同じ `Agent` を実装する。違うのは「視界 → 行動」の中身だけで、session からは区別が付かない。
 </Aside>
 
 ## 誰がどの層を持つか
 
-ゲームが書く量は、思ったより少ない。世界の型・行動の型・観測の型を決めて、5つのメソッドを
+ゲームが書く量は、思ったより少ない。世界の型・行動の型・視界の型を決めて、5つのメソッドを
 実装する。tick を刻むのも、受信者ごとに差分を作るのも、パケットを分割して再構成するのも、
 framework の側にある。
 
@@ -65,7 +65,7 @@ framework の側にある。
 
 	<rect class="box-accent" x="170" y="24" width="420" height="44" rx="6" />
 	<text class="lbl" x="184" y="43">ゲームのルール</text>
-	<text class="sub" x="184" y="59">StageRuleSet[S, A, O] の5メソッド／Agent 実装／観測の中身</text>
+	<text class="sub" x="184" y="59">StageRuleSet[S, A, O] の5メソッド／Agent 実装／視界の中身</text>
 
 	<rect class="box" x="170" y="82" width="420" height="44" rx="6" />
 	<text class="lbl" x="184" y="101">session</text>
@@ -143,7 +143,7 @@ listen server で rollback を使うこともできるし、dedicated server で
 arm64 の開発機と amd64 の CI で最終チェックポイントのダイジェストが同じになることも、
 定数で固定したテストが確かめている。
 
-もう一つは AI だ。ビット一致で再現できるログは、単なる観測記録ではなく**証拠**になる。
+もう一つは AI だ。ビット一致で再現できるログは、単なる記録ではなく**証拠**になる。
 「この局面でこの手を指した」と言われたとき、その局面を実際に復元して確かめられる。
 ログから条件→行動のルールを提案させ、人間が承認したものだけを Go のコードに落とす、という
 パイプラインが成り立つのは、この再現性が下敷きにあるからだ。
@@ -158,10 +158,10 @@ arm64 の開発機と amd64 の CI で最終チェックポイントのダイジ
 | サンプル | 足している能力 | 起動 |
 |---|---|---|
 | tictactoe | セッション核、step ペーシング、人間とボットの同居 | `go run ./samples/tictactoe/cmd/ttt` |
-| reversi | 合法手つき観測、エピソード記録と再生 | `go run ./samples/reversi/cmd/reversi` |
+| reversi | 合法手つき視界、エピソード記録と再生 | `go run ./samples/reversi/cmd/reversi` |
 | pong | リアルタイム tick、固定小数点物理、snapshot / delta | `go run ./samples/pong/cmd/pong` |
 | tron | 多人数（2〜8席）、観戦者、離脱と不正入力への耐性 | `go run ./samples/tron/cmd/tron` |
-| dungeon | 役割ごとに種類の違う観測、隠し情報がワイヤに載らない検証 | テストのみ |
+| dungeon | 役割ごとに種類の違う視界、隠し情報がワイヤに載らない検証 | テストのみ |
 | rtslite | 命令ストリームと fog 投影のハイブリッド同期 | テストのみ |
 
 reversi と pong は `-record=DIR` を付けるとエピソードログを吐く。AI 育成の話は、

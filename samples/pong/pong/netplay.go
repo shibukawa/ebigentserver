@@ -192,9 +192,9 @@ func Connect(ctx context.Context, conn transport.Conn, ticket string, tuning ses
 // connection closes or ctx cancels: reconstructed world → Observe →
 // Decide → input datagram. Acks flush per the declared policy so a
 // silent agent still confirms baselines.
-func (c *NetClient) Run(ctx context.Context, agent session.Agent[Observation, Input]) error {
+func (c *NetClient) Run(ctx context.Context, agent session.Agent[Sight, Input]) error {
 	var sim RuleSet
-	agent.Guest(c.Slot)
+	agent.Joined(c.Slot)
 	for {
 		m, err := c.conn.Receive(ctx)
 		if err != nil {
