@@ -7,7 +7,7 @@ Game rules never branch on whether a slot is driven by a human; an all-AI run mo
 
 ```yaml
 decided: yes
-forbidden: rules, actions, observations, or scoring that differ by controller kind
+forbidden: rules, actions, sights, or scoring that differ by controller kind
 allowed_and_wanted:
   - an all ai run mode that fills every concept:player-slot with agents and plays unattended
   - its purpose is bulk data:episode-log harvesting, see concept:training-farm

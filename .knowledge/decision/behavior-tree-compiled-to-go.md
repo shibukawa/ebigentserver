@@ -11,8 +11,8 @@ rejected_alternative: a tree interpreter walking a data structure each tick
 rejection_reasons:
   - per tick interpretation costs more than the decision itself in small games
   - generated code is readable, diffable, and reviewable in the same way as hand written agents
-  - the compiler checks predicate signatures and observation field names, so a stale predicate fails the build
-generator: system:tinybind, the same pass that already reads the observation types
+  - the compiler checks predicate signatures and sight field names, so a stale predicate fails the build
+generator: system:tinybind, the same pass that already reads the sight types
 output_is_source: a developer may edit generated code, but the edit belongs upstream in the tree or predicate, see rule:regeneration-preserves-approved-nodes
 runtime: actor:behavior-tree-agent is then ordinary Go with no reflection
 ```

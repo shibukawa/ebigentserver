@@ -47,7 +47,7 @@ visibility_constraint:
   first_half: >
     a shared camera forces the global scope of concept:visibility-scope. A
     seat cannot be shown what it was not sent, so if the frame contains the
-    whole world, the observation must too. A game with term:fog-of-war that
+    whole world, the sight must too. A game with term:fog-of-war that
     matters cannot have a shared camera, whatever its topology.
   second_half: >
     one process makes the scope unenforceable between the people present.

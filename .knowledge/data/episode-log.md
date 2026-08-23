@@ -17,7 +17,7 @@ header_row: schema version, data:game-version, rng seed of rule:shared-rng-seed,
 recording_mode: concept:episode-recording-mode, declared in the header
 compression: gzip or zstd, read directly by system:duckdb without a decompression step
 two_representations:
-  runtime: may record compactly, including observation deltas from concept:agent-view, to survive 60hz recording
+  runtime: may record compactly, including sight deltas from concept:agent-view, to survive 60hz recording
   analysis: materialized JSONL, and converted to parquet once a corpus is queried repeatedly
 volume_control: analysis_sampled may record decision points and sample long sessions; replay_complete may not omit required records
 integrity: replay_complete stores periodic data:state-checkpoint

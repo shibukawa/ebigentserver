@@ -10,7 +10,7 @@ players: 1 human, 2 non player pursuers
 why_a_solo_game_is_on_a_session_framework: >
   the enemies. Each holds a concept:player-slot and decides through
   api:agent-interface, so every enemy decision reaches data:episode-log
-  with the observation it was made from. A hand written enemy update
+  with the sight it was made from. A hand written enemy update
   function produces no such record, and that record is the only input
   flow:behavior-tree-synthesis has.
 hooks_that_run_for_a_non_player: the intake and apply steps of api:tick-hooks; only arbitration is central, and in a solo game it is central in the same process

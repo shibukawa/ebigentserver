@@ -17,7 +17,7 @@ metrics:
   - replay checkpoint mismatches
 logs:
   required_context: session id, connection id, tick, protocol version, lifecycle state, reason code
-  forbidden: raw data:session-ticket, private key, and full player observation by default
+  forbidden: raw data:session-ticket, private key, and full player sight by default
 events: session start, drain, end, abort, admission reject, abuse reject, and data:state-checkpoint mismatch
 cardinality: player and session identifiers belong in logs; metrics use bounded labels
 ```

@@ -8,7 +8,7 @@ Participant that receives concept:sight and produces concept:action for a concep
 ```yaml
 identity: session-visible participant slot, independent of who or what drives it
 contract: api:agent-interface
-variation_point: only the observation-to-action policy differs between agent kinds
+variation_point: only the sight-to-action policy differs between agent kinds
 kinds:
   - actor:human-agent
   - actor:script-bot-agent

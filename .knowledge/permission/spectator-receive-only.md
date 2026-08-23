@@ -8,6 +8,6 @@ A spectator role receives concept:sight but submits no concept:action.
 ```yaml
 granted_by: role claim of data:session-ticket
 enforced_at: concept:session, all inbound actions rejected
-observation_scope: usually wider than a player view, still bounded by policy:sight-scoped-information
+sight_scope: usually wider than a player view, still bounded by policy:sight-scoped-information
 transport_consequence: no upstream flow, so concept:ack-transmission-policy must use dedicated acks for this role
 ```

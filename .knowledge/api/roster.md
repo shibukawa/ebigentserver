@@ -28,7 +28,7 @@ local_operations:
 remote_operations:
   - admit a remote seat, driven by flow:session-admission rather than by any screen
   - report departure before play, distinct from concept:agent-departure-policy which governs departure during play
-observation: a change callback, which ui:lobby-scene renders and a custom scene may use instead
+sight: a change callback, which ui:lobby-scene renders and a custom scene may use instead
 seeding: the slot table of data:run-config pre fills entries, so a run may skip gathering entirely and start headless
 finalize: builds concept:session, admits every entry through api:agent-interface, and wires transports, producing the running match of concept:match-lifecycle
 raw_api_is_the_contract: ui:lobby-scene is only a default caller, so a game may replace the screen without losing admission, discovery, or bot seating

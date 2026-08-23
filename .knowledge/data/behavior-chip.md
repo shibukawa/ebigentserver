@@ -8,7 +8,7 @@ Small situation-scoped behavior unit — one condition over predicate vocabulary
 ```yaml
 origin: an accepted data:behavior-candidate graduates into a chip; hand-authored chips are equally valid
 fields:
-  - condition: over data:derived-predicate only, observation-limited per rule:analysis-restricted-to-visible-fields
+  - condition: over data:derived-predicate only, sight-limited per rule:analysis-restricted-to-visible-fields
   - action: a concept:action, or a small subtree of further chips
   - priority_hint: default ordering among siblings, overridable per data:agent-loadout
   - tags: open tag dimensions; level of concept:skill-level-gating, style, and tactic of concept:tactic-selector are all the same mechanism
