@@ -30,7 +30,7 @@ func testServer(t *testing.T) (*server, string) {
 		t.Fatal(err)
 	}
 	decisions := `{"stream":"decisions","schema_version":1,"episode_id":"ep-1","mode":"replay_complete","seed":1,"evaluation_version":0}
-{"tick":3,"slot":1,"observation":{"Board":[0,1,0]},"action":{"Cell":2},"evaluation":{"score":0,"progress":0,"evaluation":0,"reward_delta":0}}
+{"tick":3,"slot":1,"sight":{"Board":[0,1,0]},"action":{"Cell":2},"evaluation":{"score":0,"progress":0,"evaluation":0,"reward_delta":0}}
 `
 	if err := os.WriteFile(filepath.Join(epDir, "decisions.jsonl"), []byte(decisions), 0o644); err != nil {
 		t.Fatal(err)

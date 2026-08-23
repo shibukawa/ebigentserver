@@ -5,7 +5,7 @@
 // (requirement:project-scaffolding). The game it generates is a
 // deliberate placeholder — small enough that nobody mistakes it for
 // their game, complete enough that the session loop, the validator, the
-// observation projection, and the evaluation signal are all already
+// sight projection, and the evaluation signal are all already
 // wired to replace one piece at a time.
 package scaffold
 

@@ -26,8 +26,8 @@ type ClientConfig[S, A, D, O any] struct {
 	Codec statesync.Codec[S, D]
 	// EncodeInput serializes one action for the wire.
 	EncodeInput func(dst []byte, a A) []byte
-	// Project builds the observation an agent reads
-	// (rule:observation-content-owned-by-game — the game's projection,
+	// Project builds the sight an agent reads
+	// (rule:sight-content-owned-by-game — the game's projection,
 	// run client-side over the reconstructed world in global-scope
 	// phases).
 	Project func(world *S, slot session.SlotID) O

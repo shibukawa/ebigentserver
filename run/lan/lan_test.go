@@ -337,7 +337,7 @@ func TestTwoInstancesPlayOverTheLink(t *testing.T) {
 	if obs.Score[slotHost] == 0 {
 		t.Fatal("the host's raises never reached the guest")
 	}
-	t.Logf("guest saw host=%d guest=%d over=%v after %d observations",
+	t.Logf("guest saw host=%d guest=%d over=%v after %d sights",
 		obs.Score[slotHost], obs.Score[slotGuest], obs.Over, seen)
 
 	guest.Close()

@@ -53,7 +53,7 @@ FixPointCS に Go 版は存在しない。移植は自前で、ライセンス�
 - ローカル（プロセス内）トランスポート
 - `rule:deterministic-tick-commit` — スロットID順の安定した順序付けコミット
 - `decision:owner-namespaced-entity-ids`
-- `concept:observation`（この段階では global scope）
+- `concept:sight`（この段階では global scope）
 - `data:evaluation-signal`（勝敗のみ）
 - `sample:tic-tac-toe`
 
@@ -68,7 +68,7 @@ FixPointCS に Go 版は存在しない。移植は自前で、ライセンス�
 
 ### 実装項目
 
-- 合法手列挙を `concept:observation` に載せる。ボットが独自のルールエンジンを持たないための土台
+- 合法手列挙を `concept:sight` に載せる。ボットが独自のルールエンジンを持たないための土台
 - 探索AIと AI vs AI 対戦
 - `data:episode-log` — JSONL 4ストリーム（decisions / events / outcomes / world）
 - `concept:episode-recording-mode` — replay_complete と analysis_sampled の区別
@@ -141,7 +141,7 @@ Phase 0 の決定性がここで初めて実証される。ここが赤いまま
 - `concept:agent-view` — スロットごとの保持と増分更新
 - `concept:visibility-scope` — self / team / role / spectator / global
 - `data:visibility-annotation` — アプリ側からの明示出力
-- `rule:observation-content-owned-by-game`
+- `rule:sight-content-owned-by-game`
 - 役割とチーム（Scout / Engineer / Carrier / Navigator）
 - `rule:evaluation-respects-visibility-scope`
 - `sample:cooperative-maze` → `sample:dungeon-master`

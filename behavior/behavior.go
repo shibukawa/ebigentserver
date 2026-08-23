@@ -20,9 +20,9 @@ import (
 )
 
 // Feature is one data:derived-predicate: a named judgement over the
-// observation, with both a runtime evaluator (for mining recorded JSON
-// observations) and a Go expression (for generated code over the real
-// observation type). The name is the vocabulary term a developer reads.
+// sight, with both a runtime evaluator (for mining recorded JSON
+// sights) and a Go expression (for generated code over the real
+// sight type). The name is the vocabulary term a developer reads.
 type Feature struct {
 	// Name is the vocabulary term, e.g. "cell_4_empty".
 	Name string
@@ -32,7 +32,7 @@ type Feature struct {
 	// Doc explains the judgement in prose for an external analyzer
 	// (the analysis-request export carries it).
 	Doc string
-	// Eval judges a recorded observation.
+	// Eval judges a recorded sight.
 	Eval func(obs json.RawMessage) (bool, error)
 }
 
@@ -51,7 +51,7 @@ type ActionDef struct {
 
 // Vocabulary is the game's predicate and action language
 // (rule:analysis-restricted-to-visible-fields holds by construction:
-// features only ever see the recorded observation).
+// features only ever see the recorded sight).
 type Vocabulary struct {
 	Features []Feature
 	Actions  []ActionDef

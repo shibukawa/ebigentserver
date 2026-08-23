@@ -16,7 +16,7 @@ type Bot struct {
 
 var _ session.Agent[Sight, Move] = (*Bot)(nil)
 
-// Joined records nothing; the bot learns its slot from observations.
+// Joined records nothing; the bot learns its slot from sights.
 func (*Bot) Joined(session.SlotID) {}
 
 // Observe retains the latest sight; policy runs in Decide.
@@ -44,7 +44,7 @@ type Script struct {
 	Moves []Move
 	// Results collects what the session reports back.
 	Results []session.Result
-	// Seen counts observations delivered.
+	// Seen counts sights delivered.
 	Seen int
 	slot session.SlotID
 }

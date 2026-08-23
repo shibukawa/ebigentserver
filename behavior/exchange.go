@@ -43,9 +43,9 @@ type RequestRecord struct {
 
 // AnalysisRequest is everything the analyzer may use: the vocabulary,
 // the featurized corpus, and the current library (so proposals can be
-// diff-aware). Observations are deliberately absent by default — the
-// bits ARE the visible facts, which enforces the observation boundary at
-// the file format level; set IncludeObservations for games whose
+// diff-aware). Sights are deliberately absent by default — the
+// bits ARE the visible facts, which enforces the sight boundary at
+// the file format level; set IncludeSights for games whose
 // analyzer needs the raw view.
 type AnalysisRequest struct {
 	Game     string           `json:"game"`

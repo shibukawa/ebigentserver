@@ -35,10 +35,10 @@ type SlotID uint16
 // is one tick.
 type Tick uint64
 
-// StageRuleSet is what a game implements to be hosted (rule:observation-content-
+// StageRuleSet is what a game implements to be hosted (rule:sight-content-
 // owned-by-game: every content decision lives here, none in the session).
 // S is the game's world state (concept:world-state), A its action type
-// (concept:action), O its observation type (concept:observation).
+// (concept:action), O its sight type (concept:sight).
 //
 // S and O are deliberately distinct type parameters even though a Phase 1
 // game may project one into the other almost unchanged: per-slot visibility
@@ -60,7 +60,7 @@ type StageRuleSet[S, A, O any] interface {
 	// Apply advances the state by one already-validated action. Legality
 	// was established by the ActionValidator; Apply must not fail.
 	Apply(state *S, slot SlotID, action A)
-	// Project builds the observation a slot is allowed to see. Phase 1
+	// Project builds the sight a slot is allowed to see. Phase 1
 	// games use global scope: every slot sees the same world.
 	Project(state *S, slot SlotID) O
 	// Evaluate computes the slot's data:evaluation-signal
@@ -277,7 +277,7 @@ func (s *Session[S, A, O]) Run(ctx context.Context) error {
 
 		// Every slot observes the tick's opening position before any
 		// action of the tick applies; acting slots' projections are
-		// retained because the observation as delivered is the record
+		// retained because the sight as delivered is the record
 		// (data:decision-record).
 		delivered := s.observeAll(acting, signals)
 
@@ -335,7 +335,7 @@ func (s *Session[S, A, O]) recordCommit() {
 
 // decideLegal obtains one action from a slot's agent, re-requesting up to
 // the retry budget when the validator rejects (drop rung of the
-// api:action-validator escalation ladder). obs is the observation as
+// api:action-validator escalation ladder). obs is the sight as
 // delivered this tick, retained for the decision record.
 func (s *Session[S, A, O]) decideLegal(ctx context.Context, slot SlotID, obs O, sig EvaluationSignal) (action A, ok bool, err error) {
 	agent := s.agents[slot]
@@ -381,11 +381,11 @@ func (s *Session[S, A, O]) evaluateAll() (map[SlotID]EvaluationSignal, bool) {
 
 // observeAll delivers each slot's projection in commit order and returns
 // the projections of the acting slots for the decision records. The
-// evaluation signal travels inside the observation wherever the game's
+// evaluation signal travels inside the sight wherever the game's
 // Project chooses to put it (data:evaluation-signal is delivered to every
 // controller equally); it is also recorded alongside.
 //
-// Non-acting deliveries are recorded here as observation-only rows;
+// Non-acting deliveries are recorded here as sight-only rows;
 // acting slots' rows are written by decideLegal once the action is known,
 // so each delivery appears exactly once in the decisions stream.
 func (s *Session[S, A, O]) observeAll(acting []SlotID, signals map[SlotID]EvaluationSignal) map[SlotID]O {
@@ -416,7 +416,7 @@ func (s *Session[S, A, O]) abandonRemaining(signals map[SlotID]EvaluationSignal)
 }
 
 // drain is running → draining → ended: flush progress reports, deliver the
-// final observation and result to every agent (agent leave completes before
+// final sight and result to every agent (agent leave completes before
 // the session-end callback per concept:session-lifecycle), then end.
 func (s *Session[S, A, O]) drain(signals map[SlotID]EvaluationSignal) error {
 	if err := s.transition(StateDraining); err != nil {

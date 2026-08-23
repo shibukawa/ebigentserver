@@ -29,10 +29,10 @@ type Tactic struct {
 	Name string `json:"name"`
 	// Condition names the vocabulary Feature that activates the
 	// tactic; empty means always (the fallback group). Because the
-	// condition is an observation predicate, switching is
+	// condition is an sight predicate, switching is
 	// deterministic and replays exactly — and a player's order to an
 	// allied agent can drive it by simply being part of the
-	// observation.
+	// sight.
 	Condition string `json:"condition,omitempty"`
 	// ChipKeys select library chips (Chip.Key() strings) in decision
 	// order within this tactic.
@@ -93,7 +93,7 @@ func GenerateLoadoutAgent(spec CodegenSpec, v *Vocabulary, lib *Library, l *Load
 	}
 	b.WriteString(")\n\n")
 
-	fmt.Fprintf(&b, "// %s selects a tactic from the observation, then runs its chips.\n", funcName)
+	fmt.Fprintf(&b, "// %s selects a tactic from the sight, then runs its chips.\n", funcName)
 	fmt.Fprintf(&b, "func %s(obs %s) (%s, bool) {\n\tswitch {\n", funcName, spec.ObsType, spec.ActionType)
 	for _, t := range l.Tactics {
 		cond := "true"

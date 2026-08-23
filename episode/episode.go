@@ -72,12 +72,7 @@ type Decision struct {
 	// the writer's slot-kind table, empty when unknown.
 	AgentKind string `json:"agent_kind,omitempty"`
 	// Sight is the concept:sight as delivered — never the world state.
-	//
-	// The key on disk stays "observation". data:episode-log is a format
-	// every recorded corpus already carries, so renaming the term does
-	// not get to rename the data — a corpus written last year has to keep
-	// reading.
-	Sight json.RawMessage `json:"observation"`
+	Sight json.RawMessage `json:"sight"`
 	// Action is the action taken, or null.
 	Action json.RawMessage `json:"action,omitempty"`
 	// Evaluation is the data:evaluation-signal at this decision point.

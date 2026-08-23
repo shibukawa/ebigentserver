@@ -89,11 +89,11 @@ func main() {
 		fatal(err)
 	}
 
-	// The seat this build plays is Detached: its observations arrive as
+	// The seat this build plays is Detached: its sights arrive as
 	// the broadcast world the renderer already holds, so delivering them
 	// to the seat as well would duplicate the path a remote player uses.
 	// Every other seat gets a local bot, admitted directly because a
-	// local controller does want the final observation and Ended.
+	// local controller does want the final sight and Ended.
 	local := localSeats()
 	for i, slot := range game.Slots() {
 		if i < local {

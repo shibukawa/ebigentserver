@@ -43,7 +43,7 @@ func WriteDuckDBSQL(w io.Writer, root string) error {
 	// Column specs mirror the row shapes in episode/episode.go plus the
 	// header's stream discriminator; absent keys read as NULL.
 	streams := []struct{ name, columns string }{
-		{"decisions", `stream: 'VARCHAR', tick: 'UBIGINT', slot: 'USMALLINT', agent_kind: 'VARCHAR', observation: 'JSON', action: 'JSON', evaluation: 'JSON', latency_micros: 'BIGINT'`},
+		{"decisions", `stream: 'VARCHAR', tick: 'UBIGINT', slot: 'USMALLINT', agent_kind: 'VARCHAR', sight: 'JSON', action: 'JSON', evaluation: 'JSON', latency_micros: 'BIGINT'`},
 		{"events", `stream: 'VARCHAR', tick: 'UBIGINT', kind: 'VARCHAR', "from": 'VARCHAR', "to": 'VARCHAR', slot: 'USMALLINT', reason: 'VARCHAR', world_hash: 'VARCHAR', action_hash: 'VARCHAR'`},
 		{"outcomes", `stream: 'VARCHAR', slot: 'USMALLINT', result: 'VARCHAR', reward: 'BIGINT', duration_ticks: 'UBIGINT'`},
 		{"world", `stream: 'VARCHAR', tick: 'UBIGINT', state: 'JSON'`},
@@ -89,7 +89,7 @@ ORDER BY rejections DESC, reason;
 
 -- Action rows vs sight-only deliveries.
 SELECT count(*) FILTER (WHERE action IS NOT NULL) AS action_rows,
-       count(*) FILTER (WHERE action IS NULL) AS observation_rows
+       count(*) FILTER (WHERE action IS NULL) AS sight_rows
 FROM decisions;
 `)
 

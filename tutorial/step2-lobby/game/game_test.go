@@ -81,14 +81,14 @@ func TestFullBoardWithoutALineIsADraw(t *testing.T) {
 	}
 }
 
-// TestObservationCarriesTheLegalMoves is what lets a controller — the
+// TestSightCarriesTheLegalMoves is what lets a controller — the
 // window now, a distilled agent later — choose without a rule engine of
 // its own.
-func TestObservationCarriesTheLegalMoves(t *testing.T) {
+func TestSightCarriesTheLegalMoves(t *testing.T) {
 	s := play(t, 4)
 	obs := (game.RuleSet{}).Project(&s, game.SlotO)
 	if obs.You != game.SlotO || obs.Mark != game.O {
-		t.Fatalf("observation identifies %v as %v", obs.You, obs.Mark)
+		t.Fatalf("sight identifies %v as %v", obs.You, obs.Mark)
 	}
 	if len(obs.Legal) != 8 {
 		t.Fatalf("Legal has %d cells, want 8", len(obs.Legal))

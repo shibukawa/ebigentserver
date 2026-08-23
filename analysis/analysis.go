@@ -24,7 +24,7 @@ import (
 
 // DecisionRow is the retained slice of one data:decision-record row:
 // enough for frequency and join analytics without holding the
-// observation payloads of a large corpus in memory.
+// sight payloads of a large corpus in memory.
 type DecisionRow struct {
 	Tick      uint64
 	Slot      uint16
@@ -141,7 +141,7 @@ func streamName(file string) string {
 }
 
 // scanLines runs fn over every non-empty line of a JSONL file. The
-// buffer cap admits large observation payloads.
+// buffer cap admits large sight payloads.
 func scanLines(path string, fn func(line []byte) error) error {
 	f, err := os.Open(path)
 	if err != nil {

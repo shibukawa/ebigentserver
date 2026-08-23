@@ -288,7 +288,7 @@ func TestWriteDuckDBSQL(t *testing.T) {
 		"win_rate",
 		"duration_ticks",
 		"kind = 'rejected'",
-		"observation_rows",
+		"sight_rows",
 	} {
 		if !strings.Contains(a.String(), want) {
 			t.Errorf("SQL output missing %q", want)

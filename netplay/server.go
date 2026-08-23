@@ -2,7 +2,7 @@
 // admits connections, turns broadcasts into per-receiver state streams,
 // polices inbound traffic, and detects departures; the client side
 // reconstructs the world and drives an agent. It is generic over the
-// game's state S, action A, generated delta D, and observation O — the
+// game's state S, action A, generated delta D, and sight O — the
 // pong and tron samples share every line of it.
 //
 // Enforcement lives here because this is the authoritative boundary:

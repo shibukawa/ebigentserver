@@ -60,7 +60,7 @@
 | `concept:agent-view` | 済 | [statesync/view.go](statesync/view.go) — `ProjectedSender`: world→**slot別view**→保持→diff→送信。deltaの機構をそのまま再利用 |
 | `concept:visibility-scope` | 済 | self / team / role を dungeon サンプルで実証(global は既存サンプル)。**投影がシリアライズより前**なので、隠れた状態はエンコードすらされない |
 | `data:visibility-annotation` | 済 | [session/visibility.go](session/visibility.go) — scope / schema / visible_entities / derived / affordances / evaluation_scope。ゲームが明示発行し、視界に埋めて記録される |
-| `rule:observation-content-owned-by-game` | 済 | 可視性述語とフィールド選択は [project.go](samples/dungeon/dungeon/project.go)(ゲーム側)、保持・diff・配送は framework |
+| `rule:sight-content-owned-by-game` | 済 | 可視性述語とフィールド選択は [project.go](samples/dungeon/dungeon/project.go)(ゲーム側)、保持・diff・配送は framework |
 | 役割とチーム | 済 | scout(視界広) / engineer(罠解除) / carrier(宝運搬) / navigator(出口既知)。行動も情報も役割でゲート |
 | `rule:evaluation-respects-visibility-scope` | 済 | パーティのsignalはチーム可視の事実のみから計算(隠し罠を置いても不変、テストで検証)。DMはprivilegedをannotationで宣言 |
 | `sample:cooperative-maze` → `sample:dungeon-master` | 済(統合) | [samples/dungeon/](samples/dungeon/) — 両サンプルの能力(チーム協力+役割 / 種類の違うview)を1本に統合。梯子の粒度からの意図的な逸脱 |
@@ -151,7 +151,7 @@
 | `concept:session-lifecycle` 状態機械 | 済 | [session/lifecycle.go](session/lifecycle.go) — created → admitting → running → draining → ended / aborted、遷移表をテストで全列挙 |
 | `rule:deterministic-tick-commit` | 済 | acting slots をステップ冒頭でスナップショット、slot ID 順にコミット |
 | `decision:owner-namespaced-entity-ids` | 済 | [entity/](entity/) — 上位16bit=owner、下位48bit=連番 |
-| `concept:observation`（global scope） | 済 | `StageRuleSet.Project` — WorldState とは別型（Phase 5 への継ぎ目） |
+| `concept:sight`（global scope） | 済 | `StageRuleSet.Project` — WorldState とは別型（Phase 5 への継ぎ目） |
 | `data:evaluation-signal` | 済 | [session/evaluation.go](session/evaluation.go) — 全フィールドを最初から確保、Phase 1 は terminal のみ使用 |
 | `api:action-validator`（legality フック） | 済 | [session/validator.go](session/validator.go) — 位置を確保、retry budget 超過で abort |
 | `data:progress-report` 発行点 | 済 | [session/report.go](session/report.go) — terminal 発行のみ、Seq が冪等キー |

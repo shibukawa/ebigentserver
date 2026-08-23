@@ -29,7 +29,7 @@ type Match[S, A, O any] struct {
 // because that is the path a remote peer uses and the framework refuses
 // to keep two (rule:session-independent-of-transport-and-agent-kind). A
 // local agent therefore needs something to turn each committed world into
-// an observation, ask for a decision, and submit it. This is that.
+// an sight, ask for a decision, and submit it. This is that.
 type driver[S, A, O any] struct {
 	slot  session.SlotID
 	agent session.Agent[O, A]

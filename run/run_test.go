@@ -28,7 +28,7 @@ type action struct {
 	Step int `json:"step"`
 }
 
-type observation struct {
+type sight struct {
 	You    session.SlotID `json:"you"`
 	Mine   int            `json:"mine"`
 	Theirs int            `json:"theirs"`
@@ -51,8 +51,8 @@ func (rules) Apply(s *state, slot session.SlotID, a action) {
 
 func (rules) Advance(s *state) {}
 
-func (rules) Project(s *state, slot session.SlotID) observation {
-	return observation{You: slot, Mine: s.Count[slot-1], Theirs: s.Count[2-slot]}
+func (rules) Project(s *state, slot session.SlotID) sight {
+	return sight{You: slot, Mine: s.Count[slot-1], Theirs: s.Count[2-slot]}
 }
 
 func (rules) Evaluate(s *state, slot session.SlotID) session.EvaluationSignal {
@@ -77,13 +77,13 @@ func (rules) Evaluate(s *state, slot session.SlotID) session.EvaluationSignal {
 type stepper struct{ by int }
 
 func (*stepper) Joined(session.SlotID)                   {}
-func (*stepper) Observe(observation)                     {}
+func (*stepper) Observe(sight)                           {}
 func (s *stepper) Decide(context.Context) (action, bool) { return action{Step: s.by}, true }
 func (*stepper) Ended(session.Result)                    {}
 
-func config(id string, seed uint64) session.Config[state, action, observation] {
+func config(id string, seed uint64) session.Config[state, action, sight] {
 	tuning := session.TuningProfile{TickRate: 60, SendRate: 60, HistoryDepth: 1}
-	return session.Config[state, action, observation]{
+	return session.Config[state, action, sight]{
 		ID:        id,
 		Slots:     []session.SlotID{1, 2},
 		RuleSet:   rules{},
@@ -93,7 +93,7 @@ func config(id string, seed uint64) session.Config[state, action, observation] {
 	}
 }
 
-func newAgent(slot session.SlotID) (string, session.Agent[observation, action]) {
+func newAgent(slot session.SlotID) (string, session.Agent[sight, action]) {
 	if slot == 1 {
 		return "fast", &stepper{by: 2}
 	}
@@ -104,8 +104,8 @@ func options() run.Options {
 	return run.Options{Name: "countup", Devices: run.Keyboard}
 }
 
-func binding() run.Binding[state, action, observation] {
-	return run.Binding[state, action, observation]{
+func binding() run.Binding[state, action, sight] {
+	return run.Binding[state, action, sight]{
 		Slots:             []session.SlotID{1, 2},
 		Config:            config,
 		NewAgent:          newAgent,
@@ -114,9 +114,9 @@ func binding() run.Binding[state, action, observation] {
 	}
 }
 
-func newRoster(t *testing.T, opts run.Options) *run.Roster[state, action, observation] {
+func newRoster(t *testing.T, opts run.Options) *run.Roster[state, action, sight] {
 	t.Helper()
-	r, err := run.NewRoster[state, action, observation](opts, []session.SlotID{1, 2})
+	r, err := run.NewRoster[state, action, sight](opts, []session.SlotID{1, 2})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -187,7 +187,7 @@ func TestOptionsRejectSharedSeatsWithoutSharedScreen(t *testing.T) {
 	if err := opts.Validate(); err == nil {
 		t.Error("two local seats were accepted without a shared screen")
 	}
-	if _, err := run.NewRoster[state, action, observation](run.Options{Name: "x"}, []session.SlotID{1}); err == nil {
+	if _, err := run.NewRoster[state, action, sight](run.Options{Name: "x"}, []session.SlotID{1}); err == nil {
 		t.Error("a game declaring no input devices was accepted")
 	}
 }
@@ -213,7 +213,7 @@ func TestLocalAgentsAreDrivenByTheWrapper(t *testing.T) {
 	if err := r.FillBots(newAgent); err != nil {
 		t.Fatal(err)
 	}
-	watch := run.Watch[state, action, observation](nil)
+	watch := run.Watch[state, action, sight](nil)
 	cfg := config("driven", 1)
 	cfg.Recorder = watch
 
@@ -252,13 +252,13 @@ func TestLocalHumanSeatTakesInputFromSubmit(t *testing.T) {
 	cfg := config("submitting", 1)
 	// The human seat submits a huge step from the broadcast seam, which
 	// stands in for a key being held every frame.
-	var match *run.Match[state, action, observation]
+	var match *run.Match[state, action, sight]
 	cfg.Broadcast = func(_ session.Tick, _ *state) {
 		if match != nil {
 			match.Submit(slot, action{Step: 5})
 		}
 	}
-	watch := run.Watch[state, action, observation](nil)
+	watch := run.Watch[state, action, sight](nil)
 	cfg.Recorder = watch
 
 	match, err = r.Finalize(cfg)

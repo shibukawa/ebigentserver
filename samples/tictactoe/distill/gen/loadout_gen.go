@@ -10,7 +10,7 @@ import (
 	"github.com/shibukawa/ebigentserver/session"
 )
 
-// TacticDecide selects a tactic from the observation, then runs its chips.
+// TacticDecide selects a tactic from the sight, then runs its chips.
 func TacticDecide(obs ttt.Sight) (ttt.Move, bool) {
 	switch {
 	case obs.Board[4] == ttt.Empty:

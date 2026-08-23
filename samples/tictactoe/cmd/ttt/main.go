@@ -46,7 +46,7 @@ func main() {
 	}
 	stdin := bufio.NewScanner(os.Stdin)
 	// The watcher shows the final position when no human is seated to
-	// render it. It taps the X agent's observations from outside the
+	// render it. It taps the X agent's sights from outside the
 	// game: spectating is presentation, not a rule.
 	watcher := &watchedAgent{inner: makeAgent(*xKind, stdin)}
 	if err := s.Admit(ttt.SlotX, watcher); err != nil {

@@ -3,7 +3,7 @@
 // dungeon master's view and an adventurer's view are different structs,
 // and the full DungeonState is never a wire message at all — the
 // projection runs before serialization
-// (policy:observation-scoped-information).
+// (policy:sight-scoped-information).
 package msg
 
 import (

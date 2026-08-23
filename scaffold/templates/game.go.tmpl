@@ -121,7 +121,7 @@ type Action struct {
 	Flap bool
 }
 
-// Sight is what one slot may see (concept:observation).
+// Sight is what one slot may see (concept:sight).
 //
 // It is a separate type from State on purpose. Narrowing what a slot can
 // know later is a change to Project alone, and no controller can read
@@ -137,7 +137,7 @@ type Sight struct {
 	Pipes []Pipe
 	Tick  session.Tick
 	Over  bool
-	// Signal travels with the observation so every controller has a
+	// Signal travels with the sight so every controller has a
 	// criterion without asking for one.
 	Signal session.EvaluationSignal
 }
@@ -268,7 +268,7 @@ func overlapsX(x fixmath.F64) bool {
 	return x.Sub(pipeHW) < birdXF.Add(birdR) && x.Add(pipeHW) > birdXF.Sub(birdR)
 }
 
-// Project builds a slot's observation.
+// Project builds a slot's sight.
 func (g RuleSet) Project(s *State, slot session.SlotID) Sight {
 	me := index(slot)
 	others := make([]Bird, 0, Seats-1)
@@ -389,10 +389,10 @@ type Bot struct {
 
 var _ session.Agent[Sight, Action] = (*Bot)(nil)
 
-// Joined does nothing; the observation carries the slot.
+// Joined does nothing; the sight carries the slot.
 func (*Bot) Joined(session.SlotID) {}
 
-// Observe retains the latest observation.
+// Observe retains the latest sight.
 func (b *Bot) Observe(obs Sight) { b.last = obs }
 
 // Decide flaps when the bird has fallen below the next gap's centre.
@@ -421,7 +421,7 @@ func (b *Bot) Ended(r session.Result) { b.Result = r }
 // A realtime session never calls Observe or Decide itself: input arrives
 // through the slot's Inbox, because that is the same path a remote peer
 // uses. A local controller therefore needs something to turn each
-// broadcast world into an observation, ask for a decision, and submit
+// broadcast world into an sight, ask for a decision, and submit
 // it — which is all this is.
 //
 // OnWorld runs on the session's own goroutine, so a controller that

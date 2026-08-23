@@ -18,14 +18,14 @@ type ViewSender[S any] interface {
 // ProjectedSender is concept:agent-view: the server-side retained
 // per-agent projection, updated incrementally. Each send projects the
 // world through the game's visibility predicate into the receiver's view
-// type V (rule:observation-content-owned-by-game — the predicate and
+// type V (rule:sight-content-owned-by-game — the predicate and
 // field selection are the game's; retention, diffing, and baselines are
 // the framework's, reusing the data:state-delta machinery unchanged).
 //
 // Because the projection runs before serialization, hidden state is
 // never encoded, let alone sent: the scope is a boundary between
 // players, not a display filter (concept:visibility-scope's security
-// note, policy:observation-scoped-information).
+// note, policy:sight-scoped-information).
 type ProjectedSender[S, V, D any] struct {
 	project func(*S) V
 	inner   *Sender[V, D]

@@ -93,12 +93,12 @@ func TestSoloProducesATrainableCorpus(t *testing.T) {
 	}
 }
 
-// TestRecordedDecisionCarriesItsObservation checks the content of one
+// TestRecordedDecisionCarriesItsSight checks the content of one
 // decision row rather than the shape of the corpus. The sight as
 // delivered is the record (data:decision-record): a distilled predicate
 // is written against these fields, so if the quarry's position were
 // missing here, no enemy could be distilled from this log at all.
-func TestRecordedDecisionCarriesItsObservation(t *testing.T) {
+func TestRecordedDecisionCarriesItsSight(t *testing.T) {
 	root := t.TempDir()
 	if err := run.Serve(context.Background(), game.Options(), game.Binding(), run.ServeOptions{
 		Matches: 1,
@@ -121,7 +121,7 @@ func TestRecordedDecisionCarriesItsObservation(t *testing.T) {
 
 	type row struct {
 		Slot   uint16       `json:"slot"`
-		Sight  game.Sight   `json:"observation"`
+		Sight  game.Sight   `json:"sight"`
 		Action *game.Action `json:"action"`
 	}
 	scanner := bufio.NewScanner(f)

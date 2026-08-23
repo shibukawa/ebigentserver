@@ -2,7 +2,7 @@
 // honest form: bounded-label counters and structured events with the
 // required context fields. Every shed, reject, disconnect, and abort in
 // the hosting layers emits evidence here (policy:overload-handling's
-// last requirement); credentials and full observations never do.
+// last requirement); credentials and full sights never do.
 package observe
 
 import (

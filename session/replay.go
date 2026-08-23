@@ -21,7 +21,7 @@ var _ Agent[struct{}, struct{}] = (*ReplayAgent[struct{}, struct{}])(nil)
 // Joined does nothing.
 func (*ReplayAgent[O, A]) Joined(SlotID) {}
 
-// Observe discards the observation: the replayed decisions already
+// Observe discards the sight: the replayed decisions already
 // happened.
 func (*ReplayAgent[O, A]) Observe(O) {}
 

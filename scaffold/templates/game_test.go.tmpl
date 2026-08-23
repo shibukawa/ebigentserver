@@ -114,7 +114,7 @@ func TestValidatorRejectsADeadBird(t *testing.T) {
 	}
 }
 
-// An agent reads only its observation, so the projection decides what a
+// An agent reads only its sight, so the projection decides what a
 // controller can know. This pins the current scope so widening it is
 // deliberate.
 func TestProjectionGivesEachSlotItsOwnBird(t *testing.T) {
@@ -125,7 +125,7 @@ func TestProjectionGivesEachSlotItsOwnBird(t *testing.T) {
 	slots := Slots()
 	obs := g.Project(&s, slots[0])
 	if obs.You != slots[0] || obs.Self.Passed != 3 {
-		t.Errorf("slot 1 observation = %+v", obs)
+		t.Errorf("slot 1 sight = %+v", obs)
 	}
 	if len(obs.Others) != Seats-1 {
 		t.Errorf("Others = %d entries, want %d", len(obs.Others), Seats-1)

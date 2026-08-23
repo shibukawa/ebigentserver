@@ -53,7 +53,7 @@ flanker  3739 decisions → 8 chips → examples/solo/distill/gen/flanker
 | コーパスに勝ちと負けの両方が入る(片方だけでは学習素材にならない) | `TestCorpusCarriesBothOutcomes` |
 | 敵2種は本当に別物 | `TestEnemiesDisagree` |
 | 全敵の判断が視界つきで記録され、`analysis` が読める形になる | `TestSoloProducesATrainableCorpus` |
-| 記録された視界が蒸留に必要な中身を持っている | `TestRecordedDecisionCarriesItsObservation` |
+| 記録された視界が蒸留に必要な中身を持っている | `TestRecordedDecisionCarriesItsSight` |
 | 記録された判断が一つ残らず語彙で説明できる | `TestEveryDecisionIsCovered` |
 | **同じ語彙・同じコーパスから、2種の敵が別の決定リストになる** | `TestKindsDistillDifferently` |
 | コミット済み生成コードが古びていない | `TestGeneratedCodeMatchesTheCorpus` |

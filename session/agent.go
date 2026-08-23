@@ -8,7 +8,7 @@ import "context"
 // interface — game rules can therefore never ask what occupies a slot
 // (decision:no-ai-game-mode).
 //
-// An agent reads only its observation O, never the world state.
+// An agent reads only its sight O, never the world state.
 //
 // Call order per session (concept:session-lifecycle):
 // Joined once, before the first Observe; then Observe once per step
@@ -19,7 +19,7 @@ type Agent[O, A any] interface {
 	// before the first Observe.
 	Joined(slot SlotID)
 	// Observe delivers the slot's projection of the current step
-	// (concept:observation). It never blocks the session for long: in
+	// (concept:sight). It never blocks the session for long: in
 	// step pacing the session waits in Decide, not here.
 	Observe(obs O)
 	// Decide returns the agent's next action, or ok=false for none.

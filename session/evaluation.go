@@ -35,7 +35,7 @@ func (t Terminal) String() string {
 }
 
 // EvaluationSignal is data:evaluation-signal: the session-computed
-// judgement of how a slot is doing, delivered with every observation and
+// judgement of how a slot is doing, delivered with every sight and
 // recorded for analysis. Without it an agent can act legally and still not
 // know whether it is winning.
 //

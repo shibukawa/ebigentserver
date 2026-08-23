@@ -8,7 +8,7 @@ package session
 // too — the session cannot know whether it is being recorded to disk,
 // sampled, or ignored).
 
-// EpisodeStart is delivered once, before the first observation.
+// EpisodeStart is delivered once, before the first sight.
 type EpisodeStart struct {
 	// SessionID names the episode's session.
 	SessionID string
@@ -41,7 +41,7 @@ type Checkpoint struct {
 }
 
 // Recorder receives everything a replay needs (concept:episode-recording-
-// mode, replay_complete: every delivered observation, accepted action,
+// mode, replay_complete: every delivered sight, accepted action,
 // lifecycle transition, rng seed, and periodic checkpoints). A nil
 // Config.Recorder records nothing at zero cost.
 //
@@ -50,11 +50,11 @@ type Checkpoint struct {
 type Recorder[S, A, O any] interface {
 	// EpisodeStarted opens the episode.
 	EpisodeStarted(start EpisodeStart)
-	// Observed is one delivered observation for a slot that is not
+	// Observed is one delivered sight for a slot that is not
 	// deciding this tick (data:decision-record with action none).
 	Observed(tick Tick, slot SlotID, obs O, sig EvaluationSignal)
-	// Decided is one accepted action together with the observation as
-	// delivered at the decision point — the observation is the record
+	// Decided is one accepted action together with the sight as
+	// delivered at the decision point — the sight is the record
 	// (data:decision-record). latencyMicros is wall-clock decision
 	// latency: measurement metadata, never simulation input.
 	Decided(tick Tick, slot SlotID, obs O, action A, sig EvaluationSignal, latencyMicros int64)

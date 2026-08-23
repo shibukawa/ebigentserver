@@ -15,7 +15,7 @@ import (
 //
 // Recording is why a solo game is worth putting on this framework at all:
 // every decision every controller made — the player's and each enemy's —
-// lands here with the observation it was made from, which is the input
+// lands here with the sight it was made from, which is the input
 // flow:behavior-tree-synthesis needs and the one thing a hand-written
 // enemy loop never produces.
 type Recording[S, A, O any] struct {

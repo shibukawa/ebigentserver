@@ -3,7 +3,7 @@ package session
 // VisibilityAnnotation is data:visibility-annotation: the game's explicit
 // declaration of what a slot could perceive at a decision point — emitted
 // by the game, never inferred by the framework, because only the game
-// knows why something was visible. Games embed it in their observation
+// knows why something was visible. Games embed it in their sight
 // and view types, so it records and transmits with them.
 //
 // Without it an analyzer cannot tell a hidden field from an unused one,
@@ -13,7 +13,7 @@ type VisibilityAnnotation struct {
 	// Scope names the applied concept:visibility-scope: "self", "team",
 	// "role", "spectator", or "global".
 	Scope string `json:"scope"`
-	// Schema names which observation shape this agent received —
+	// Schema names which sight shape this agent received —
 	// asymmetric games ship views that differ in kind, not just radius.
 	Schema string `json:"schema"`
 	// VisibleEntities lists ids the agent could currently perceive.

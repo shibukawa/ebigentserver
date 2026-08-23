@@ -27,7 +27,7 @@ networked game uses, and it is deliberately small enough to throw away.
 | `Sight` | what one slot may see — narrow this before shipping |
 | `RuleSet.Advance` | one simulation step; the physics |
 | `RuleSet.Apply` | how a validated action changes the world |
-| `RuleSet.Project` | how the world becomes an observation |
+| `RuleSet.Project` | how the world becomes an sight |
 | `RuleSet.Evaluate` | the score, progress, and terminal state of a slot |
 | `Validator.Legal` | which actions are possible at all |
 | `Tuning` | tick rate, send rate, snapshot cadence |
@@ -54,7 +54,7 @@ seed alone, so the same seed replays the same episode. Calling
 `Sight` is the piece worth attention early. It is a separate type
 from `State` even though this placeholder copies the whole pipe list into
 it, because narrowing what a slot can see later is a change to `Project`
-alone — and every controller, human or not, reads only its observation.
+alone — and every controller, human or not, reads only its sight.
 
 ## Configuration
 

@@ -73,7 +73,7 @@ type Options[S, A, D, O any] struct {
 	// EncodeInput and DecodeInput carry data:player-input.
 	EncodeInput func(dst []byte, a A) []byte
 	DecodeInput func(b []byte) (A, error)
-	// Project builds a slot's observation on the guest side, from the
+	// Project builds a slot's sight on the guest side, from the
 	// world the guest reconstructed.
 	Project func(world *S, slot session.SlotID) O
 	// Port is the host's listening port; 0 picks a free one.

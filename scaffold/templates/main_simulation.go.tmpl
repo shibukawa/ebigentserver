@@ -46,7 +46,7 @@ func main() {
 		fatal(err)
 	}
 	// A local bot is admitted directly rather than as session.Detached:
-	// the session delivers the final observation and Ended to whatever
+	// the session delivers the final sight and Ended to whatever
 	// sits in the seat, and a local controller wants both. Detached is
 	// for a seat whose real controller is across a link, where local
 	// delivery would duplicate the stream it already receives.
