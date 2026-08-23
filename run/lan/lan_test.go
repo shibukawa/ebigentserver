@@ -225,7 +225,7 @@ func TestTwoInstancesPlayOverTheLink(t *testing.T) {
 	arrived := make(chan *lan.Guest[State, Action, Delta, Sight], 1)
 	joinErr := make(chan error, 1)
 	go func() {
-		g, err := lan.JoinAt(ctx, opts, host.Endpoint())
+		g, err := sitAt(ctx, opts, host.Endpoint())
 		if err != nil {
 			joinErr <- err
 			return
@@ -407,7 +407,7 @@ func TestBrowseFindsTheHost(t *testing.T) {
 	// The endpoint the beacon carried is enough to take a seat.
 	guest := make(chan error, 1)
 	go func() {
-		_, err := lan.JoinAt(ctx, opts, b.Endpoint)
+		_, err := sitAt(ctx, opts, b.Endpoint)
 		guest <- err
 	}()
 	deadline := time.Now().Add(5 * time.Second)
@@ -445,7 +445,7 @@ func TestProtocolMismatchIsRefusedAtTheSeat(t *testing.T) {
 
 	stale := options()
 	stale.Protocol = "lan-test-0"
-	if _, err := lan.JoinAt(ctx, stale, host.Endpoint()); err == nil {
+	if _, err := sitAt(ctx, stale, host.Endpoint()); err == nil {
 		t.Fatal("a guest speaking an older protocol was seated")
 	}
 	for _, seat := range roster.Seats() {
@@ -509,12 +509,30 @@ func TestPresetDiscoversThenJoins(t *testing.T) {
 		t.Fatalf("discovered %+v, want lan-test with 1 seated", found[0])
 	}
 
-	// Only now does anybody join — because a person chose to.
+	// Only now does anybody reach it — because a person chose to. And
+	// reaching is not sitting: the roster is readable and still untouched.
 	guest, err := preset.Match(ctx, found[0])
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer guest.Close()
+	if guest.Seated() {
+		t.Fatal("matching took a seat")
+	}
+	if seats := guest.Room().Seats; len(seats) != 2 || !seats[0].Filled() || seats[1].Filled() {
+		t.Fatalf("the room reads %v, want the host seated and one seat free", seats)
+	}
+	if first.Complete() {
+		t.Fatal("the host's roster filled without anybody sitting")
+	}
+	if got := guest.LocalSeats(); len(got) != 0 {
+		t.Fatalf("an instance that only matched plays %v", got)
+	}
+
+	// Sitting is the separate act.
+	if err := guest.Sit(ctx); err != nil {
+		t.Fatal(err)
+	}
 
 	deadline := time.Now().Add(5 * time.Second)
 	for !first.Complete() {
@@ -558,7 +576,7 @@ func TestRebindMovesTheOfferToTheNextMatch(t *testing.T) {
 	}
 	host.Rebind(second)
 
-	guest, err := lan.JoinAt(ctx, opts, host.Endpoint())
+	guest, err := sitAt(ctx, opts, host.Endpoint())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -613,7 +631,7 @@ func TestGuestLearnsTheMatchEnded(t *testing.T) {
 	}
 	defer host.Close()
 
-	guest, err := lan.JoinAt(ctx, opts, host.Endpoint())
+	guest, err := sitAt(ctx, opts, host.Endpoint())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -678,4 +696,165 @@ func TestGuestLearnsTheMatchEnded(t *testing.T) {
 	if !guest.Over() {
 		t.Fatal("Over() is false after Play returned")
 	}
+}
+
+// sitAt matches and then sits, which is what taking a seat now takes. The
+// tests above are about what happens once somebody is seated, so they say
+// it in one call rather than restating the split every time.
+func sitAt(ctx context.Context, opts lan.Options[State, Action, Delta, Sight], endpoint string) (*lan.Guest[State, Action, Delta, Sight], error) {
+	g, err := lan.MatchAt(ctx, opts, endpoint)
+	if err != nil {
+		return nil, err
+	}
+	if err := g.Sit(ctx); err != nil {
+		_ = g.Close()
+		return nil, err
+	}
+	return g, nil
+}
+
+// TestLookingCostsTheRoomNothing is the case the split exists for: a
+// player reaches a room, reads who is there, and leaves. Before the
+// split, looking took a seat and gave it back, which every other player
+// watched happen.
+func TestLookingCostsTheRoomNothing(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+
+	roster, opts := hostRoster(t), options()
+	host, err := lan.Open(ctx, opts, roster, 7)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer host.Close()
+
+	before := roster.Seats()
+	guest, err := lan.MatchAt(ctx, opts, host.Endpoint())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if guest.Seated() {
+		t.Error("matching took a seat")
+	}
+	if got := roster.Seats(); !sameSeating(before, got) {
+		t.Errorf("the roster moved from %v to %v with nobody sitting", before, got)
+	}
+
+	// Leaving frees nothing, because nothing was held.
+	if err := guest.Close(); err != nil {
+		t.Fatalf("leaving: %v", err)
+	}
+	if got := roster.Seats(); !sameSeating(before, got) {
+		t.Errorf("the roster is %v after a look, want %v", got, before)
+	}
+
+	// And the seat is still there for somebody who does commit.
+	second, err := sitAt(ctx, opts, host.Endpoint())
+	if err != nil {
+		t.Fatalf("sitting after a look: %v", err)
+	}
+	defer second.Close()
+	if !second.Seated() {
+		t.Error("Sit returned without a seat")
+	}
+}
+
+// TestTheRoomStaysFreshWhileLooking covers why looking is worth doing at
+// all: somebody arriving has to show up while the player is still
+// deciding, or the roster they are reading is a photograph.
+func TestTheRoomStaysFreshWhileLooking(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+
+	roster, opts := hostRoster(t), options()
+	host, err := lan.Open(ctx, opts, roster, 7)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer host.Close()
+
+	looking, err := lan.MatchAt(ctx, opts, host.Endpoint())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer looking.Close()
+	if filled := seatedCount(looking.Room().Seats); filled != 1 {
+		t.Fatalf("the room opens with %d seated, want the host alone", filled)
+	}
+
+	sitter, err := sitAt(ctx, opts, host.Endpoint())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer sitter.Close()
+
+	deadline := time.Now().Add(5 * time.Second)
+	for seatedCount(looking.Room().Seats) < 2 {
+		if time.Now().After(deadline) {
+			t.Fatalf("the arrival never reached the looker: %v", looking.Room().Seats)
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+}
+
+// TestPlayBeforeSitIsRefused keeps a matched instance from driving a link
+// it never opened.
+func TestPlayBeforeSitIsRefused(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+
+	roster, opts := hostRoster(t), options()
+	host, err := lan.Open(ctx, opts, roster, 7)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer host.Close()
+
+	guest, err := lan.MatchAt(ctx, opts, host.Endpoint())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer guest.Close()
+	if err := guest.Play(ctx); err == nil {
+		t.Fatal("an instance with no seat drove the link")
+	}
+}
+
+// sameSeating compares two roster snapshots by who holds what.
+func sameSeating(a, b []run.Seat) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i].Slot != b[i].Slot || a[i].Kind != b[i].Kind || a[i].ID != b[i].ID {
+			return false
+		}
+	}
+	return true
+}
+
+func seatedCount(seats []run.Seat) int {
+	n := 0
+	for _, s := range seats {
+		if s.Filled() {
+			n++
+		}
+	}
+	return n
+}
+
+// hostRoster is a two-seat roster with the host already sitting, which is
+// the state every room in these tests opens in.
+func hostRoster(t *testing.T) *run.Roster[State, Action, Sight] {
+	t.Helper()
+	roster, err := run.NewRoster[State, Action, Sight](
+		run.Options{Name: "lan-test", Devices: run.Keyboard, MaxLocalSeats: 1},
+		[]session.SlotID{slotHost, slotGuest})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := roster.SitLocal("host-player"); err != nil {
+		t.Fatal(err)
+	}
+	return roster
 }

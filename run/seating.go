@@ -51,20 +51,45 @@ type Host[W, A, S any] interface {
 	Close() error
 }
 
-// Guest is this instance playing somebody else's match. There is no
-// session here and no simulation: the world arrives already committed,
-// and the only thing travelling the other way is data:player-input.
+// Room is a match seen from outside it: what somebody deciding whether to
+// stay needs to read, and nothing only the host can act on.
+type Room struct {
+	// Title is what the room calls itself.
+	Title string
+	// Seats is the roster as the host last published it, so a joiner can
+	// see who is already here before committing to a seat.
+	Seats []Seat
+}
+
+// Guest is this instance in somebody else's match. There is no session
+// here and no rule set: the world arrives already committed, and the only
+// thing travelling the other way is data:player-input.
+//
+// Matching and sitting are two acts. Match reaches the room and this
+// interface starts there, holding no seat: a player is entitled to read
+// the roster and leave, and leaving from here costs the room nothing.
+// Sit is the separate step that takes one.
 type Guest[W, A, S any] interface {
 	Controls[A]
+	// Room reports what this instance can see of the room, refreshed
+	// while it is looking.
+	Room() Room
+	// Seated reports whether this instance holds a seat yet.
+	Seated() bool
+	// Sit takes a seat. It is refused when the room is full or when the
+	// terms it declared are not met — a check against what was already
+	// stated, never a judgement about who is asking.
+	Sit(ctx context.Context) error
 	// OnWorld registers the sink for each reconstructed world. It is
 	// called on the link's goroutine, never the frame's, so the sink
 	// must copy rather than retain.
 	OnWorld(func(session.Tick, *W))
-	// Play drives the link until it ends or ctx does.
+	// Play drives the link until it ends or ctx does. It needs a seat.
 	Play(ctx context.Context) error
 	// Over reports that Play has returned.
 	Over() bool
-	// Close ends the link.
+	// Close leaves. From a matched instance that frees nothing, which is
+	// the whole reason the two acts are separate.
 	Close() error
 }
 

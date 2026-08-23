@@ -72,6 +72,10 @@ const (
 	// phaseChoosing is showing what answered, so a person decides
 	// instead of being put into whichever match replied first.
 	phaseChoosing
+	// phaseLooking is inside a room but holding no seat: the roster is
+	// on screen and the player may sit or go back. Going back frees
+	// nothing, which is why this state is worth having.
+	phaseLooking
 	// phaseSeated is holding a seat: hosting and waiting, or gathering
 	// people at this screen.
 	phaseSeated
@@ -91,9 +95,10 @@ type Lobby[W, A, S any] struct {
 	lobby  LobbyOptions
 	binder run.Binding[W, A, S]
 
-	phase phase
-	guest bool
-	err   error
+	phase   phase
+	guest   bool
+	looking run.Guest[W, A, S]
+	err     error
 
 	mu    sync.Mutex
 	found []run.Found
@@ -154,6 +159,8 @@ func (l *Lobby[W, A, S]) Update() error {
 		return l.updateAsking()
 	case phaseChoosing:
 		return l.updateChoosing()
+	case phaseLooking:
+		return l.updateLooking()
 	default:
 		return l.updateSeated()
 	}
@@ -213,15 +220,39 @@ func (l *Lobby[W, A, S]) updateChoosing() error {
 	}
 	guest, err := l.app.Matchmaking().Match(l.app.Context(), found[row])
 	if err != nil {
-		// That host filled up or went away between the beacon and the
-		// click. Say so and let them pick again.
+		// That host went away between the beacon and the click. Say so
+		// and let them pick again.
 		l.err = err
 		l.mu.Lock()
 		l.found = append(l.found[:row:row], l.found[row+1:]...)
 		l.mu.Unlock()
 		return nil
 	}
-	l.app.BecomeGuest(guest)
+	// Reaching a room is not taking a seat. Show who is there and let
+	// the player decide, which is the whole reason the two are separate.
+	l.looking, l.phase, l.err = guest, phaseLooking, nil
+	return nil
+}
+
+// updateLooking is inside a room with no seat yet: sit, or go back to the
+// list. Going back costs the room nothing.
+func (l *Lobby[W, A, S]) updateLooking() error {
+	if l.back() {
+		_ = l.looking.Close()
+		l.looking, l.phase = nil, phaseChoosing
+		return nil
+	}
+	if !l.pressed() {
+		return nil
+	}
+	if err := l.looking.Sit(l.app.Context()); err != nil {
+		// Somebody took the last seat while this player was reading the
+		// roster, which is exactly the race looking makes visible.
+		l.err = err
+		return nil
+	}
+	l.app.BecomeGuest(l.looking)
+	l.looking = nil
 	return nil
 }
 
@@ -291,6 +322,37 @@ func (l *Lobby[W, A, S]) start() error {
 		return nil
 	}
 	return l.app.Start()
+}
+
+// back reports a request to leave without sitting. Escape is the one key
+// read regardless of the declared devices: a player who reached a room
+// they do not want has to be able to get out of it, and a game that
+// accepts only a gamepad still runs this screen on a keyboard.
+func (l *Lobby[W, A, S]) back() bool {
+	return inpututil.IsKeyJustPressed(ebiten.KeyEscape)
+}
+
+// drawRoom shows the roster of a room this instance reached but has not
+// sat in. It refreshes on its own, so somebody arriving appears here
+// while the player is still reading.
+func (l *Lobby[W, A, S]) drawRoom(screen *ebiten.Image) {
+	room := l.looking.Room()
+	title := room.Title
+	if title == "" {
+		title = "this room"
+	}
+	ebitenutil.DebugPrintAt(screen, "in "+title+" — press to sit, esc to go back", 8, 28)
+	for i, seat := range room.Seats {
+		who := "empty"
+		if seat.Filled() {
+			who = seat.Kind.String()
+			if seat.ID != "" {
+				who += " (" + seat.ID + ")"
+			}
+		}
+		ebitenutil.DebugPrintAt(screen,
+			fmt.Sprintf("  seat %d  %s", seat.Slot, who), 8, rowTop+rowHeight*i)
+	}
 }
 
 // pressed reports a start signal on any accepted device. Only devices the
@@ -363,6 +425,8 @@ func (l *Lobby[W, A, S]) Draw(screen *ebiten.Image) {
 		ebitenutil.DebugPrintAt(screen, "looking for a game on this network...", 8, 28)
 	case phaseChoosing:
 		l.drawChoices(screen)
+	case phaseLooking:
+		l.drawRoom(screen)
 	default:
 		l.drawSeats(screen)
 	}

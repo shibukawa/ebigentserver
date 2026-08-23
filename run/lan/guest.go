@@ -67,14 +67,23 @@ func (l *local[W, A, D, S]) Ended(session.Result) {}
 
 // LocalSeats reports the one seat this machine plays. It is known from
 // the seat grant, so a guest can draw and take input while the handshake
-// is still waiting on the host.
+// is still waiting on the host — and it is empty before Sit, because an
+// instance that only matched plays nothing.
 func (g *Guest[W, A, D, S]) LocalSeats() []run.Seat {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if !g.seated {
+		return nil
+	}
 	return []run.Seat{{Slot: g.seat, Kind: run.Human, Local: true, ID: "you", Ready: true}}
 }
 
 // Submit hands this frame's action to the link.
 func (g *Guest[W, A, D, S]) Submit(slot session.SlotID, action A) error {
-	if slot != g.seat {
+	g.mu.Lock()
+	seat, seated := g.seat, g.seated
+	g.mu.Unlock()
+	if !seated || slot != seat {
 		return run.ErrUnknownSlot
 	}
 	g.box.put(action)
@@ -94,8 +103,12 @@ func (g *Guest[W, A, D, S]) sink() func(session.Tick, *W) {
 	return g.onWorld
 }
 
-// Play drives the link with the guest's own controller.
+// Play drives the link with the guest's own controller. It needs a seat:
+// matching alone opens nothing to drive.
 func (g *Guest[W, A, D, S]) Play(ctx context.Context) error {
+	if !g.Seated() {
+		return errors.New("lan: Play before Sit; this instance holds no seat")
+	}
 	err := g.Run(ctx, &local[W, A, D, S]{g: g})
 	g.mu.Lock()
 	g.over = true
@@ -141,9 +154,10 @@ func (p *preset[W, A, D, S]) Host(ctx context.Context, r *run.Roster[W, A, S], s
 	return Open(ctx, p.opts, r, seed)
 }
 
-// Join takes a seat on one of the games Discover reported.
+// Match reaches one of the rooms Discover reported. No seat is taken;
+// that is Guest.Sit.
 func (p *preset[W, A, D, S]) Match(ctx context.Context, f run.Found) (run.Guest[W, A, S], error) {
-	return JoinAt(ctx, p.opts, f.Address)
+	return MatchAt(ctx, p.opts, f.Address)
 }
 
 // The two halves of run.Matchmaking, checked here so a signature drift in

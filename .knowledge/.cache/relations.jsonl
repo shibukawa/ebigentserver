@@ -1346,6 +1346,7 @@
 {"context": "body", "path": ".knowledge/requirement/match-stage-vocabulary.md", "source": "requirement:match-stage-vocabulary", "target": "requirement:config-codegen", "target_category": "objective", "target_type": "requirement"}
 {"context": "body", "path": ".knowledge/requirement/match-stage-vocabulary.md", "source": "requirement:match-stage-vocabulary", "target": "requirement:cborbind-migration", "target_category": "objective", "target_type": "requirement"}
 {"context": "body", "path": ".knowledge/requirement/match-then-sit.md", "source": "requirement:match-then-sit", "target": "api:lan-preset", "target_category": "interface", "target_type": "api"}
+{"context": "body", "path": ".knowledge/requirement/match-then-sit.md", "source": "requirement:match-then-sit", "target": "ui:lobby-scene", "target_category": "interface", "target_type": "ui"}
 {"context": "body", "path": ".knowledge/requirement/match-then-sit.md", "source": "requirement:match-then-sit", "target": "concept:configuration-scope", "target_category": "concept", "target_type": "concept"}
 {"context": "body", "path": ".knowledge/requirement/match-then-sit.md", "source": "requirement:match-then-sit", "target": "data:session-ticket", "target_category": "structure", "target_type": "data"}
 {"context": "body", "path": ".knowledge/requirement/match-then-sit.md", "source": "requirement:match-then-sit", "target": "requirement:conditional-matchmaking", "target_category": "objective", "target_type": "requirement"}

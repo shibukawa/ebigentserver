@@ -54,6 +54,11 @@ import (
 // outlive the walk from the browse list to the start press.
 const ticketLife = 2 * time.Minute
 
+// roomRefresh is how often a guest that is only looking re-reads the
+// roster. Somebody arriving should show up while the player is still
+// deciding, and a second is faster than anyone reads a list.
+const roomRefresh = time.Second
+
 // Options declares what a game puts on the wire. Every field but the
 // test overrides is required: this package encodes nothing on its own,
 // it only carries what the game's generated codec produces.
@@ -218,7 +223,8 @@ func Open[W, A, D, S any](ctx context.Context, opts Options[W, A, D, S], roster 
 	}
 
 	mux := http.NewServeMux()
-	mux.HandleFunc("/join", h.handleJoin)
+	mux.HandleFunc("/room", h.handleRoom)
+	mux.HandleFunc("/sit", h.handleSit)
 	mux.HandleFunc("/ws", h.handleWS)
 	h.http = &http.Server{Handler: mux}
 
@@ -276,10 +282,29 @@ func (h *Host[W, A, D, S]) announce(ctx context.Context) {
 	_ = a.Run(ctx)
 }
 
-// handleJoin seats the caller in the roster and mints the ticket naming
+// handleRoom publishes what the room looks like from outside: its name
+// and its seats. It grants nothing and costs the room nothing, which is
+// what lets somebody read the roster and leave again.
+func (h *Host[W, A, D, S]) handleRoom(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Query().Get("protocol") != h.opts.Protocol {
+		http.Error(w, "protocol mismatch: host speaks "+h.opts.Protocol, http.StatusConflict)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(run.Room{
+		Title: h.opts.Name,
+		Seats: h.currentRoster().Seats(),
+	})
+}
+
+// handleSit seats the caller in the roster and mints the ticket naming
 // that seat. This is the whole of the control plane, and it lives inside
 // the host process because on a segment there is nothing else to ask.
-func (h *Host[W, A, D, S]) handleJoin(w http.ResponseWriter, r *http.Request) {
+//
+// Nobody is judged here. The room stated its terms when it opened, and
+// what happens now is a check against them: the version has to match and
+// a seat has to be free. A turnstile rather than a doorman.
+func (h *Host[W, A, D, S]) handleSit(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Query().Get("protocol") != h.opts.Protocol {
 		http.Error(w, "protocol mismatch: host speaks "+h.opts.Protocol, http.StatusConflict)
 		return
@@ -517,65 +542,149 @@ func Browse[W, A, D, S any](ctx context.Context, opts Options[W, A, D, S], windo
 // session: the world arrives already committed, and the only thing sent
 // back is data:player-input.
 type Guest[W, A, D, S any] struct {
-	opts   Options[W, A, D, S]
-	conn   transport.Conn
-	ticket string
-	seat   session.SlotID
-	box    mailbox[A]
+	opts     Options[W, A, D, S]
+	endpoint string
+	box      mailbox[A]
 
 	ready chan struct{}
 
 	mu      sync.Mutex
+	room    run.Room
+	conn    transport.Conn
+	ticket  string
+	seat    session.SlotID
+	seated  bool
 	client  *netplay.Client[W, A, D, S]
 	onWorld func(session.Tick, *W)
 	over    bool
+	stop    context.CancelFunc
 }
 
-// JoinAt takes a seat on a host. It returns as soon as the seat is
-// granted and the link is open — before the host has started anything,
-// because the host is still gathering and a guest with nothing on screen
-// until then would look broken. The handshake happens in Play.
-func JoinAt[W, A, D, S any](ctx context.Context, opts Options[W, A, D, S], endpoint string) (*Guest[W, A, D, S], error) {
+// MatchAt reaches a host and reads its room. It takes no seat: a player
+// is entitled to see who is already there and leave, and leaving from
+// here frees nothing because nothing was held.
+//
+// The returned guest keeps the room fresh in the background, so a screen
+// showing the roster sees somebody else arrive without asking.
+func MatchAt[W, A, D, S any](ctx context.Context, opts Options[W, A, D, S], endpoint string) (*Guest[W, A, D, S], error) {
 	if err := opts.validate(); err != nil {
 		return nil, err
 	}
-	g, err := requestSeat(ctx, endpoint, opts.Protocol)
+	room, err := fetchRoom(ctx, endpoint, opts.Protocol)
 	if err != nil {
 		return nil, err
 	}
-	conn, err := ws.Dial(ctx, "ws://"+endpoint+"/ws")
-	if err != nil {
-		return nil, fmt.Errorf("lan: dialling %s: %w", endpoint, err)
+	watching, stop := context.WithCancel(context.WithoutCancel(ctx))
+	g := &Guest[W, A, D, S]{
+		opts:     opts,
+		endpoint: endpoint,
+		room:     room,
+		ready:    make(chan struct{}),
+		stop:     stop,
 	}
-	return &Guest[W, A, D, S]{
-		opts:   opts,
-		conn:   conn,
-		ticket: g.Ticket,
-		seat:   session.SlotID(g.Seat),
-		ready:  make(chan struct{}),
-	}, nil
+	go g.watch(watching)
+	return g, nil
+}
+
+// watch re-reads the room while this instance is only looking. It stops
+// at the first sit: from then on the roster arrives over the link.
+func (g *Guest[W, A, D, S]) watch(ctx context.Context) {
+	t := time.NewTicker(roomRefresh)
+	defer t.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-t.C:
+			room, err := fetchRoom(ctx, g.endpoint, g.opts.Protocol)
+			if err != nil {
+				continue // a blink on the segment is not a departure
+			}
+			g.mu.Lock()
+			if g.seated {
+				g.mu.Unlock()
+				return
+			}
+			g.room = room
+			g.mu.Unlock()
+		}
+	}
+}
+
+// Room reports what this instance last saw of the room.
+func (g *Guest[W, A, D, S]) Room() run.Room {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	return g.room
+}
+
+// Seated reports whether this instance holds a seat.
+func (g *Guest[W, A, D, S]) Seated() bool {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	return g.seated
+}
+
+// Sit asks the room for a seat and opens the link once it has one. It
+// returns before the host has started anything, because the host is still
+// gathering and a guest with nothing on screen until then would look
+// broken. The handshake happens in Play.
+func (g *Guest[W, A, D, S]) Sit(ctx context.Context) error {
+	g.mu.Lock()
+	if g.seated {
+		g.mu.Unlock()
+		return errors.New("lan: this instance already holds a seat")
+	}
+	g.mu.Unlock()
+
+	grant, err := requestSeat(ctx, g.endpoint, g.opts.Protocol)
+	if err != nil {
+		return err
+	}
+	conn, err := ws.Dial(ctx, "ws://"+g.endpoint+"/ws")
+	if err != nil {
+		return fmt.Errorf("lan: dialling %s: %w", g.endpoint, err)
+	}
+	g.mu.Lock()
+	g.conn, g.ticket, g.seat, g.seated = conn, grant.Ticket, session.SlotID(grant.Seat), true
+	g.mu.Unlock()
+	g.stop()
+	return nil
+}
+
+// fetchRoom reads the room without asking for anything.
+func fetchRoom(ctx context.Context, endpoint, protocol string) (run.Room, error) {
+	var room run.Room
+	if err := getJSON(ctx, "http://"+endpoint+"/room?protocol="+protocol, &room); err != nil {
+		return run.Room{}, fmt.Errorf("lan: reading the room at %s: %w", endpoint, err)
+	}
+	return room, nil
 }
 
 // requestSeat asks the host's own control plane for a seat.
 func requestSeat(ctx context.Context, endpoint, protocol string) (grant, error) {
-	url := "http://" + endpoint + "/join?protocol=" + protocol
+	var g grant
+	if err := getJSON(ctx, "http://"+endpoint+"/sit?protocol="+protocol, &g); err != nil {
+		return grant{}, fmt.Errorf("lan: asking %s for a seat: %w", endpoint, err)
+	}
+	return g, nil
+}
+
+// getJSON is the one shape both control-plane calls take.
+func getJSON(ctx context.Context, url string, into any) error {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
-		return grant{}, err
+		return err
 	}
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return grant{}, fmt.Errorf("lan: asking %s for a seat: %w", endpoint, err)
+		return err
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		return grant{}, fmt.Errorf("lan: %s refused a seat: %s", endpoint, resp.Status)
+		return errors.New(resp.Status)
 	}
-	var g grant
-	if err := json.NewDecoder(resp.Body).Decode(&g); err != nil {
-		return grant{}, err
-	}
-	return g, nil
+	return json.NewDecoder(resp.Body).Decode(into)
 }
 
 // Slot is the seat the host granted. It is known before the handshake,
@@ -637,12 +746,21 @@ func (g *Guest[W, A, D, S]) live() *netplay.Client[W, A, D, S] {
 	return g.client
 }
 
-// Close ends the link, whether or not the handshake ever completed.
+// Close leaves, whether or not the handshake ever completed. From an
+// instance that only matched there is no link and no seat to give back,
+// so it stops watching the room and returns.
 func (g *Guest[W, A, D, S]) Close() error {
+	g.stop()
 	if c := g.live(); c != nil {
 		return c.Close()
 	}
-	return g.conn.Close()
+	g.mu.Lock()
+	conn := g.conn
+	g.mu.Unlock()
+	if conn == nil {
+		return nil
+	}
+	return conn.Close()
 }
 
 // advertisedHost picks the address a peer on the same segment can reach.

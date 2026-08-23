@@ -107,8 +107,15 @@ func TestTwoInstancesPlayOneBoard(t *testing.T) {
 	guestReady := make(chan *lan.Guest[game.State, game.Action, msg.TTTStateDelta, game.Sight], 1)
 	guestFail := make(chan error, 1)
 	go func() {
-		g, err := lan.JoinAt(ctx, opts, host.Endpoint())
+		// Two acts, as the second instance really performs them: reach
+		// the room, then take a seat in it.
+		g, err := lan.MatchAt(ctx, opts, host.Endpoint())
 		if err != nil {
+			guestFail <- err
+			return
+		}
+		if err := g.Sit(ctx); err != nil {
+			_ = g.Close()
 			guestFail <- err
 			return
 		}
