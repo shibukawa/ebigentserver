@@ -58,7 +58,23 @@ occupant = "any"
 # seats = {{half .Seats}}
 # occupant = "human"
 {{end}}
-{{- range .Targets}}
+# Matchmaking filters on the axes declared here, and on nothing else. A
+# room states a value per axis when it opens; a joiner brings what they
+# are looking for, and their own reading on a band. Both ends compare the
+# same set because both were built from this table, which is what lets a
+# refusal name the term it failed.
+#
+# [[protocol.condition]]
+# name = "mode"
+# match = "exact"
+# values = ["ranked", "casual"]
+#
+# [[protocol.condition]]
+# name = "rank"
+# match = "band"      # the room states a range, the joiner brings a value
+# low = 0
+# high = 3000
+{{range .Targets}}
 [[build.target]]
 name = "{{.Name}}"
 kind = "{{.ConfigKind}}"
