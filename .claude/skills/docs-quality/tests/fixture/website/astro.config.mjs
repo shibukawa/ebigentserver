@@ -1,15 +1,16 @@
-// Trimmed stand-in for the real config: only the sidebar shape is read.
+import starlight from '@astrojs/starlight';
 export default {
-  sidebar: [
-    { label: 'Tutorial', items: [{ autogenerate: { directory: 'tutorial' } }] },
-    { label: 'Guides', items: [{ autogenerate: { directory: 'guides/frontend' } }] },
-    // Two slugs, so the parser has to read past the first: templates exists and
-    // must stay quiet, missing-page does not and must be reported.
-    {
-      label: 'Reference',
-      translations: { ja: 'リファレンス' },
-      items: ['guides/frontend/templates', 'reference/missing-page'],
-    },
-    { label: 'Gone', items: [{ autogenerate: { directory: 'guides/vanished' } }] },
+  integrations: [
+    starlight({
+      customCss: ['./src/styles/custom.css'],
+      social: [{ icon: 'github', href: 'https://example.com' }],
+      sidebar: [
+        { label: 'step 1', slug: 'tutorial/step1' },
+        { label: 'step 2', slug: 'tutorial/step2' },
+        { label: '用語', slug: 'architecture/terms' },
+        { label: '概要', slug: 'overview' },
+        { label: '無い', slug: 'tutorial/step9' },
+      ],
+    }),
   ],
 };
