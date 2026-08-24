@@ -5,8 +5,9 @@
 // Step 1 promised this step would add methods rather than move code, and
 // that is what happened: Legal and Place are the same functions, and
 // Start, ActingSlots, Apply, Project and Evaluate are new around them.
-// The one thing that did change is where the board lives — it is a wire
-// type now (package msg), because a second machine has to see it.
+// The one thing that did change is where the board lives: package msg,
+// because a second machine has to see it and the codecs that carry it
+// are generated there.
 package game
 
 import (
@@ -26,13 +27,14 @@ func Slots() []session.SlotID { return []session.SlotID{SlotX, SlotO} }
 
 // Protocol identifies this game's message schema in every episode header
 // and in every handshake. It comes from the generated code, so a change
-// that moves one byte on the wire moves this too.
+// that moves one byte of what is sent moves this too.
 const Protocol = msg.SchemaVersion
 
 // Evaluation versions the scoring in Evaluate.
 const Evaluation = 1
 
-// Mark is what occupies one cell. The values are the wire values.
+// Mark is what occupies one cell. The values are the ones the board
+// carries, so a sight needs no translation table.
 type Mark uint8
 
 const (
@@ -271,7 +273,7 @@ func Canonical(s *msg.TTTWorld) []byte { return s.AppendCBORTo(nil) }
 // EncodeAction and DecodeAction carry data:player-input.
 func EncodeAction(dst []byte, a msg.Move) []byte { return append(dst, a.AppendCBORTo(nil)...) }
 
-// DecodeAction reads one input off the wire.
+// DecodeAction reads one input back.
 func DecodeAction(b []byte) (msg.Move, error) {
 	var a msg.Move
 	err := a.DecodeCBORFrom(b)

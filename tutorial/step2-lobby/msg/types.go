@@ -1,9 +1,12 @@
-// Package msg declares tic-tac-toe's wire types.
+// Package msg holds tic-tac-toe's world and its action — the two of the
+// rule set's three types that travel between machines.
 //
 // Step 1 kept the board in an ordinary Go array and never had to say how
-// it travelled. Once a second machine is watching the same board, the
-// shape of those bytes becomes a contract between two builds, so it is
-// declared once here and generated rather than written by hand.
+// it moved. Once a second machine is watching the same board, the shape
+// of those bytes is a contract between two builds. Nothing here declares
+// that shape: the rule set declaration in package game names these two
+// types, and ebigent generate turns that into the codecs beside this
+// file (requirement:stage-declares-its-wire).
 package msg
 
 // Move is data:player-input: the cell a player claims.
@@ -12,7 +15,8 @@ type Move struct {
 	Cell uint8 `json:"cell"`
 }
 
-// TTTWorld is the authoritative board on the world profile.
+// TTTWorld is the authoritative board, and concept:world-state for
+// this stage.
 type TTTWorld struct {
 	// Cells is the grid, 9 entries: 0 empty, 1 X, 2 O.
 	Cells []uint8 `json:"cells"`

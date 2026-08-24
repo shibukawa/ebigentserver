@@ -22,10 +22,14 @@ import "github.com/shibukawa/tinybind-go/cborbind"
 // array shape.
 func askCommand(dst []byte, v Command) []byte { return cborbind.AppendCBORInArrayTo(dst, v) }
 
-func askDecodeCommand(data []byte) (Command, error) { return cborbind.DecodeCBORInArrayFrom[Command](data) }
+func askDecodeCommand(data []byte) (Command, error) {
+	return cborbind.DecodeCBORInArrayFrom[Command](data)
+}
 
 // askRTSState is the world position of a rule set: the whole value in the
 // map shape.
 func askRTSState(dst []byte, v RTSState) []byte { return cborbind.AppendCBORInMapTo(dst, v) }
 
-func askDecodeRTSState(data []byte) (RTSState, error) { return cborbind.DecodeCBORInMapFrom[RTSState](data) }
+func askDecodeRTSState(data []byte) (RTSState, error) {
+	return cborbind.DecodeCBORInMapFrom[RTSState](data)
+}

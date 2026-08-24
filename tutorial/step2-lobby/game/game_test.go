@@ -106,7 +106,7 @@ func TestSightCarriesTheLegalMoves(t *testing.T) {
 }
 
 // TestCodecRoundTripsTheBoard covers what step 1 never had to say: the
-// board has a wire shape now, and both machines have to read it the same
+// board has a byte shape now, and both machines have to read it the same
 // way.
 func TestCodecRoundTripsTheBoard(t *testing.T) {
 	s := play(t, 0, 3, 1, 4, 2)

@@ -363,3 +363,75 @@ Per capability:
    is the case where the pinned bytes are the protocol, so an unpinned generated codec is a
    protocol with no record of what it used to be.
 6. Whether `rule:generator-feature-disable` may disable the CBOR feature at all, given D-3.
+
+---
+
+## 11. Field report — v0.5.23 drops types and members silently
+
+Bisected against the shipped generator by putting one field at a time into a struct that
+otherwise generates. Two failure modes, neither of which produces a diagnostic.
+
+### 11.1 What was measured
+
+Probe: `type Probe struct { Keep bool; F <one type> }` in a package that generates, asked for
+the map shape. `Local` is a named scalar in the same package; `session.SlotID` is a named
+scalar in another; `session.EvaluationSignal` is a struct in another.
+
+| Field type | Result |
+|---|---|
+| `Local` | carried |
+| `[3]uint8` | carried |
+| `map[string]uint8` | carried |
+| `[]Local` | **whole type dropped** — no codec at all |
+| `[3]Local` | **whole type dropped** — no codec at all |
+| `session.SlotID` | **member dropped** — codec generated without it |
+| `[]session.SlotID` | **member dropped** |
+| `session.EvaluationSignal` | **member dropped** |
+
+So the rule is not about arrays versus slices, and not about named types as such:
+
+- A **collection whose element is a named type** takes the whole type down. `[]uint8` and
+  `[9]uint8` are carried; `[]Mark` and `[9]Mark` are not.
+- A **member whose type is named in another package** is left out of a codec that is still
+  emitted. It propagates: a struct is dropped as a member if it embeds one, which is why
+  `session.EvaluationSignal` disappears — it carries `fixmath.F64`.
+
+### 11.2 Why the second one is the serious one
+
+The first mode produces no codec, and the package is then reported as having nothing to
+generate. That is unhelpful but visible.
+
+The second produces a codec that compiles, round trips, and passes a hand-written test that
+only checks the members it happens to carry. Measured on a real world state:
+
+```go
+type State struct {
+    Tick   session.Tick       // dropped
+    Actor  [Seats]Actor       // carried — but Actor's own fixmath.F64 members are dropped
+    Caught bool               // carried
+    By     session.SlotID     // dropped
+    Rand   fixmath.Rand       // dropped
+    Over   bool               // carried
+}
+```
+
+The emitted encoder writes `AppendMapHeader(dst, 3)`. A game synchronising through it keeps
+its board and loses its tick counter and its RNG state on every send, and the first symptom
+is two peers diverging several minutes into a match.
+
+This is the shape of every realistic world state, because a world holds a tick, a seat id, or
+a fixed-point number. The framework now compares each generated codec's member count against
+the struct and refuses to keep one that is short, which is a check the generator is much
+better placed to make.
+
+### 11.3 What is asked for
+
+1. **Refuse loudly instead of dropping.** Name the type and the member and the reason. Either
+   mode is fine to refuse; silence is not.
+2. **Carry a named type from another package** where the underlying type is carried. This is
+   the blocking one: `session.Tick`, `session.SlotID`, `fixmath.F64` are ordinary integers
+   behind a name.
+3. **Carry a collection of a named element type**, for the same reason.
+4. A struct with unexported state cannot be generated for at all — `fixmath.Rand` keeps its
+   state in `s [4]uint64`. That one wants `cbor.Appender`/`cbor.Decodable` on the type itself
+   rather than anything from the generator.

@@ -17,26 +17,75 @@ everything_serialises: >
   still encodes. Treating local play as needing no codec was the mistake
   that made an earlier attempt hunt for extra signals — there are none to
   hunt for, because the rule set already said everything.
-removes: the statesync.Codec and delta-reference signals an earlier attempt needed, and the hand-written cborbind wrappers a game writes today
-blocked_on_upstream:
-  what: tinybind-go v0.5.23 drops a struct it cannot fully encode instead of refusing it, and reports the package as having nothing to generate
-  cases:
-    - a fixed-length array; slices are carried and arrays are not
-    - a named scalar declared in another package, such as session.SlotID
-    - a slice of a named scalar, such as []Mark, even in the same package
-    - and so, transitively, any struct embedding one — session.EvaluationSignal carries fixmath.F64, which is why a sight cannot be generated today
-  why_it_bites_here: >
-    a sight is exactly the shape that hits all three. It names seats, it
-    carries a board of a named cell type, and it delivers the evaluation
-    signal the framework defines. Until the upstream refusal is loud and
-    the field types are carried, the sight half of this requirement cannot
-    land.
-  silence_is_the_worst_part: >
-    a dropped type produces no error and no codec. What the caller sees is
-    "nothing to generate" for the whole package, which names neither the
-    type nor the field.
-verified: >
-  same-package named scalars and plain slices generate; cross-package
-  named scalars, slices of named scalars, and structs embedding either do
-  not. Bisected one field at a time against a package that otherwise
-  generates.
+removes:
+  - the hand-written cborbind wrappers a game used to write, which nothing called
+  - the second generate command; ebigent generate drives the codec generator too
+  - the //go:generate comment beside every message package
+  - concept:cbor-wire-profile and concept:cbor-world-profile as things a game author has to know
+resolution:
+  discovery: codegen.Stages reads the assertion, follows a local alias, and follows a selector to the package that owns the type
+  emission: codegen.EmitAsks writes the ask into a generated file, since v0.5.23 makes calling the entry point the ask
+  verification: codegen.CheckAsks compares each generated codec against the struct it came from
+  ordering: ask, generate, check, withdraw and regenerate, then delta
+landed: world and action
+still_out: sight, for the upstream reason below
+```
+
+## What the codec generator does instead of failing
+
+tinybind v0.5.23 drops what it cannot encode and says nothing. Bisected one field at a time against a package that otherwise generates, it drops at two grains.
+
+```yaml
+whole_type_refused:
+  when: a collection whose element type is named
+  examples: "[]Mark, [9]Mark — while []uint8 and [9]uint8 are carried"
+  symptom: no codec, and the package reports as having nothing to generate
+member_dropped:
+  when: a member whose type is named in another package
+  examples: session.Tick, session.SlotID, fixmath.F64, and transitively any struct embedding one
+  symptom: >
+    a codec that compiles, round trips, and leaves the member out. This is
+    the dangerous one. A world synchronised through it keeps its board and
+    loses its tick counter and its RNG state on every send, and the first
+    symptom is two peers diverging minutes into a match.
+corrections_to_an_earlier_reading:
+  - fixed-length arrays are carried; the earlier note blamed the array when the cause was the named element
+  - a cross-package named scalar does not refuse the type, it removes the member, which is worse
+```
+
+## Why the check refuses rather than trusts
+
+```yaml
+rule: a generated codec is compared against its struct before it is kept
+how: the container header says how many members the codec writes, the struct says how many it should, and a map codec's keys name which
+withdrawn_not_fatal: >
+  an ask that fails is removed from the generated file and the generator
+  runs again, so the package ends as it was before anything asked — no
+  codec, and none that lies. Making it fatal was tried first and stopped
+  every project, because a world holds a tick or a seat or a fixed-point
+  number.
+evidence: >
+  the scaffold's own starter world hits the member-dropped mode. Without
+  this check every new project would have shipped a State that silently
+  loses Tick and Rand.
+```
+
+## What is still blocked, and on what
+
+```yaml
+sight: >
+  hits both modes at once. It names seats with session.SlotID, it carries
+  a board of a named cell type, and it delivers session.EvaluationSignal,
+  which the framework defines and which holds fixmath.F64.
+examples_solo: >
+  its world cannot be generated at all, and not only for the upstream
+  reason: fixmath.Rand keeps its state in an unexported field, so no
+  generated codec can reach it. That one needs cbor.Appender on the type
+  itself (rule:shared-rng-seed says the state travels with the world).
+asked_upstream: tinybind-cbor-requirements.md section 11
+consequence_while_it_stands: >
+  a package with a withdrawn ask has its generated file written twice per
+  run. The second write restores the first, mtime included, so
+  flow:dev-rebuild-loop does not see a change — but the double write goes
+  away by itself once nothing is withdrawn.
+```

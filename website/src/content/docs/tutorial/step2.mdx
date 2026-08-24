@@ -184,62 +184,20 @@ World から Sight を作る。**この6メソッドがゲームの全部**で�
 **盤面は着手でしか動かない**。ターン制が「何も起きていない」と答えるのは欠落ではなく、
 同じループ・同じ記録・同じリンクがボードゲームにもシューターにも使える理由になっている。
 
+そしてこの型引数3つは、コンパイラにルールを検査させるためだけのものではない。
+
+```go
+var _ session.TickStageRuleSet[msg.TTTWorld, msg.Move, Sight] = RuleSet{}
+```
+
+`ebigent build` はこの1行を読んで、**World と Action を運ぶコードを生成する**。
+World は差分つき——毎 tick 盤面をまるごと送らないため——で、Action は1回きりのメッセージ
+なので全体だけ。どの型を送るかを別の場所にもう一度書く必要はない。
+
 <Aside type="note" title="Stage が別の階層である理由">
 このゲームには Stage が1つしかないので、Match と Stage の区別は今は効いてこない。効くのは
 **本編のあとにボーナスステージ**を足したときだ。ルールも、World の型も、送るデータも変わるが、
 席とリンクはそのまま——同じ相手と、違うルールで、続けて遊べる。
-</Aside>
-
-## 盤面にワイヤ形式ができる
-
-step 1 は盤面をただの Go 配列に持っていて、それがどう運ばれるかを言う必要がなかった。
-2台目が同じ盤を見る以上、**バイト列の形は2つのビルドの間の契約**になる。
-
-```go
-// tutorial/step2-lobby/msg/types.go
-type TTTWorld struct {
-	Cells  []uint8 `json:"cells"`
-	Turn   uint16  `json:"turn"`
-	Winner uint16  `json:"winner"`
-	Line   []uint8 `json:"line"`
-	Moves  uint8   `json:"moves"`
-	Over   bool    `json:"over"`
-}
-
-// この2つの呼び出しがコーデックの依頼そのものになる。
-func AppendTTTWorld(dst []byte, v TTTWorld) []byte { return cborbind.AppendCBORInMapTo(dst, v) }
-func DecodeTTTWorld(data []byte) (TTTWorld, error) { return cborbind.DecodeCBORInMapFrom[TTTWorld](data) }
-```
-
-宣言を書く場所は無く、**エントリポイントを呼ぶことが依頼**になる。そして呼んだ名前が
-形を決める。
-
-| | 配列 | マップ |
-|---|---|---|
-| ワイヤ上 | 位置決め、メンバ名を載せない | キー付き |
-| 知らないメンバ | 存在しえない | デコード時に読み飛ばす |
-| フィールド追加 | 両端を同時に作り直す | 古いビルドが読み続けられる |
-
-着手（`Move`）は配列だ。小さく、両端が一緒に更新される。盤面はマップで、だから
-**片方だけ先に出荷できる**。
-
-```bash
-go generate ./tutorial/step2-lobby/msg/   # コーデック
-ebigent generate                          # 差分とスキーマ版
-```
-
-2つ目が要るのは、コーデックを生成するライブラリが**差分を生成しないから**だ。
-2つの盤面の diff、それを戻す patch、変わった分だけを運ぶエンコード——
-これはフレームワーク側の仕事になっている。マップ形式を要求した型が world state だと
-分かるので、どの型に差分が要るかは設定せずに済む。
-
-生成された `SchemaVersion` がそのままハンドシェイクの版になるので、
-**ワイヤが1バイト動けば版も動く**。版の違う相手は席をもらう前に断られる。
-
-<Aside type="caution" title="スライスを持つ状態の罠">
-盤面がスライスになったので、`Codec.Clone` は深いコピーでなければならない。値コピーだと
-保持された全ての baseline が最新の盤面を指してしまい、差分が常に空になる。
-これはテストで固定してある（`TestCloneDoesNotAliasTheBoard`）。
 </Aside>
 
 ## 相手が来るのを待つ
@@ -257,6 +215,9 @@ func Binding() run.Binding[World, Action, Sight] {
 	}
 }
 ```
+
+`Protocol` は生成されたスキーマ指紋そのものだ。**送るバイト列が1つでも変われば版も変わる**ので、
+版の違う相手は席をもらう前に断られる。手で上げ忘れることがない。
 
 ```go
 // tutorial/step2-lobby/main.go — ウィンドウの隣
@@ -284,7 +245,7 @@ LAN プリセットは待ち受けソケットと UDP ブロードキャスト�
 
 ## 「繋がる Agent」とは何か
 
-ここが分かりにくいところなので、はっきりさせておく。**Agent がワイヤを渡ってくるわけではない。**
+ここが分かりにくいところなので、はっきりさせておく。**Agent が回線を渡ってくるわけではない。**
 
 ホスト側では、操作者が人である席には——ローカルでもリモートでも——`session.Detached` が座る。
 何もしないスタブで、セッションは代わりにその席の `Inbox` を読む。つまりセッションから見た
@@ -329,10 +290,8 @@ admission が席に束ねた接続になる。
     - bind.go Options / Binding の宣言
     - net_test.go 2インスタンスの通し
   - msg/
-    - types.go ワイヤ型の宣言
-    - tinybind_gen.go コーデック（go generate）
-    - delta_gen.go 差分（ebigent generate）
-    - schema_gen.go スキーマ指紋（ebigent generate）
+    - types.go World と Action の型
+    - wire_gen.go / tinybind_gen.go / delta_gen.go / schema_gen.go すべて生成物
 </FileTree>
 
 ## まだないもの

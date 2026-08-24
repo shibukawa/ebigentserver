@@ -22,4 +22,6 @@ import "github.com/shibukawa/tinybind-go/cborbind"
 // array shape.
 func askAction(dst []byte, v Action) []byte { return cborbind.AppendCBORInArrayTo(dst, v) }
 
-func askDecodeAction(data []byte) (Action, error) { return cborbind.DecodeCBORInArrayFrom[Action](data) }
+func askDecodeAction(data []byte) (Action, error) {
+	return cborbind.DecodeCBORInArrayFrom[Action](data)
+}

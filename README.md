@@ -192,7 +192,7 @@
 - `matchloop` — 無人連続対局と結果集計。
 - `analysis` — corpus集計とDuckDB SQL生成(ゲームプロセス外の分析ツール)。
 - `config/buildconf`, `config/runconf`, `config/confload` — `ebigent.toml` 1ファイルを prefix でセクション分けして bind。既定 < ファイル < 環境変数 < オプションの順で上書き。`[protocol]` はビルド時に定数化されるので起動時に読まれない。`[run]` は同じ成果物の2回の起動で正当に違いうるものだけを持つ。
-- `codegen` — ワイヤ型を読み、ライブラリが生成しなくなったものを出す。差分(diff/patch/エンコード)、スキーマ指紋、そして決定性ゲート(float / 素の int / map の拒否)。マップ形状を要求している型が world state だと分かるので、対象は設定しない。
+- `codegen` — `StageRuleSet` の宣言を読み、そこから World / Action のコーデックを依頼し、ライブラリが生成しなくなったものを出す。差分(diff/patch/エンコード)、スキーマ指紋、決定性ゲート(float / 素の int / map の拒否)、そして生成結果の検証(依頼した型が丸ごと・メンバ落ちなく生成されたか)。対象は設定しない。
 - `scaffold` — `ebigent init` が書き出すプロジェクト雛形。既定は Ebitengine の Flappy Bird 風(2羽が同じパイプ列を飛ぶ、操作はflapのみ)で、リアルタイムsession・固定小数点物理・シード付きRNG・engineをclientエントリに閉じ込める構成が最初から動く。生成物がビルドでき自身のテスト(境界テスト含む)が通ることをテストで担保している。
   ウィザードは3問: **プレイスタイル**(1人 / 2人 / マルチ) → **最大人数**(マルチのときだけ) → **1台で複数人が遊べるようにするか**(1人以外)。生成されるコードパターンは5通り。
   2人が独立したスタイルなのは、star型P2Pでは**3人以上だとピア経由もサーバ経由も等しく2ホップ**になり、1ホップの直結が2人のときだけ成立するため。したがって2人は rollback/delay が射程内、3人以上は権威型。ピアかdedicatedかはコード差ではなく `data:run-config` の値で、**マルチでもlistenは許容**(ブラウザがWebRTCでN人をホストする `concept:static-host-mode` はバックエンド不要)。
@@ -244,22 +244,23 @@ ebigent --run-topology dedicated build server
 ## コード生成
 
 ```bash
-go generate ./...   # コーデック(tinybind)
-ebigent generate    # 差分・スキーマ指紋・protocol 定数
+ebigent generate    # コーデック・差分・スキーマ指紋・protocol 定数
 ```
 
-メッセージパッケージには `//go:generate go run github.com/shibukawa/tinybind-go/cmd/tinybind-gen generate -openapi=false` を置く。生成物(`tinybind_gen.go` / `delta_gen.go` / `schema_gen.go`)はコミットする。
-
-2段になっているのは、tinybind がコーデックしか生成しないからだ。v0.5.23 には書くべき宣言が無く、**エントリポイントを呼ぶことが依頼**になっている。
+何を生成するかは設定しない。ゲームがルールを検査させるために書く1行が、そのまま依頼になる。
 
 ```go
-func AppendTTTState(dst []byte, v TTTState) []byte { return cborbind.AppendCBORInMapTo(dst, v) }
-func DecodeTTTState(data []byte) (TTTState, error) { return cborbind.DecodeCBORInMapFrom[TTTState](data) }
+var _ session.TickStageRuleSet[msg.TTTWorld, msg.Move, Sight] = RuleSet{}
 ```
 
-そして呼んだ名前が形を決める。配列は位置決めでメンバ名を載せず、両端を同時に作り直す(`concept:cbor-wire-profile`)。マップはキー付きで、知らないメンバを読み飛ばすので片方だけ先に出荷できる(`concept:cbor-world-profile`)。プロファイルという概念自体は無くなった。
+World はマップ形式で全体と差分、Action は配列形式で全体。差分は tinybind が生成しないので
+フレームワーク側が出す。生成物(`wire_gen.go` / `tinybind_gen.go` / `delta_gen.go` /
+`schema_gen.go`)はコミットする。
 
-差分は tinybind が生成しないので `ebigent generate` が出す。マップ形式を要求した型が world state なので、対象を設定する必要はない。
+Sight はまだ依頼しない。tinybind v0.5.23 が運べない型があり、しかも黙って落とすからだ
+(`requirement:stage-declares-its-wire`)。運べなかった依頼は取り下げられ、型とメンバ名を
+挙げて報告される——半分だけ書けたコーデックはコンパイルも往復もするが、送るたびに
+メンバを失うので、残すより取り下げる方が安全になる。
 
 ## ビルドターゲット
 

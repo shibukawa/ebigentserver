@@ -28,4 +28,6 @@ func askDecodeMove(data []byte) (Move, error) { return cborbind.DecodeCBORInArra
 // map shape.
 func askTTTWorld(dst []byte, v TTTWorld) []byte { return cborbind.AppendCBORInMapTo(dst, v) }
 
-func askDecodeTTTWorld(data []byte) (TTTWorld, error) { return cborbind.DecodeCBORInMapFrom[TTTWorld](data) }
+func askDecodeTTTWorld(data []byte) (TTTWorld, error) {
+	return cborbind.DecodeCBORInMapFrom[TTTWorld](data)
+}

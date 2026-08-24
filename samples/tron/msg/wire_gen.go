@@ -22,10 +22,14 @@ import "github.com/shibukawa/tinybind-go/cborbind"
 // map shape.
 func askTronState(dst []byte, v TronState) []byte { return cborbind.AppendCBORInMapTo(dst, v) }
 
-func askDecodeTronState(data []byte) (TronState, error) { return cborbind.DecodeCBORInMapFrom[TronState](data) }
+func askDecodeTronState(data []byte) (TronState, error) {
+	return cborbind.DecodeCBORInMapFrom[TronState](data)
+}
 
 // askTurnInput is the action position of a rule set: the whole value in the
 // array shape.
 func askTurnInput(dst []byte, v TurnInput) []byte { return cborbind.AppendCBORInArrayTo(dst, v) }
 
-func askDecodeTurnInput(data []byte) (TurnInput, error) { return cborbind.DecodeCBORInArrayFrom[TurnInput](data) }
+func askDecodeTurnInput(data []byte) (TurnInput, error) {
+	return cborbind.DecodeCBORInArrayFrom[TurnInput](data)
+}
