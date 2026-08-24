@@ -28,11 +28,14 @@ export default defineConfig({
 			sidebar: [
 				{ label: 'ebigentserver とは', slug: 'overview' },
 				{
-					label: 'チュートリアル',
+					label: 'チュートリアル（ボードゲーム編）',
 					items: [
 						{ label: 'ここから始める', slug: 'tutorial' },
 						{ label: 'step 1 — マウス1つで交互に指す', slug: 'tutorial/step1' },
 						{ label: 'step 2 — ロビーと LAN 対戦', slug: 'tutorial/step2' },
+						{ label: 'step 3 — CPU を実装する', slug: 'tutorial/step3' },
+						{ label: 'step 4 — 記録からボットを作る', slug: 'tutorial/step4' },
+						{ label: 'step 5 — 相手を回す', slug: 'tutorial/step5' },
 					],
 				},
 				{

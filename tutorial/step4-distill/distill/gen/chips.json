@@ -1,0 +1,635 @@
+{
+  "game": "tictactoe",
+  "chips": [
+    {
+      "condition": "preferred_cell_is_4",
+      "action": "play_4",
+      "priority": 0,
+      "coverage": 800,
+      "counterexamples": 0,
+      "evidence": [
+        {
+          "episode": "ttt-000",
+          "tick": 0
+        },
+        {
+          "episode": "ttt-001",
+          "tick": 0
+        },
+        {
+          "episode": "ttt-002",
+          "tick": 0
+        },
+        {
+          "episode": "ttt-003",
+          "tick": 0
+        },
+        {
+          "episode": "ttt-004",
+          "tick": 0
+        }
+      ],
+      "rationale": "when preferred_cell_is_4 held, play_4 was taken 800/800 times at this list position",
+      "approved": true,
+      "tags": [
+        "style:tactic"
+      ]
+    },
+    {
+      "condition": "preferred_cell_is_0",
+      "action": "play_0",
+      "priority": 1,
+      "coverage": 706,
+      "counterexamples": 0,
+      "evidence": [
+        {
+          "episode": "ttt-000",
+          "tick": 2
+        },
+        {
+          "episode": "ttt-001",
+          "tick": 2
+        },
+        {
+          "episode": "ttt-002",
+          "tick": 2
+        },
+        {
+          "episode": "ttt-003",
+          "tick": 2
+        },
+        {
+          "episode": "ttt-004",
+          "tick": 2
+        }
+      ],
+      "rationale": "when preferred_cell_is_0 held, play_0 was taken 706/706 times at this list position",
+      "approved": true,
+      "tags": [
+        "style:tactic"
+      ]
+    },
+    {
+      "condition": "winning_move_is_8",
+      "action": "play_8",
+      "priority": 2,
+      "coverage": 516,
+      "counterexamples": 0,
+      "evidence": [
+        {
+          "episode": "ttt-000",
+          "tick": 4
+        },
+        {
+          "episode": "ttt-001",
+          "tick": 4
+        },
+        {
+          "episode": "ttt-002",
+          "tick": 4
+        },
+        {
+          "episode": "ttt-003",
+          "tick": 4
+        },
+        {
+          "episode": "ttt-004",
+          "tick": 4
+        }
+      ],
+      "rationale": "when winning_move_is_8 held, play_8 was taken 516/516 times at this list position",
+      "approved": true,
+      "tags": [
+        "style:tactic"
+      ]
+    },
+    {
+      "condition": "winning_move_is_6",
+      "action": "play_6",
+      "priority": 3,
+      "coverage": 122,
+      "counterexamples": 0,
+      "evidence": [
+        {
+          "episode": "ttt-008",
+          "tick": 4
+        },
+        {
+          "episode": "ttt-009",
+          "tick": 4
+        },
+        {
+          "episode": "ttt-020",
+          "tick": 4
+        },
+        {
+          "episode": "ttt-021",
+          "tick": 4
+        },
+        {
+          "episode": "ttt-038",
+          "tick": 4
+        }
+      ],
+      "rationale": "when winning_move_is_6 held, play_6 was taken 122/122 times at this list position",
+      "approved": true,
+      "tags": [
+        "style:tactic"
+      ]
+    },
+    {
+      "condition": "winning_move_is_1",
+      "action": "play_1",
+      "priority": 4,
+      "coverage": 78,
+      "counterexamples": 0,
+      "evidence": [
+        {
+          "episode": "ttt-042",
+          "tick": 6
+        },
+        {
+          "episode": "ttt-043",
+          "tick": 6
+        },
+        {
+          "episode": "ttt-060",
+          "tick": 6
+        },
+        {
+          "episode": "ttt-061",
+          "tick": 6
+        },
+        {
+          "episode": "ttt-064",
+          "tick": 6
+        }
+      ],
+      "rationale": "when winning_move_is_1 held, play_1 was taken 78/78 times at this list position",
+      "approved": true,
+      "tags": [
+        "style:tactic"
+      ]
+    },
+    {
+      "condition": "winning_move_is_3",
+      "action": "play_3",
+      "priority": 5,
+      "coverage": 46,
+      "counterexamples": 0,
+      "evidence": [
+        {
+          "episode": "ttt-074",
+          "tick": 6
+        },
+        {
+          "episode": "ttt-075",
+          "tick": 6
+        },
+        {
+          "episode": "ttt-102",
+          "tick": 6
+        },
+        {
+          "episode": "ttt-103",
+          "tick": 6
+        },
+        {
+          "episode": "ttt-110",
+          "tick": 6
+        }
+      ],
+      "rationale": "when winning_move_is_3 held, play_3 was taken 46/46 times at this list position",
+      "approved": true,
+      "tags": [
+        "style:tactic"
+      ]
+    },
+    {
+      "condition": "blocking_move_is_2",
+      "action": "play_2",
+      "priority": 6,
+      "coverage": 38,
+      "counterexamples": 0,
+      "evidence": [
+        {
+          "episode": "ttt-042",
+          "tick": 4
+        },
+        {
+          "episode": "ttt-043",
+          "tick": 4
+        },
+        {
+          "episode": "ttt-060",
+          "tick": 4
+        },
+        {
+          "episode": "ttt-061",
+          "tick": 4
+        },
+        {
+          "episode": "ttt-064",
+          "tick": 4
+        }
+      ],
+      "rationale": "when blocking_move_is_2 held, play_2 was taken 38/38 times at this list position",
+      "approved": true,
+      "tags": [
+        "style:tactic"
+      ]
+    },
+    {
+      "condition": "blocking_move_is_5",
+      "action": "play_5",
+      "priority": 7,
+      "coverage": 30,
+      "counterexamples": 0,
+      "evidence": [
+        {
+          "episode": "ttt-024",
+          "tick": 4
+        },
+        {
+          "episode": "ttt-025",
+          "tick": 4
+        },
+        {
+          "episode": "ttt-074",
+          "tick": 4
+        },
+        {
+          "episode": "ttt-075",
+          "tick": 4
+        },
+        {
+          "episode": "ttt-102",
+          "tick": 4
+        }
+      ],
+      "rationale": "when blocking_move_is_5 held, play_5 was taken 30/30 times at this list position",
+      "approved": true,
+      "tags": [
+        "style:tactic"
+      ]
+    },
+    {
+      "condition": "blocking_move_is_6",
+      "action": "play_6",
+      "priority": 8,
+      "coverage": 20,
+      "counterexamples": 0,
+      "evidence": [
+        {
+          "episode": "ttt-110",
+          "tick": 4
+        },
+        {
+          "episode": "ttt-111",
+          "tick": 4
+        },
+        {
+          "episode": "ttt-284",
+          "tick": 4
+        },
+        {
+          "episode": "ttt-285",
+          "tick": 4
+        },
+        {
+          "episode": "ttt-304",
+          "tick": 4
+        }
+      ],
+      "rationale": "when blocking_move_is_6 held, play_6 was taken 20/20 times at this list position",
+      "approved": true,
+      "tags": [
+        "style:tactic"
+      ]
+    },
+    {
+      "condition": "blocking_move_is_3",
+      "action": "play_3",
+      "priority": 9,
+      "coverage": 16,
+      "counterexamples": 0,
+      "evidence": [
+        {
+          "episode": "ttt-036",
+          "tick": 4
+        },
+        {
+          "episode": "ttt-037",
+          "tick": 4
+        },
+        {
+          "episode": "ttt-206",
+          "tick": 4
+        },
+        {
+          "episode": "ttt-207",
+          "tick": 4
+        },
+        {
+          "episode": "ttt-212",
+          "tick": 4
+        }
+      ],
+      "rationale": "when blocking_move_is_3 held, play_3 was taken 16/16 times at this list position",
+      "approved": true,
+      "tags": [
+        "style:tactic"
+      ]
+    },
+    {
+      "condition": "winning_move_is_5",
+      "action": "play_5",
+      "priority": 10,
+      "coverage": 12,
+      "counterexamples": 0,
+      "evidence": [
+        {
+          "episode": "ttt-036",
+          "tick": 6
+        },
+        {
+          "episode": "ttt-037",
+          "tick": 6
+        },
+        {
+          "episode": "ttt-206",
+          "tick": 6
+        },
+        {
+          "episode": "ttt-207",
+          "tick": 6
+        },
+        {
+          "episode": "ttt-212",
+          "tick": 6
+        }
+      ],
+      "rationale": "when winning_move_is_5 held, play_5 was taken 12/12 times at this list position",
+      "approved": true,
+      "tags": [
+        "style:tactic"
+      ]
+    },
+    {
+      "condition": "blocking_move_is_7",
+      "action": "play_7",
+      "priority": 11,
+      "coverage": 40,
+      "counterexamples": 0,
+      "evidence": [
+        {
+          "episode": "ttt-068",
+          "tick": 6
+        },
+        {
+          "episode": "ttt-069",
+          "tick": 6
+        },
+        {
+          "episode": "ttt-156",
+          "tick": 4
+        },
+        {
+          "episode": "ttt-157",
+          "tick": 4
+        },
+        {
+          "episode": "ttt-190",
+          "tick": 6
+        }
+      ],
+      "rationale": "when blocking_move_is_7 held, play_7 was taken 40/40 times at this list position",
+      "approved": true,
+      "tags": [
+        "style:tactic"
+      ]
+    },
+    {
+      "condition": "preferred_cell_is_2",
+      "action": "play_2",
+      "priority": 12,
+      "coverage": 174,
+      "counterexamples": 0,
+      "evidence": [
+        {
+          "episode": "ttt-008",
+          "tick": 2
+        },
+        {
+          "episode": "ttt-009",
+          "tick": 2
+        },
+        {
+          "episode": "ttt-020",
+          "tick": 2
+        },
+        {
+          "episode": "ttt-021",
+          "tick": 2
+        },
+        {
+          "episode": "ttt-036",
+          "tick": 2
+        }
+      ],
+      "rationale": "when preferred_cell_is_2 held, play_2 was taken 174/174 times at this list position",
+      "approved": true,
+      "tags": [
+        "style:tactic"
+      ]
+    },
+    {
+      "condition": "preferred_cell_is_3",
+      "action": "play_3",
+      "priority": 13,
+      "coverage": 12,
+      "counterexamples": 0,
+      "evidence": [
+        {
+          "episode": "ttt-068",
+          "tick": 8
+        },
+        {
+          "episode": "ttt-069",
+          "tick": 8
+        },
+        {
+          "episode": "ttt-190",
+          "tick": 8
+        },
+        {
+          "episode": "ttt-191",
+          "tick": 8
+        },
+        {
+          "episode": "ttt-300",
+          "tick": 8
+        }
+      ],
+      "rationale": "when preferred_cell_is_3 held, play_3 was taken 12/12 times at this list position",
+      "approved": true,
+      "tags": [
+        "style:tactic"
+      ]
+    },
+    {
+      "condition": "preferred_cell_is_5",
+      "action": "play_5",
+      "priority": 14,
+      "coverage": 6,
+      "counterexamples": 0,
+      "evidence": [
+        {
+          "episode": "ttt-256",
+          "tick": 8
+        },
+        {
+          "episode": "ttt-257",
+          "tick": 8
+        },
+        {
+          "episode": "ttt-428",
+          "tick": 8
+        },
+        {
+          "episode": "ttt-429",
+          "tick": 8
+        },
+        {
+          "episode": "ttt-542",
+          "tick": 8
+        }
+      ],
+      "rationale": "when preferred_cell_is_5 held, play_5 was taken 6/6 times at this list position",
+      "approved": true,
+      "tags": [
+        "style:tactic"
+      ]
+    },
+    {
+      "condition": "preferred_cell_is_1",
+      "action": "play_1",
+      "priority": 15,
+      "coverage": 4,
+      "counterexamples": 0,
+      "evidence": [
+        {
+          "episode": "ttt-298",
+          "tick": 8
+        },
+        {
+          "episode": "ttt-299",
+          "tick": 8
+        },
+        {
+          "episode": "ttt-412",
+          "tick": 8
+        },
+        {
+          "episode": "ttt-413",
+          "tick": 8
+        }
+      ],
+      "rationale": "when preferred_cell_is_1 held, play_1 was taken 4/4 times at this list position",
+      "approved": true,
+      "tags": [
+        "style:tactic"
+      ]
+    },
+    {
+      "condition": "preferred_cell_is_6",
+      "action": "play_6",
+      "priority": 16,
+      "coverage": 4,
+      "counterexamples": 0,
+      "evidence": [
+        {
+          "episode": "ttt-024",
+          "tick": 6
+        },
+        {
+          "episode": "ttt-025",
+          "tick": 6
+        },
+        {
+          "episode": "ttt-412",
+          "tick": 6
+        },
+        {
+          "episode": "ttt-413",
+          "tick": 6
+        }
+      ],
+      "rationale": "when preferred_cell_is_6 held, play_6 was taken 4/4 times at this list position",
+      "approved": true,
+      "tags": [
+        "style:tactic"
+      ]
+    },
+    {
+      "condition": "preferred_cell_is_7",
+      "action": "play_7",
+      "priority": 17,
+      "coverage": 4,
+      "counterexamples": 0,
+      "evidence": [
+        {
+          "episode": "ttt-024",
+          "tick": 8
+        },
+        {
+          "episode": "ttt-025",
+          "tick": 8
+        },
+        {
+          "episode": "ttt-704",
+          "tick": 8
+        },
+        {
+          "episode": "ttt-705",
+          "tick": 8
+        }
+      ],
+      "rationale": "when preferred_cell_is_7 held, play_7 was taken 4/4 times at this list position",
+      "approved": true,
+      "tags": [
+        "style:tactic"
+      ]
+    },
+    {
+      "condition": "preferred_cell_is_8",
+      "action": "play_8",
+      "priority": 18,
+      "coverage": 4,
+      "counterexamples": 0,
+      "evidence": [
+        {
+          "episode": "ttt-298",
+          "tick": 6
+        },
+        {
+          "episode": "ttt-299",
+          "tick": 6
+        },
+        {
+          "episode": "ttt-704",
+          "tick": 6
+        },
+        {
+          "episode": "ttt-705",
+          "tick": 6
+        }
+      ],
+      "rationale": "when preferred_cell_is_8 held, play_8 was taken 4/4 times at this list position",
+      "approved": true,
+      "tags": [
+        "style:tactic"
+      ]
+    }
+  ]
+}

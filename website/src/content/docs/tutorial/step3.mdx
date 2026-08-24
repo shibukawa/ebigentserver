@@ -1,0 +1,454 @@
+---
+title: step 3 — シンプルなアルゴリズムの CPU を実装する
+description: if 4本の CPU を session.Agent として書き、人間と同じ席に着ける。ルールはどちらが座っているか聞かないので、その判断が記録にそのまま残る。
+---
+
+import { Aside, FileTree, Steps, LinkCard } from '@astrojs/starlight/components';
+
+step 2 で、LAN 上の相手と対戦できるようになった。ただし相手が来なければ何も始まらない。
+このステップの終わりには、空席に座る **CPU** ができている——`if` 4本のごく普通の
+アルゴリズムを、**人間の席と同じインターフェース**に実装したものが。
+
+ついでにもう一つ手に入る。CPU がフレームワークの席に座っている以上、その判断は人間のものと
+同じ形で記録に残る。**遊べば遊ぶほど貯まる**ようになるのは、そのおまけのほうだ。
+
+step 2 を一人で起動すると、ロビーがこう言ったまま止まる。
+
+```
+waiting for another player to join...
+```
+
+誰も来ない。それだけの理由で、そこから先が一度も動かなかった。しかも仮に誰かが来て一局
+指したとしても、終わった瞬間にその対局はどこにも残らない。**遊べば遊ぶほど何かが貯まる**という
+状態に、step 2 はまだなっていない。
+
+step 3 はその2つを同時に外す。片方はもう片方の前提でもある——記録するには、まず打てないと
+どうにもならない。
+
+```bash
+go run ./tutorial/step3-record
+```
+
+<Steps>
+
+1. step 2 と同じようにネットワークに聞き、誰もいなければ自分がホストになって座る
+
+2. ロビーの最後の行に続きがある。`waiting for another player - click to play the bot instead`
+
+3. クリックすると空席にボットが座り、対局が始まる
+
+4. 終わると、起動したディレクトリに `corpus/tictactoe-0000/` ができている
+
+</Steps>
+
+別のマシンでもう1つ起動すれば、step 2 と同じように人が座る。**その人が来るまでの間だけ**、
+ボットという選択肢がある。
+
+## CPU も席に座る
+
+CPU を足すのに、ゲームのループへ分岐を書く場所はない。書くのは `session.Agent` の実装で、
+これは**人間の席と同じインターフェース**だ。
+
+```go
+type Agent[S, A any] interface {
+	Joined(slot SlotID)
+	Observe(obs S)
+	Decide(ctx context.Context) (action A, ok bool)
+	Ended(result Result)
+}
+```
+
+人が座っている席には `session.Detached` という何もしないスタブが入り、セッションは代わりに
+その席の Inbox を読む。セッションから見れば、**人間もボットも同じ型の穴に嵌まっている**。
+ルールがどちらか聞かないのは、聞く口がないからだ（`decision:no-ai-game-mode`）。
+
+この4メソッドのうち、**判断が入るのは `Decide` だけ**だ。残りの3つと、型パラメータ2つと、
+`session.Agent` を満たしているという表明は、どれも決めることが1つもない。しかも型パラメータは
+このファイルではなく[ルールセットの宣言](/tutorial/step2/#生成器にプロジェクトを教える)が
+決めていて、片方は別のパッケージにある。だから他所のゲームから写すと、写すのは決定のない側に
+なる。
+
+```bash
+cd tutorial/step3-record && ebigent add agent tactic --type Bot --file bot.go
+```
+
+step 2 で書いた `ebigent.toml` があるので、`add` は `var _ session.TickStageRuleSet[...]` を
+読んで視界と行動の型を取り、`game/bot.go` に型・表明・ファクトリ・4メソッドを書く。名前は
+**方策の名前**で、`--type` と `--file` はこのゲームがすでに `Bot` と呼んでいるものに合わせる
+ためのものだ。
+
+そして最後にこう言う。
+
+```
+NewAgent: NewBot,
+```
+
+`Decide` の中身だけが残る。三目並べの CPU は、4メソッドのうち2つしか使わない。
+
+```go
+type Bot struct {
+	sight Sight
+}
+
+// Observe は視界を持っておくだけ。判断は Decide でやる。
+func (b *Bot) Observe(sight Sight) { b.sight = sight }
+```
+
+`Observe` で考えないのには理由がある。セッションは全席に視界を配ってから、指す番の席に
+`Decide` を聞く。`Observe` の中で考え込めば、その分だけ tick が伸びる。
+
+中身は `Decide` のほうだ。
+
+```go
+func (b *Bot) Decide(context.Context) (msg.Move, bool) {
+	s := b.sight
+
+	// 手番でないか、対局が終わっている。視界がそう言っている。
+	if len(s.Legal) == 0 {
+		return msg.Move{}, false
+	}
+	// 1. 勝てるなら勝つ
+	if cell, ok := completes(s.Cells, s.Mark); ok {
+		return msg.Move{Cell: cell}, true
+	}
+	// 2. 負けるなら止める
+	if cell, ok := completes(s.Cells, rival(s.Mark)); ok {
+		return msg.Move{Cell: cell}, true
+	}
+	// 3. 中央 → 角 → 辺
+	for _, cell := range preference {
+		if slices.Contains(s.Legal, int(cell)) {
+			return msg.Move{Cell: cell}, true
+		}
+	}
+	return msg.Move{Cell: uint8(s.Legal[0])}, true
+}
+```
+
+探索も、状態も、乱数もない。この素朴さのためにフレームワークが何かを妥協しているわけでもない。
+
+読むべきところが3つある。
+
+**`b.sight` しか読んでいない。** `msg.TTTWorld` への参照がどこにもない。三目並べでは両者が
+同じ盤を運ぶので差が出ないが、隠し情報を持つゲームでこの同じボットがそのまま通るのは、
+この一点のためだ。
+
+**ルールエンジンを持っていない。** 「どこが合法か」を自前で計算していない。`Sight.Legal` が
+運んできたものを使うだけで、これは step 2 で視界に合法手を載せた見返りだ。
+
+**手番でないとき黙る。** ローカルのエージェントはコミットされた世界ごとに叩かれるので、
+毎回答えるボットは答えのほとんどを validator に撥ねられ、その全部が events ストリームに
+rejection として残る。`len(s.Legal) == 0` の1行がそれを防いでいる。
+
+<Aside type="tip" title="この CPU は記録のために何もしていない">
+席に座っているだけだ。それでも `Decide` が返した1手ずつが、**そのとき見えていた視界とともに**
+残る。`Update` の中に書いた敵の更新関数は、これを決して残さない——残す先がないからで、
+step 4 が読むのはこの差だ。
+</Aside>
+
+## 空席は誰のものか
+
+step 2 のホストは何も押さずに座った。**選択肢が1つしかない問いを出しても仕方がない**からで、
+そこには他に誰もおらず、空いているのは自分の席だけだった。押す操作は、二択がある方の判断
+——「この人のゲームに入るか」——に取ってあった。
+
+いま、待っている側にも二択ができた。待つか、ボットと打つか。だから押す操作に意味が戻る。
+
+```go
+Lobby: eb.LobbyOptions{
+	NoBots:  true, // 空席は人のもの。勝手に埋めない
+	StandIn: true, // ただし待つのをやめる権利は本人にある
+},
+```
+
+`NoBots` は step 2 のままだ。空席の持ち主は依然として人で、その人が来れば対局はそちらで
+始まる。`StandIn` が変えたのは、**待ち続けることが唯一の選択肢ではなくなった**という一点だけだ。
+
+<Aside type="note" title="タイムアウトにしなかった理由">
+「30秒待って誰も来なければボットを座らせる」という書き方もできる。やらなかったのは、それが
+**選択を人から取り上げる**からだ。あと5秒で友達が起動するかもしれない局面で、勝手に別の相手が
+座ってくる。二択があるなら二択のまま出すほうがいい。
+</Aside>
+
+## 席に着けるのは Binding の1フィールド
+
+ルールをフレームワークに手渡す `Binding` には、「空席をどう埋めるか」を書く欄がある。
+step 2 ではそこが意図的に空だった。埋めるのは `add` が最後に印刷した1行だ。
+
+```go
+NewAgent: NewBot,
+```
+
+これで全部だ。ルールは1行も変わっていない。`RuleSet` はボットという言葉を知らないし、
+`main.go` はこの関数の存在を知らない。[step 2](/tutorial/step2/) の冒頭で「`Update` の中に
+『いま O の番ならボットに考えさせる』と書きたくなる」と言った、その1行はどこにも現れなかった。
+
+同じ関数が、性質のまったく違う2つの呼び出しに答えている。ロビーのクリックは**来なかった人の
+代わり**を1席に座らせ、`run.Serve` は**全席**をここから埋めて誰も見ていない対局を回す。
+どちらも「席にエージェントを置く」という同じ動作なので、関数は1つで足りる。
+
+### ボットはわざと弱い
+
+三目並べを完璧に打つコードのほうが、上の4本より短く書ける。そうしなかった理由が2つある。
+
+1つ目。**完璧な相手からは引き分けと負けしか記録されない。** 勝ちが1局も入っていないコーパスは、
+step 4 で「勝つとはどういうことか」を一度も見せられない。強い相手を用意したことで、記録の質は
+下がる。`TestTheBotCanBeBeaten` が勝ち筋を1本固定しているのはそのためで、誰かがボットを賢く
+してこのテストが赤くなったら、相手は強くなって記録は悪くなった、ということになる。
+
+2つ目。この4規則という形そのものが、**step 4 が記録から掘り出す形**だ。生成されたエージェントが
+強いかどうかには、実のところ興味がない。知りたいのは、記録だけを見て、人が手で書いたのと同じ
+決定リストに戻れるかどうかだ。比較対象がなければその問いは立たない。
+
+## 記録は Options の1フィールド
+
+```go
+Record: run.RecordOptions{Root: *corpus},
+```
+
+1局が1ディレクトリになる。**この1ディレクトリを「エピソード」、それが集まった `corpus/`
+全体を「コーパス」と呼ぶ。** 分析も、step 4 の蒸留も、コーパス単位で走る。
+
+<FileTree>
+- corpus/
+  - tictactoe-0000/
+    - decisions.jsonl 誰が何を見て何をしたか
+    - events.jsonl 状態遷移と、validator が撥ねた入力
+    - outcomes.jsonl 席ごとの決着
+  - tictactoe-0001/
+</FileTree>
+
+`world.jsonl` がない。既定の記録モードは `analysis_sampled` で、世界そのものは落とす。
+ビット一致の再生まで残したいときは `Record.Mode` に `episode.ReplayComplete` を書くと、
+世界ストリームとチェックポイントが増える。
+
+起動しなおしても上書きされない。番号はコーパスにすでにあるエピソードの続きから振られるので、
+今日3局、明日3局打てば6局になる。
+
+これは名前の話だけではない。**番号はシードでもある。** 0番から振り直す実装は、前回の記録を
+消したうえで同じシードをもう一度録ることになる。そうして増えたファイルは、1局分の価値しか
+持たない。
+
+<LinkCard title="エピソードログの収集" href="/ai/episode-log/" description="4つの JSONL ストリーム、2つの記録モード、そして視界そのものを記録することの意味。" />
+
+## 記録されているのは盤面の履歴ではない
+
+`decisions.jsonl` の1行を、そのまま置く。
+
+```json
+{"tick":1,"slot":1,"agent_kind":"human",
+ "sight":{"you":1,"mark":"X","cells":["-","-","-","-","-","-","-","-","-"],
+          "turn":1,"legal":[0,1,2,3,4,5,6,7,8],"winner":0,"over":false,
+          "signal":{"score":0,"progress":0,"evaluation":0,"reward_delta":0,
+                    "terminal":"not_terminal"}},
+ "action":{"cell":0},
+ "evaluation":{"score":0,"progress":0,"evaluation":0,"reward_delta":0}}
+```
+
+盤面の履歴なら「何が起きたか」しか言えない。この行が言っているのは「**選んだ人に何が
+見えていたか**」だ。
+
+差は値段の差だ。9マス空いている盤で 0 を選んだのと、1マスしか空いていない盤で 0 を
+選んだのとでは、同じ `{"cell":0}` でも意味がまるで違う。前者は判断で、後者は消去法だ。
+`legal` がその区別を持っている。ゲームが自分で書いたものだから持っている、とも言える——
+`Sight.Legal` は step 2 で「操作者がルールエンジンを持たなくて済むように」入れたものだった。
+それがそのまま、記録を読む側にとっての判断材料になった。
+
+`agent_kind` が `human` なのは、その席に人が座っていたからだ。ボットの行は同じ形をしていて、
+この列だけが `bot` になる。**人とボットは記録の上で1つのコーパスに混ざる**——step 4 でどちらを
+蒸留するかは、後から列で選ぶ話だ。
+
+<Aside type="note" title="signal と evaluation が同じ値を持っている">
+`sight` の中の `signal` と、行の `evaluation` 列は、同じ
+[評価シグナル](/integration/stage-rule-set/#evaluate)だ。列のほうは常にある——セッションが
+決定ごとに計算して記録する。中のほうがあるのは、**このゲームが視界に載せると決めた**からで、
+載せなければ列だけが残る。載せる側を選んだのは、操作者が合法手だけでなく判断の基準も
+持てるようにするためだった。
+</Aside>
+
+## 見る
+
+```bash
+go run ./cmd/ebigent analyze --corpus ./corpus
+```
+
+3局打ったあとの出力。
+
+```
+episodes: 3
+by protocol version:
+  0464a0ebb7358018: 3
+by recording mode:
+  analysis_sampled: 3
+
+outcomes by slot:
+  slot 1: win=1 lose=1 draw=1
+  slot 2: win=1 lose=1 draw=1
+outcomes by agent kind:
+  bot: win=1 lose=1 draw=1
+  human: win=1 lose=1 draw=1
+
+duration ticks: min=7 mean=8.33 max=10
+decision rows: 28 (mean 9.33 per episode)
+  with action: 22
+  sight-only: 6
+rejection reasons:
+  (none)
+```
+
+人とボットが `outcomes by agent kind` の同じ表に並び、しかも同じ列の下にいる。ゲームの側は
+誰が座っているか一度も聞いていないのに、**分析の側では聞き分けられる**。
+
+`with action` と `sight-only` が分かれているのは、決着した局面が全席に配られて、誰も指さない
+まま記録されるからだ。3局なら6行。そこに勝敗が入っている。
+
+`rejection reasons` が空なのは、ボットが自分の手番でないとき黙っているからだ。ローカルの
+エージェントはコミットされた世界ごとに叩かれるので、毎回答えるボットは答えのほとんどを
+validator に撥ねられ、その全部がこのファイルに残る。`TestBotPassesWhenTheSeatIsNotItsTurn`
+がそれを止めている。
+
+## 視界が「文書」になった
+
+step 2 まで、`Sight` は1 tick だけプロセス内に存在する値だった。フィールドを何と呼ぼうと
+誰の関知するところでもなかった。記録を始めた瞬間に、その名前は**列の名前**になる。
+
+`json` タグが付いたのはそのためだ。もう一つ、`Mark` に `MarshalText` が付いた。
+
+```go
+func (m Mark) MarshalText() ([]byte, error) { return []byte(m.String()), nil }
+```
+
+これがないと、`encoding/json` は `[]Mark` をバイト列とみなして base64 で書く。
+
+```json
+"cells":"AAAAAAAAAAAA"
+```
+
+正しいし、往復もする。ただ、ログを読む人にも、そこに述語を書く人にも何の役にも立たない。
+`Legal` が `[]uint8` ではなく `[]int` なのも同じ理由だ。**ワイヤは通ればいい小ささを求め、
+ログは選択できる形を求める。** 両者は違っていて構わない——というより、違っていることに
+気づかないまま記録を始めるのが一番まずい。
+
+同じ罠に framework 側の型もかかっていた。`signal` の `terminal` が `3` ではなく `"draw"` と
+書かれるのは、`session.Terminal` が同じ `MarshalText` を持ったからだ。それが付いたのは、
+このステップを書いている最中だった。
+
+古いコーパスは数字のまま読めるようにしてある。**記録の形を変えることが、記録そのものを
+失うことになってはいけない。**
+
+## で、これをどうAIにするのか
+
+コーパスから先へ進む道は、だいたい4本ある。
+
+| 道 | 要るもの | 出るもの | なぜそう決めたか説明できるか |
+|---|---|---|---|
+| 手で書く | コーパスは要らない | 思ったとおりのボット | できる。ただしバランスを触るたび全部書き直し |
+| 探索（minimax など） | コーパスは要らない | ほぼ最適な手 | 手は出るが、理由は木の中にしかない |
+| **記録から蒸留** | 数百の決定 | 読める決定リスト、そこから Go | できる。しかも差分が出る |
+| 学習（NN など） | 数万から | 強い方策 | できない |
+
+このフレームワークが3番目を選んでいる理由は、右端の列にある。生成された相手が理不尽に
+感じられたとき、直せなければ意味がない。
+
+そして本当の分かれ目は、道の側ではない。**そのコーパスを誰が打ったか**だ。
+
+<div class="diagram">
+<svg viewBox="0 0 672 210" role="img" aria-label="人が打った対局が記録になり、蒸留されてエージェントになり、そのエージェントが次の記録を産む循環">
+	<title>1周目の種は人しか出せない</title>
+
+	<defs>
+		<marker id="ah-lap" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+			<path class="arrowhead" d="M0 0 L10 5 L0 10 z" />
+		</marker>
+		<marker id="ah-lap-a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+			<path class="arrowhead-accent" d="M0 0 L10 5 L0 10 z" />
+		</marker>
+	</defs>
+
+	<rect class="box-accent" x="16" y="24" width="130" height="52" rx="6" />
+	<text class="lbl" x="28" y="46">自分で打つ</text>
+	<text class="sub" x="28" y="64">step 3</text>
+
+	<rect class="box" x="186" y="24" width="130" height="52" rx="6" />
+	<text class="lbl" x="198" y="46">記録</text>
+	<text class="sub" x="198" y="64">decisions.jsonl</text>
+
+	<rect class="box" x="356" y="24" width="130" height="52" rx="6" />
+	<text class="lbl" x="368" y="46">蒸留と承認</text>
+	<text class="sub" x="368" y="64">step 4</text>
+
+	<rect class="box" x="526" y="24" width="130" height="52" rx="6" />
+	<text class="lbl" x="538" y="46">生成された相手</text>
+	<text class="sub" x="538" y="64">読める Go</text>
+
+	<path class="link-accent" d="M146 50 L182 50" marker-end="url(#ah-lap-a)" />
+	<path class="link" d="M316 50 L352 50" marker-end="url(#ah-lap)" />
+	<path class="link" d="M486 50 L522 50" marker-end="url(#ah-lap)" />
+
+	<path class="link" d="M591 76 L591 140 L251 140 L251 80" marker-end="url(#ah-lap)" />
+	<text class="sub" x="265" y="168">2周目からは相手が変わる。自動収集が効くのはここから</text>
+</svg>
+</div>
+
+- **自分で打つ** — 数十局が限界だ。ただし人がやりたがることが入っている
+- **ボット同士を回す** — いくらでも回る。ただし決定的なボット2体なら、100局回しても中身は
+  1局分になる。`TestTwoCopiesOfTheBotRecordTheSameGameEveryTime` がそれを固定している
+- **自己対戦・リーグ** — 違いを意図的に持ち込む。最終的にはここに行く
+
+順番はこの並びのままだ。まず自分で打ち、蒸留して座らせ、座らせたものを相手にまた打つ。
+シミュレーションによる自動収集が効くのは3周目からで、1周目にそれをやると、種がないので
+何も出てこない。step 3 が人の対局から始まるのは、それが一番簡単だからというより、
+**それ以外に最初の種がない**からだ。
+
+<Aside type="note" title="ヘッドレスの回し方はもうある">
+`run.Serve` に `session.Unlimited` を渡すと、全席をボットで埋めた対局が画面なしで、
+機械が許す速さで回る。仕組みとしては今日から使える。足りていないのは仕組みではなく、
+**回す価値のある相手**のほうだ。
+</Aside>
+
+<LinkCard title="ログが AI になるまで" href="/ai/" description="決定点の切り出しから語彙、候補、人間の承認、生成された Go まで。9つのステップと責任分担。" />
+
+## 確かめ方
+
+窓を開けずに全部がテストで固定されている。
+
+| 主張 | テスト |
+|---|---|
+| 人が打った手が、そのとき見えていた視界つきで記録される | `TestYourOwnPlayIsWhatGetsRecorded` |
+| 記録された行動は隣にある視界の上で合法だった（局面がずれていない） | 同上 |
+| 人の行とボットの行が、ラベル1列だけ違う同じ形で1つのログに入る | 同上 |
+| 窓なし・人なしでも同じルールがコーパスを産む | `TestPlayingWithNobodyWatchingProducesACorpus` |
+| 同じボット2体を何局回しても記録は1局分にしかならない | `TestTwoCopiesOfTheBotRecordTheSameGameEveryTime` |
+| ボットは勝てるとき勝ち、負けるとき止める | `TestBotTakesTheWin` / `TestBotBlocksTheLoss` |
+| ボットは自分の手番でないとき黙る（events を汚さない） | `TestBotPassesWhenTheSeatIsNotItsTurn` |
+| ボットは人間に負けうる | `TestTheBotCanBeBeaten` |
+| step 2 の LAN 対戦は壊れていない | `TestTwoInstancesPlayOneBoard` |
+
+2つ目が一番効いている。記録された `sight` が指し手の**あとの**盤面だったとしても、行数も
+ラベルも合ってしまう。「その手はその視界の上で合法だったか」を照合して初めて、局面がずれて
+いないことが言える。
+
+<FileTree>
+- tutorial/step3-record/
+  - main.go ウィンドウ・入力・描画・ネットワーク・記録先の宣言
+  - game/
+    - game.go ルール。Sight に json タグ、Mark に text 形が付いた
+    - bot.go 決定リスト4段のボット
+    - bind.go Options / Binding。NewAgent が埋まった
+    - bot_test.go ボットの4規則と、負けうること
+    - corpus_test.go 記録されたものが step 4 の入力になっているか
+  - msg/ ワイヤ型と生成物（step 2 と同一）
+</FileTree>
+
+## まだないもの
+
+**ゲスト側は記録しない。** セッションを走らせているのはホストだけで、ゲストの手元には決定を
+書き出す元になる視界の生成がない。LAN で対局した記録は、ホストになった側のマシンにだけ残る。
+
+**蒸留がない。** `corpus/` を語彙に通して条件→行動の候補を出し、承認したものを Go に落とし、
+生成されたエージェントを同じ席に座らせる。それが step 4 だ。
+
+いま座っているボットは、その比較対象として手で書いてある。生成されたほうが強いかどうかには
+興味がない。知りたいのは、**記録だけから、人が書いたものと同じ方策に戻れるか**だ。
+
+<LinkCard title="step 4 — 記録からボットを作る" href="/tutorial/step4/" description="このコーパスから決定リストを掘り出し、生成された Go を同じ席に座らせる。最初の語彙は失敗する。" />

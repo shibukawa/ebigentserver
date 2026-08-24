@@ -1,0 +1,340 @@
+// Package game holds the rules of tic-tac-toe as a
+// api:simulation-interface the framework can host. It still imports no
+// engine.
+//
+// Step 3 changed what a sight is worth and left the rules alone. Sight
+// grew json tags and Mark grew a text form, because a sight is now a row
+// in a file rather than a value that lives for one tick. And bot.go
+// arrived beside the rules — an agent is not a rule, but it reads the
+// same sight and has to be as free of the engine as the rules are, so
+// this is where it can live without either of those becoming untrue.
+//
+// What did not change is the more interesting half. No rule learned what
+// a bot is, no method asks who occupies a seat, and nothing here knows
+// that anything is being recorded.
+package game
+
+import (
+	"fmt"
+
+	"github.com/shibukawa/ebigentserver/session"
+	"github.com/shibukawa/ebigentserver/statesync"
+	"github.com/shibukawa/ebigentserver/tutorial/step3-record/msg"
+)
+
+// The two seats. X always moves first.
+const (
+	SlotX session.SlotID = 1
+	SlotO session.SlotID = 2
+)
+
+// Slots is the game-defined seat set (concept:player-slot).
+func Slots() []session.SlotID { return []session.SlotID{SlotX, SlotO} }
+
+// Protocol identifies this game's message schema in every episode header
+// and in every handshake. It comes from the generated code, so a change
+// that moves one byte of what is sent moves this too.
+const Protocol = msg.SchemaVersion
+
+// Evaluation versions the scoring in Evaluate.
+const Evaluation = 1
+
+// Mark is what occupies one cell. The values are the ones the board
+// carries, so a sight needs no translation table.
+type Mark uint8
+
+const (
+	Empty Mark = iota
+	X
+	O
+)
+
+// MarshalText and UnmarshalText are what keep the board legible once a
+// sight is a row in a file.
+//
+// encoding/json writes any slice of bytes as base64, and it cannot tell
+// nine small numbers from a blob, so an untagged []Mark is recorded as
+// "cells":"AAAAAAAAAAAA" — correct, round-trippable, and no use at all
+// to somebody reading the log or writing a predicate against it. A mark
+// that knows how to write itself takes the slice off that path, and the
+// column becomes ["-","-","X","-","O","-","-","-","-"].
+func (m Mark) MarshalText() ([]byte, error) { return []byte(m.String()), nil }
+
+// UnmarshalText reads back what MarshalText wrote.
+func (m *Mark) UnmarshalText(text []byte) error {
+	for _, known := range []Mark{Empty, X, O} {
+		if known.String() == string(text) {
+			*m = known
+			return nil
+		}
+	}
+	return fmt.Errorf("tictactoe: %q is not a mark", text)
+}
+
+// String renders a mark for the status line.
+func (m Mark) String() string {
+	switch m {
+	case X:
+		return "X"
+	case O:
+		return "O"
+	default:
+		return "-"
+	}
+}
+
+// MarkOf is the mark a seat plays.
+func MarkOf(slot session.SlotID) Mark {
+	switch slot {
+	case SlotX:
+		return X
+	case SlotO:
+		return O
+	default:
+		return Empty
+	}
+}
+
+// Sight is what a seat is allowed to see. Tic-tac-toe has global
+// visibility, so it is the same board for both — but it is still a
+// distinct type, because the projection is the seam every later game
+// changes.
+//
+// The json tags arrived with step 3, and they are not decoration. Until
+// this step a sight was a value that lived for one tick inside one
+// process, and what its fields were called was nobody's business. Now
+// every delivered sight is written to data:episode-log, so these names
+// are the column names an analysis run selects on and a distilled
+// predicate is written against. Renaming a field from here on is a
+// change to a published format, not a refactor.
+type Sight struct {
+	// You is the observing seat and Mark its symbol.
+	You  session.SlotID `json:"you"`
+	Mark Mark           `json:"mark"`
+	// Cells is the board. It stayed a slice rather than becoming a
+	// fixed-length array, which is what makes Mark's text form
+	// load-bearing: an array of nine bytes would have been recorded as
+	// a JSON array anyway, and a slice of them would not.
+	Cells []Mark `json:"cells"`
+	// Turn is the seat to move, 0 once the game is over.
+	Turn session.SlotID `json:"turn"`
+	// Legal lists the cells this seat may take now, so a controller
+	// needs no rule engine of its own.
+	//
+	// Ordinary ints rather than the uint8 the wire uses, and for the
+	// same reason Mark carries a text form: cell numbers written as
+	// bytes would be recorded as base64. The wire wants the smallest
+	// thing that survives the trip; the log wants the thing somebody
+	// can select on. They are allowed to differ.
+	Legal []int `json:"legal"`
+	// Winner and Over report the end.
+	Winner session.SlotID `json:"winner"`
+	Over   bool           `json:"over"`
+	// Signal is the seat's data:evaluation-signal, delivered with the
+	// sight so every controller has a criterion and not only a
+	// legal move set.
+	Signal session.EvaluationSignal `json:"signal"`
+}
+
+// Lines are the eight ways to win.
+var Lines = [8][3]uint8{
+	{0, 1, 2}, {3, 4, 5}, {6, 7, 8},
+	{0, 3, 6}, {1, 4, 7}, {2, 5, 8},
+	{0, 4, 8}, {2, 4, 6},
+}
+
+// RuleSet is the game's api:simulation-interface. The zero value is
+// ready to use.
+type RuleSet struct{}
+
+var _ session.TickStageRuleSet[msg.TTTWorld, msg.Move, Sight] = RuleSet{}
+
+// Start deals an empty board with X to move. Tic-tac-toe is
+// deterministic, so the seed goes unused — it is still recorded, and a
+// game that grows randomness derives it from here rather than the clock.
+func (RuleSet) Start(uint64) msg.TTTWorld {
+	return msg.TTTWorld{Cells: make([]uint8, 9), Turn: uint16(SlotX)}
+}
+
+// ActingSlots returns the seat whose turn it is: strict alternation, one
+// decision at a time. It is empty once the game is over, which is legal
+// only because every seat then evaluates terminal.
+func (RuleSet) ActingSlots(s *msg.TTTWorld) []session.SlotID {
+	if s.Over || s.Turn == 0 {
+		return nil
+	}
+	return []session.SlotID{session.SlotID(s.Turn)}
+}
+
+// Legal reports whether the seat to move may take cell. It is the same
+// judgement step 1 made, now also the one api:action-validator asks.
+func Legal(s *msg.TTTWorld, slot session.SlotID, cell uint8) bool {
+	if s.Over || session.SlotID(s.Turn) != slot {
+		return false
+	}
+	return int(cell) < len(s.Cells) && s.Cells[cell] == uint8(Empty)
+}
+
+// Apply takes the cell for the seat to move. Legality was settled before
+// the call, so this cannot fail.
+func (RuleSet) Apply(s *msg.TTTWorld, slot session.SlotID, a msg.Move) {
+	if !Legal(s, slot, a.Cell) {
+		return
+	}
+	mark := MarkOf(slot)
+	s.Cells[a.Cell] = uint8(mark)
+	s.Moves++
+	if line, won := lineFor(s, uint8(mark)); won {
+		s.Winner, s.Over, s.Turn = uint16(slot), true, 0
+		s.Line = []uint8{line[0], line[1], line[2]}
+		return
+	}
+	if int(s.Moves) == len(s.Cells) {
+		s.Over, s.Turn = true, 0
+		return
+	}
+	s.Turn = uint16(other(slot))
+}
+
+// Advance runs one simulation step, and there is nothing to run: a board
+// changes when somebody moves and at no other moment. The method exists
+// because the realtime loop asks every game for it, and a turn-based one
+// answering "nothing happened" is a real answer rather than a gap — it
+// is what lets the same loop, the same recording, and the same link
+// serve a board game and a shooter.
+func (RuleSet) Advance(*msg.TTTWorld) {}
+
+// Project builds the sight a seat is allowed to see.
+func (g RuleSet) Project(s *msg.TTTWorld, slot session.SlotID) Sight {
+	obs := Sight{
+		You:    slot,
+		Mark:   MarkOf(slot),
+		Turn:   session.SlotID(s.Turn),
+		Winner: session.SlotID(s.Winner),
+		Over:   s.Over,
+		Signal: g.Evaluate(s, slot),
+	}
+	obs.Cells = make([]Mark, len(s.Cells))
+	for i, v := range s.Cells {
+		obs.Cells[i] = Mark(v)
+	}
+	for cell := range s.Cells {
+		if Legal(s, slot, uint8(cell)) {
+			obs.Legal = append(obs.Legal, cell)
+		}
+	}
+	return obs
+}
+
+// Evaluate computes the seat's data:evaluation-signal. The session calls
+// it; a controller never scores itself.
+func (RuleSet) Evaluate(s *msg.TTTWorld, slot session.SlotID) session.EvaluationSignal {
+	sig := session.EvaluationSignal{Score: int64(s.Moves)}
+	switch {
+	case !s.Over:
+		sig.Terminal = session.NotTerminal
+	case s.Winner == uint16(slot):
+		sig.Terminal = session.Win
+	case s.Winner == 0:
+		sig.Terminal = session.Draw
+	default:
+		sig.Terminal = session.Lose
+	}
+	return sig
+}
+
+// Config builds one match's session configuration.
+func Config(id string, seed uint64) session.Config[msg.TTTWorld, msg.Move, Sight] {
+	tune := Tuning()
+	return session.Config[msg.TTTWorld, msg.Move, Sight]{
+		ID:        id,
+		Slots:     Slots(),
+		RuleSet:   RuleSet{},
+		Validator: Validator{},
+		Seed:      seed,
+		Tuning:    &tune,
+		Canonical: Canonical,
+	}
+}
+
+// Tuning is the declared data:session-tuning-profile. A board game has
+// no physics to run, so the tick rate only bounds how quickly a click
+// becomes a committed move.
+func Tuning() session.TuningProfile {
+	return session.TuningProfile{
+		TickRate: 30, SendRate: 30, HistoryDepth: 8, SnapshotEvery: 30,
+	}
+}
+
+// Validator is the legality half of api:action-validator. It runs on
+// every simulating peer, so it must be deterministic — which it is,
+// being the same Legal the rules use.
+type Validator struct{}
+
+// Legal refuses a move that is not this seat's to make.
+func (Validator) Legal(s *msg.TTTWorld, slot session.SlotID, a msg.Move) error {
+	if Legal(s, slot, a.Cell) {
+		return nil
+	}
+	return errIllegal{cell: a.Cell, slot: slot}
+}
+
+type errIllegal struct {
+	cell uint8
+	slot session.SlotID
+}
+
+func (e errIllegal) Error() string {
+	return "tictactoe: seat " + MarkOf(e.slot).String() + " cannot take cell " + string('0'+rune(e.cell))
+}
+
+// Codec carries the board between the two machines. Snapshot and delta
+// both come from the generated code, so neither end can drift from the
+// other without the protocol version moving with it.
+func Codec() statesync.Codec[msg.TTTWorld, msg.TTTWorldDelta] {
+	return statesync.Codec[msg.TTTWorld, msg.TTTWorldDelta]{
+		AppendSnapshot: func(dst []byte, s *msg.TTTWorld) []byte { return s.AppendCBORTo(dst) },
+		DecodeSnapshot: func(s *msg.TTTWorld, data []byte) error { return s.DecodeCBORFrom(data) },
+		Diff:           func(base, cur *msg.TTTWorld) msg.TTTWorldDelta { return msg.DiffTTTWorld(*base, *cur) },
+		AppendDelta:    func(dst []byte, d *msg.TTTWorldDelta) []byte { return d.AppendCBORTo(dst) },
+		DecodeDelta:    func(d *msg.TTTWorldDelta, data []byte) error { return d.DecodeCBORFrom(data) },
+		ApplyDelta:     msg.ApplyTTTWorldDelta,
+		// The board is a slice, so a value copy would alias it and
+		// every retained baseline would silently be the newest state.
+		Clone: func(s *msg.TTTWorld) msg.TTTWorld {
+			c := *s
+			c.Cells = append([]uint8(nil), s.Cells...)
+			c.Line = append([]uint8(nil), s.Line...)
+			return c
+		},
+	}
+}
+
+// Canonical encodes the state for data:state-checkpoint.
+func Canonical(s *msg.TTTWorld) []byte { return s.AppendCBORTo(nil) }
+
+// EncodeAction and DecodeAction carry data:player-input.
+func EncodeAction(dst []byte, a msg.Move) []byte { return append(dst, a.AppendCBORTo(nil)...) }
+
+// DecodeAction reads one input back.
+func DecodeAction(b []byte) (msg.Move, error) {
+	var a msg.Move
+	err := a.DecodeCBORFrom(b)
+	return a, err
+}
+
+func other(slot session.SlotID) session.SlotID {
+	if slot == SlotX {
+		return SlotO
+	}
+	return SlotX
+}
+
+func lineFor(s *msg.TTTWorld, mark uint8) ([3]uint8, bool) {
+	for _, line := range Lines {
+		if s.Cells[line[0]] == mark && s.Cells[line[1]] == mark && s.Cells[line[2]] == mark {
+			return line, true
+		}
+	}
+	return [3]uint8{}, false
+}
