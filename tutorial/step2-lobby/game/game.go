@@ -73,8 +73,10 @@ type Sight struct {
 	// You is the observing seat and Mark its symbol.
 	You  session.SlotID
 	Mark Mark
-	// Cells is the board.
-	Cells [9]Mark
+	// Cells is the board. A slice rather than a fixed-length array,
+	// because the codec generator carries slices and the sight is
+	// generated the same way the world is.
+	Cells []Mark
 	// Turn is the seat to move, 0 once the game is over.
 	Turn session.SlotID
 	// Legal lists the cells this seat may take now, so a controller
@@ -167,10 +169,9 @@ func (g RuleSet) Project(s *msg.TTTWorld, slot session.SlotID) Sight {
 		Over:   s.Over,
 		Signal: g.Evaluate(s, slot),
 	}
+	obs.Cells = make([]Mark, len(s.Cells))
 	for i, v := range s.Cells {
-		if i < len(obs.Cells) {
-			obs.Cells[i] = Mark(v)
-		}
+		obs.Cells[i] = Mark(v)
 	}
 	for cell := range s.Cells {
 		if Legal(s, slot, uint8(cell)) {
