@@ -185,6 +185,7 @@
 {"category": "objective", "id": "requirement:runtime-config-cleanup", "path": ".knowledge/requirement/runtime-config-cleanup.md", "role": "primary", "title": "Runtime Config Cleanup", "type": "requirement"}
 {"category": "objective", "id": "requirement:sample-suite-proves-capabilities", "path": ".knowledge/requirement/sample-suite-proves-capabilities.md", "role": "primary", "title": "Sample Suite Proves Capabilities", "type": "requirement"}
 {"category": "objective", "id": "requirement:selectable-synchronization", "path": ".knowledge/requirement/selectable-synchronization.md", "role": "primary", "title": "Selectable Synchronization", "type": "requirement"}
+{"category": "objective", "id": "requirement:stage-declares-its-wire", "path": ".knowledge/requirement/stage-declares-its-wire.md", "role": "primary", "title": "Stage Declares Its Wire", "type": "requirement"}
 {"category": "objective", "id": "requirement:token-based-identity", "path": ".knowledge/requirement/token-based-identity.md", "role": "primary", "title": "Token Based Identity", "type": "requirement"}
 {"category": "objective", "id": "requirement:transport-abstraction", "path": ".knowledge/requirement/transport-abstraction.md", "role": "primary", "title": "Transport Abstraction", "type": "requirement"}
 {"category": "objective", "id": "requirement:unified-agent-model", "path": ".knowledge/requirement/unified-agent-model.md", "role": "primary", "title": "Unified Agent Model", "type": "requirement"}
