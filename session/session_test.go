@@ -2,9 +2,12 @@ package session_test
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strings"
 	"testing"
+
+	"github.com/shibukawa/fixmath"
 
 	"github.com/shibukawa/ebigentserver/session"
 )
@@ -346,5 +349,77 @@ func TestStateTransitionTable(t *testing.T) {
 				t.Errorf("CanTransition(%v, %v) = %v, want %v", from, to, got, want)
 			}
 		}
+	}
+}
+
+// TestTerminalReadsBothSpellings is what lets the recorded format change
+// without the recorded data changing. Episodes written before the
+// outcome had a name hold a bare number in that column; they are still
+// evidence, and a reader that could not open them would turn a change to
+// the format into a loss of the corpus.
+func TestTerminalReadsBothSpellings(t *testing.T) {
+	for _, tc := range []struct {
+		json string
+		want session.Terminal
+	}{
+		{`"not_terminal"`, session.NotTerminal},
+		{`"win"`, session.Win},
+		{`"lose"`, session.Lose},
+		{`"draw"`, session.Draw},
+		{`"abandoned"`, session.Abandoned},
+		{`0`, session.NotTerminal},
+		{`1`, session.Win},
+		{`2`, session.Lose},
+		{`3`, session.Draw},
+		{`4`, session.Abandoned},
+	} {
+		var got session.Terminal
+		if err := json.Unmarshal([]byte(tc.json), &got); err != nil {
+			t.Fatalf("%s: %v", tc.json, err)
+		}
+		if got != tc.want {
+			t.Fatalf("%s decoded to %v, want %v", tc.json, got, tc.want)
+		}
+	}
+	for _, bad := range []string{`"winner"`, `9`, `"1"`, `{}`} {
+		var got session.Terminal
+		if err := json.Unmarshal([]byte(bad), &got); err == nil {
+			t.Fatalf("%s decoded to %v instead of failing", bad, got)
+		}
+	}
+	// null leaves the field alone rather than failing, which is what
+	// every other stdlib decoder does with an absent value.
+	got := session.Win
+	if err := json.Unmarshal([]byte(`null`), &got); err != nil || got != session.Win {
+		t.Fatalf("null gave %v, %v", got, err)
+	}
+}
+
+// TestSignalRoundTripsThroughItsRecordedForm covers the whole struct: a
+// signal written to a decision row and read back is the same signal, and
+// the column names are the ones the rest of the log uses.
+func TestSignalRoundTripsThroughItsRecordedForm(t *testing.T) {
+	want := session.EvaluationSignal{
+		Score:       7,
+		Progress:    fixmath.FromInt32(1),
+		Evaluation:  fixmath.FromInt32(-2),
+		RewardDelta: fixmath.FromInt32(3),
+		Terminal:    session.Draw,
+	}
+	body, err := json.Marshal(want)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, column := range []string{`"score"`, `"progress"`, `"evaluation"`, `"reward_delta"`, `"terminal":"draw"`} {
+		if !strings.Contains(string(body), column) {
+			t.Fatalf("recorded signal %s is missing %s", body, column)
+		}
+	}
+	var got session.EvaluationSignal
+	if err := json.Unmarshal(body, &got); err != nil {
+		t.Fatal(err)
+	}
+	if got != want {
+		t.Fatalf("round trip gave %+v, want %+v", got, want)
 	}
 }
