@@ -10,6 +10,10 @@ import (
 // client entry point breaks the build. This test holds the framework module
 // itself to rule:engine-import-confined-to-client-entry; every game module
 // carries the same test with its own entry patterns.
+//
+// The tutorial is not covered here. Each step is its own module — that is
+// what lets step 2 run `ebigent init` for real — so each carries the test
+// in its own game package, allowing "." as the entry.
 func TestModuleImportBoundary(t *testing.T) {
 	if testing.Short() {
 		t.Skip("shells out to the go toolchain")
@@ -28,11 +32,6 @@ func TestModuleImportBoundary(t *testing.T) {
 		// hole in it — package run, which every headless build links, is
 		// checked by this same pass and must stay clean.
 		"run/eb",
-		// Each tutorial step is one main package that renders; the
-		// packages beneath it are rules and must still stay clean,
-		// which is why this pattern is one level deep and not a
-		// prefix.
-		"tutorial/*",
 	}
 	cfg.Rules[0].AllowedEntries = append(cfg.Rules[0].AllowedEntries, exampleEntries...)
 	cfg.AllowedCgoEntries = append(cfg.AllowedCgoEntries, exampleEntries...)

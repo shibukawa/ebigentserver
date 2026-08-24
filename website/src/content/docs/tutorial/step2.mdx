@@ -5,8 +5,11 @@ description: 2つ起動するだけで対人戦になる。Update が何も決�
 
 import { Aside, FileTree, Steps, LinkCard } from '@astrojs/starlight/components';
 
-step 1 の三目並べに CPU を足そうとすると、`Update` の中に「いま O の番ならボットに考えさせる」と
-書きたくなる。その1行が、この framework が最初に禁じた分岐そのものになる。
+step 1 で、三目並べが動くようになった。ただし2人とも同じマウスを使う。このステップの終わりには、
+**別のマシンにいる相手と対戦できる**ようになっている——アドレスを1文字も打たずに。
+
+先に CPU を足したくなるところだが、順番が逆になる。step 1 の `Update` に「いま O の番なら
+ボットに考えさせる」と書いた瞬間、それがこの framework の禁じた分岐そのものになるからだ。
 
 なのでその前に、**もう一人を別のマシンから座らせる**。
 
@@ -29,7 +32,7 @@ go run ./tutorial/step2-lobby
 </Steps>
 
 ホスト側で押す操作がないのは意図的だ。**選択肢が1つしかない問いを出しても仕方がない**——
-そこには他に誰もおらず、空いているのは自分の席だけになる。押す操作は、二択がある方の判断、
+そこには他に誰もおらず、空いているのは自分の席だけだ。押す操作は、二択がある方の判断、
 つまり「この人のゲームに入るか」に取ってある。
 
 対局が終わったら**最終盤面がそのまま残る**。クリックするとロビーに戻る。終わった瞬間に
@@ -85,7 +88,7 @@ step 2 は `eb.Run` に変わるが、**`ebiten.RunGameWithOptions` は中で呼
 `Engine *ebiten.RunGameOptions` はそのまま素通しされるので、エンジン側の設定は何も失わない。
 メインの goroutine も Ebitengine に渡される——あちらがそれを要求するからだ。
 
-変わるのは `Game` の位置と、`Update` の中身になる。
+変わるのは `Game` の位置と、`Update` の中身だ。
 
 | Ebitengine | eb.Run |
 |---|---|
@@ -200,9 +203,70 @@ World は差分つき——毎 tick 盤面をまるごと送らないため—�
 席とリンクはそのまま——同じ相手と、違うルールで、続けて遊べる。
 </Aside>
 
+## 生成器にプロジェクトを教える
+
+その1行は宣言であって、命令ではない。誰かが読んでコードを書かなければ、`msg` に codec は
+現れない。読むのは `ebigent generate` だ。
+
+ところが生成器は、どのディレクトリが1つのゲームなのかを知らない。モジュールパスも、席が
+何席あるかも、どの席を誰が取れるかも、ソースのどこにも書いていない。それを1箇所に書いた
+ものが `ebigent.toml` で、`ebigent init` が書く。
+
+ツールはリポジトリのルートから一度入れておく。
+
+```bash
+go install ./cmd/ebigent
+```
+
+走らせるのはステップのディレクトリだ。`ebigent.toml` を探すのは今いる場所から上なので、
+どこで走らせるかが答えを変える。
+
+```bash
+cd tutorial/step2-lobby && ebigent init
+```
+
+step 2 のディレクトリには、これを実際に走らせた結果が入っている。**`go.mod` があるので、
+`init` はゲームを作らない。** モジュールパスは決まっているし、走らせるエントリポイントも
+書いてある。だからサンプルゲームは生成せず、フレームワーク側のファイルだけを足して、書いた
+コードには触れない。
+
+```
+ebigent.toml           プロトコルと build target の宣言
+corpus/                エピソードの置き場
+behavior/chips.json    チップライブラリ
+cmd/distill/main.go    ebigent distill が go run するエントリ
+.claude/skills/        コーパスを読むための解析スキル
+```
+
+エントリポイントは import グラフから読み取る。この step のウィンドウは `main.go` ひとつなので
+`entry = "."` の client として登録され、`game/` も `msg/` もその下の普通のパッケージになる。
+
+`init` が推測したところは2箇所あって、どちらもこのリポジトリでは直してある。`realtime` は
+duo という答えから `twitch` になったが、盤は考える時間を待つので `turn_based` だ。
+`cmd/distill` の生成先はフレームワークの慣習どおり `game.Action` を指していたが、この
+ゲームの着手は `msg.Move` にある。**推測は出発点であって、答えではない。**
+
+`[protocol]` はゲームの契約で、**起動時には読まれない**。2台のビルドで違ってよいものが1つも
+ないからだ。`ebigent generate` がそれを Go の定数にして、ビルドが持ち歩く。
+
+```bash
+cd tutorial/step2-lobby && ebigent generate
+```
+
+`msg/` の4つの生成物と、`internal/ebigentgen/protocol_gen.go` が出てくる。後者は
+`[protocol]` がそのまま Go になったもので、このステップのコードはまだ誰も読んでいない。
+
+<Aside type="note" title="init は使わないものまで置いていく">
+コーパスの置き場もチップライブラリも、step 2 では一度も読まれない。それでも `init` が
+置くのは、**コーパスが後から遡って集められない**からだ
+(`decision:ai-pipeline-always-scaffolded`)。記録する場所は、記録したくなるより前に要る。
+</Aside>
+
 ## 相手が来るのを待つ
 
-宣言はこれで全部だ。
+宣言はこれで全部だ。**`Binding`** は、ゲームがルールをフレームワークに手渡す口になる。
+どの席があるか、1試合分のセッションをどう組み立てるか、空席をどう埋めるか——持っているのは
+それだけで、物理も投影も検証も、すでにセッション設定の中にある。
 
 ```go
 // tutorial/step2-lobby/game/bind.go — ルールの隣
@@ -250,11 +314,11 @@ LAN プリセットは待ち受けソケットと UDP ブロードキャスト�
 ホスト側では、操作者が人である席には——ローカルでもリモートでも——`session.Detached` が座る。
 何もしないスタブで、セッションは代わりにその席の `Inbox` を読む。つまりセッションから見た
 「人が入ってきた」は、**Agent の到着ではなく Inbox に入力が届き始めること**だ。実際に繋がるのは
-admission が席に束ねた接続になる。
+admission が席に束ねた接続だ。
 
 本物の Agent はゲスト側にいる。状態が届くたびに `Observe` → `Decide` が呼ばれ、返った行動が
 上流に送られる。**ホストはどちらか知らない**——だから step 3 でボットを座らせるのは、
-同じ席に別の `Agent` を置くだけの話になる。
+同じ席に別の `Agent` を置くだけの話だ。
 
 ## 順序という制約
 
@@ -284,19 +348,38 @@ admission が席に束ねた接続になる。
 
 <FileTree>
 - tutorial/step2-lobby/
+  - go.mod このステップ自身のモジュール
+  - ebigent.toml ebigent init が書いた宣言
   - main.go ウィンドウ・入力・描画・ネットワークの宣言
   - game/
     - game.go ルール。session.StageRuleSet の実装
     - bind.go Options / Binding の宣言
     - net_test.go 2インスタンスの通し
+    - boundary_test.go engine が game/ に届いていないことの検査
   - msg/
     - types.go World と Action の型
     - wire_gen.go / tinybind_gen.go / delta_gen.go / schema_gen.go すべて生成物
+  - internal/ebigentgen/ [protocol] が Go の定数になったもの
+  - corpus/ まだ空。step 3 が使う
+  - behavior/ チップライブラリ。step 4 が使う
 </FileTree>
+
+各ステップは**それ自身のモジュール**になっている。`ebigent init` が `go.mod` を見て判断する
+以上、読者が走らせるのと同じものをここで走らせるには、それが要る。`replace` がこの
+チェックアウトを指しているので、ステップはリリース版ではなく手元のフレームワークを試す。
 
 ## まだないもの
 
-対戦相手が来ないときのボットがない。記録も取っていない。`eb.Options.Record` に出力先を書けば
-この対局がそのままコーパスになり、それが step 3 の入口になる。
+**対戦相手が来ないときのボットがない。** `Binding.NewAgent` は意図的に空だ。空席はボットの
+席ではなく、**まだ起動していない人の席**だから——だが待っている本人には、待つのをやめる
+権利くらいはあってよい。step 3 でそこに名前が付く。
 
-<LinkCard title="ログが AI になるまで" href="/ai/" description="step 3 の行き先。記録から承認済みチップ、そして生成された Go まで。" />
+**記録も取っていない。** ここで一局指しても、終わった瞬間にどこにも残らない。置き場は
+`init` がもう作った——`eb.Options.Record` にそこを書けば、この対局が**コーパス**——後から
+読み返せる対局記録の集まり——になる。それが step 3 の入口だ。
+
+**設定値をコードが読んでいない。** `internal/ebigentgen` には席数も同期モードも定数として
+あるのに、`game/` は自分で数えている。二重に書いてあるものはいずれ食い違うので、直す価値は
+あるが、このステップの話ではない。
+
+<LinkCard title="step 3 — シンプルなアルゴリズムの CPU を実装する" href="/tutorial/step3/" description="if 4本の CPU を session.Agent として書き、人間と同じ席に着ける。その判断がそのまま記録に残る。" />

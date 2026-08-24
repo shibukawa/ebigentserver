@@ -1,5 +1,9 @@
 # step 2 — ロビーと LAN 対戦
 
+step 1 で三目並べが動くようになりました。ただし2人とも同じマウスを使います。このステップの
+終わりには、**別のマシンにいる相手と対戦できる**ようになっています——アドレスを1文字も
+打たずに。
+
 ```bash
 go run ./tutorial/step2-lobby
 ```
@@ -37,19 +41,28 @@ func (v *view) Intake(seating run.Seating[game.Action]) {
 
 ## 構成
 
+このステップから、ディレクトリは**それ自身の Go モジュール**です。`ebigent init` は
+`go.mod` を見て仕事を変えるので、読者が走らせるのと同じものをここで走らせるには、それが
+必要でした。`replace` がこのチェックアウトを指しているため、リリース版ではなく手元の
+フレームワークを試します。
+
 ```
 step2-lobby/
+├── go.mod           このステップ自身のモジュール
+├── ebigent.toml     ebigent init が書いた宣言
 ├── main.go          ウィンドウ・マウス・描画・ネットワークの宣言
 ├── game/
 │   ├── game.go      ルール。session.StageRuleSet の実装
 │   ├── bind.go      Options / Binding の宣言（engine もトランスポートも知らない）
 │   ├── game_test.go ルールとコーデックのテスト
-│   └── net_test.go  2インスタンスがウィンドウなしで1局を通すテスト
-└── msg/
-    ├── types.go     ワイヤ型の宣言
-    ├── tinybind_gen.go  コーデック（go generate）
-    ├── delta_gen.go     差分（ebigent generate）
-    └── schema_gen.go    スキーマ指紋（ebigent generate）
+│   ├── net_test.go  2インスタンスがウィンドウなしで1局を通すテスト
+│   └── boundary_test.go  engine が game/ に届いていないことの検査
+├── msg/
+│   ├── types.go     ワイヤ型の宣言
+│   └── *_gen.go     コーデック・差分・スキーマ指紋（ebigent generate）
+├── internal/ebigentgen/  [protocol] が Go の定数になったもの
+├── corpus/          まだ空。step 3 が使う
+└── behavior/        チップライブラリ。step 4 が使う
 ```
 
 ## 足したもの
@@ -59,11 +72,45 @@ step2-lobby/
 `Evaluate` がその周りに増えました。
 
 **盤面にワイヤ形式ができた。** 2台目が同じ盤を見る以上、バイト列の形は2つのビルドの間の
-契約になります。`msg/types.go` で1度宣言して生成します。
+契約になります。`msg/types.go` で1度宣言し、ルールセットの宣言がどの型を運ぶかを名指し、
+生成器がそれを読んでコードを書きます。
+
+生成器を走らせるには、どのディレクトリが1つのゲームなのかを教える必要があります。
+モジュールパスも席数もソースには書いていないからです。それを1箇所に書いたものが
+`ebigent.toml` で、`ebigent init` が書きます。
+
+ツールはリポジトリのルートから一度入れておきます。
 
 ```bash
-go generate ./tutorial/step2-lobby/msg/
+go install ./cmd/ebigent
 ```
+
+走らせるのはステップのディレクトリです。`ebigent.toml` を探すのは今いる場所から上なので、
+どこで走らせるかが答えを変えます。
+
+```bash
+cd tutorial/step2-lobby && ebigent init
+```
+
+`go.mod` があるので、`init` はゲームを作りません。モジュールパスも走らせるエントリポイントも
+決まっているので、フレームワーク側のファイル——`ebigent.toml`、`corpus/`、
+チップライブラリ、`cmd/distill`、解析スキル——だけを足して、書いたコードには触れません。
+
+```bash
+cd tutorial/step2-lobby && ebigent generate
+```
+
+`msg/` の生成物4つと `internal/ebigentgen/protocol_gen.go` が出てきます。後者は `[protocol]`
+がそのまま Go の定数になったもので、このステップのコードはまだ誰も読んでいません。
+
+`init` が推測したところは2箇所あり、どちらも直してあります。`realtime` は duo という答えから
+`twitch` になりますが、盤は考える時間を待つので `turn_based` です。`cmd/distill` の生成先は
+フレームワークの慣習どおり `game.Action` を指していましたが、このゲームの着手は `msg.Move`
+にあります。推測は出発点であって、答えではありません。
+
+**使わないものまで置かれます。** `corpus/` もチップライブラリも step 2 では一度も読まれません
+が、コーパスは後から遡って集められないので、記録する場所は記録したくなる前に要ります
+（`decision:ai-pipeline-always-scaffolded`）。
 
 **`Advance` が何もしない。** リアルタイムループは全ゲームに毎 tick の前進を尋ねますが、
 盤面は着手でしか動きません。ターン制が「何も起きていない」と答えるのは欠落ではなく、
@@ -74,11 +121,18 @@ go generate ./tutorial/step2-lobby/msg/
 
 ## まだないもの
 
-**対戦相手が来ないときのボットがありません。** `Binding.NewAgent` は意図的に空です。
-空席はボットの席ではなく、**まだ起動していない人の席**だからです。step 3 でそこに名前が付きます。
+**対戦相手が来ないときのボットがありません。** ルールをフレームワークに手渡す口が
+`Binding` で、そこには「空席をどう埋めるか」を書く `NewAgent` があります。いまは意図的に
+空です。
+空席はボットの席ではなく、**まだ起動していない人の席**だからです。とはいえ、待っている本人には
+待つのをやめる権利があってよく、[step 3](../step3-record/) でそこに名前が付きます。
 
-記録もまだ取っていません。`eb.Options.Record` に出力先を書けば、この対局がそのまま
-コーパスになります。それが step 3 の入口です。
+記録もまだ取っていません。置き場は `init` がもう作ったので、`eb.Options.Record` にそこを
+書けば、この対局がそのままコーパスになります。それが step 3 の入口です。
+
+設定値をコードが読んでいません。`internal/ebigentgen` に席数も同期モードも定数としてあるのに、
+`game/` は自分で数えています。二重に書いたものはいずれ食い違うので直す価値はありますが、
+このステップの話ではありません。
 
 ## ブラウザでは動きません
 

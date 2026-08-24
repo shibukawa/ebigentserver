@@ -1,0 +1,98 @@
+# tictactoe — the declaration step 2's ebigent init wrote, carried forward.
+# duo, 2 seat(s), one shared stage.
+#
+# One file, and a section prefix decides which struct binds a key: the
+# ebigent tool reads [project], [protocol], [build], [dev], and [behavior];
+# a built artifact reads [run]. Each ignores the other's
+# sections, so both can share this file.
+#
+# [protocol] is settled at build. `ebigent generate` turns it into Go
+# constants, so nothing in it is read at startup and nothing in it may
+# differ between a development machine and production.
+#
+# [run] is read at startup. Every key below also has an environment
+# variable and a command-line option. The order is fixed:
+# default < this file < environment < option.
+# Run `ebigent config scaffold` to see every key with its default.
+
+[project]
+module = "github.com/shibukawa/ebigentserver/tutorial/step5-simulate"
+
+# The game's own contract: how many play, how they connect, and how
+# tightly the loop has to close. Changing anything here is a rebuild.
+[protocol]
+# The identity half of the pair two peers compare before they play. It
+# defaults to project.module, which is the whole path while one module
+# holds one game; a repository holding several writes the subpath too.
+package = "github.com/shibukawa/ebigentserver/tutorial/step5-simulate"
+title = "tictactoe"
+shape = "duo"
+# A board waits for a considered move, so this is turn_based rather than
+# the twitch the duo style starts at. See step 2 for where that was set.
+realtime = "turn_based"
+view = "shared"
+# The placeholder reads keys. A game that grows a cursor adds "mouse" and
+# writes the adapter to match — a device nobody wrote an adapter for
+# cannot be accepted.
+devices = ["keyboard"]
+sync = "server_authoritative"
+
+[protocol.seats]
+count = 2
+# What a match does with a seat nobody took: complete the roster with a
+# bot so play can start, or start short. Set it to "empty" for a game
+# that would rather wait than seat a stand-in.
+fill = "bots"
+occupant = "any"
+
+# Teams are optional and off by default. Declaring any means they account
+# for every seat, since a seat on no team has no answer to who it is
+# playing with.
+#
+# [[protocol.team]]
+# name = "red"
+# seats = 1
+# occupant = "human"
+
+# Matchmaking filters on the axes declared here, and on nothing else. A
+# room states a value per axis when it opens; a joiner brings what they
+# are looking for, and their own reading on a band. Both ends compare the
+# same set because both were built from this table, which is what lets a
+# refusal name the term it failed.
+#
+# [[protocol.condition]]
+# name = "mode"
+# match = "exact"
+# values = ["ranked", "casual"]
+#
+# [[protocol.condition]]
+# name = "rank"
+# match = "band"      # the room states a range, the joiner brings a value
+# low = 0
+# high = 3000
+
+[[build.target]]
+name = "step5-simulate"
+kind = "client"
+entry = "."
+
+[dev]
+target = "step5-simulate"
+console = "127.0.0.1:8930"
+
+[behavior]
+library = "behavior/chips.json"
+corpus = "corpus"
+# The package `ebigent distill` spawns. Mining needs this game's
+# predicates, and a predicate is a Go function over a sight rather than a
+# value, so the step lives in the project and the toolchain runs it.
+distill = "./cmd/distill"
+
+# Read at startup, so the same artifact runs under either of these.
+[run]
+# A starting value, not a constraint: any seat count runs under either
+# host. Switch to "listen" and run the -tags listen build to have a player
+# hold the session — over WebRTC that needs no backend at all, which is
+# how a party game ships as static files.
+topology = "listen"
+listen = "127.0.0.1:4433"

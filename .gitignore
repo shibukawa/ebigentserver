@@ -8,6 +8,14 @@
 *.out
 coverage.*
 
+# Recorded episodes: data:episode-log grows without bound and replays
+# from its seed, so the directory is kept and its contents are not. The
+# root one is where a tutorial step run from here writes; each step from
+# step 2 on carries its own, because ebigent init puts one there.
+/corpus/
+/tutorial/step*/corpus/*
+!/tutorial/step*/corpus/.gitkeep
+
 # Editor
 .DS_Store
 .idea/

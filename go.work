@@ -1,0 +1,10 @@
+go 1.26.5
+
+use (
+	.
+	./tutorial/step1-hotseat
+	./tutorial/step2-lobby
+	./tutorial/step3-record
+	./tutorial/step4-distill
+	./tutorial/step5-simulate
+)

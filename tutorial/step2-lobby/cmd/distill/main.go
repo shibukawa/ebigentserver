@@ -1,0 +1,213 @@
+// Command distill turns tictactoe's recorded play into Go source: the
+// segment, mine, and generate steps of flow:behavior-tree-synthesis.
+//
+// `ebigent distill` spawns it, passing the corpus root and the chip
+// library in EBIGENT_CORPUS and EBIGENT_LIBRARY. It lives here rather
+// than inside the toolchain because of what a vocabulary is: a
+// data:derived-predicate is a Go function over a concept:sight, and a
+// compiled ebigent binary has no way to receive one from a module it was
+// built without. So the toolchain spawns this the way `ebigent build`
+// spawns `go build`, and what happens inside is the game's to write.
+//
+// Vocabulary is the part to write. Everything below it is the same in
+// every game.
+package main
+
+import (
+	"flag"
+	"fmt"
+	"os"
+	"path/filepath"
+
+	"github.com/shibukawa/ebigentserver/behavior"
+)
+
+// Vocabulary is the language a rule about tictactoe may use: the
+// judgements a condition may name, and the actions a rule may propose.
+//
+// It is the whole of the leverage. A miner can only find a rule its
+// vocabulary can say, so widening this is what makes distillation find
+// more — and naming a judgement rather than a raw field is what makes
+// the rules it finds hold outside the corpus they came from.
+//
+// Every Feature carries the same predicate twice, and both are needed.
+// Eval judges a sight the way it was recorded, as JSON, because mining
+// reads files some other build wrote. GoExpr is that judgement as an
+// expression over `obs` in generated code, where the sight is a real
+// Go value. They must agree; nothing checks that they do.
+func Vocabulary() *behavior.Vocabulary {
+	// Empty, because init does not know this game's sight. Until there
+	// is at least one feature and one action here, there is nothing for
+	// the miner to say and distill reports as much.
+	//
+	// A worked pair looks like this — the JSON side reads the recorded
+	// sight, the Go side is compiled into the agent:
+	//
+	//	v.Features = append(v.Features, behavior.Feature{
+	//		Name:   "falling",
+	//		Doc:    "the flyer is losing height",
+	//		GoExpr: "obs.Self.VY > 0",
+	//		Eval: func(raw json.RawMessage) (bool, error) {
+	//			var o struct{ Self struct{ VY int64 } }
+	//			err := json.Unmarshal(raw, &o)
+	//			return o.Self.VY > 0, err
+	//		},
+	//	})
+	//	v.Actions = append(v.Actions, behavior.ActionDef{
+	//		Name:   "flap",
+	//		Doc:    "beat the wings once",
+	//		GoExpr: "game.Action{Flap: true}",
+	//		Match: func(raw json.RawMessage) (bool, error) {
+	//			var a struct{ Flap bool }
+	//			err := json.Unmarshal(raw, &a)
+	//			return a.Flap, err
+	//		},
+	//	})
+	return &behavior.Vocabulary{}
+}
+
+// Spec targets the generated agent at this game's types.
+//
+// The strings here are emitted, not compiled, so nothing in this file
+// breaks when they are wrong — the generated package does. init wrote
+// game.Sight and game.Action, which is the framework's own convention
+// and all it had to go on; this game's action lives in msg, so that is
+// the one edit made here so far.
+func Spec() behavior.CodegenSpec {
+	return behavior.CodegenSpec{
+		Package: "gen",
+		Imports: []string{
+			"github.com/shibukawa/ebigentserver/tutorial/step2-lobby/game",
+			"github.com/shibukawa/ebigentserver/tutorial/step2-lobby/msg",
+		},
+		ObsType:       "game.Sight",
+		ActionType:    "msg.Move",
+		AgentName:     "Distilled",
+		SessionImport: "github.com/shibukawa/ebigentserver/session",
+	}
+}
+
+func main() {
+	corpus := flag.String("corpus", env("EBIGENT_CORPUS", "corpus"), "episode corpus root")
+	library := flag.String("library", env("EBIGENT_LIBRARY", "behavior/chips.json"), "chip library")
+	out := flag.String("out", "behavior/gen", "package the generated agent is written to")
+	// Zero keeps every seat. A game whose seats play differently must
+	// name one: mining two policies together produces a decision list
+	// that is neither. The finer filter is the agent_kind column of
+	// data:decision-record, which separates a human's rows from a bot's
+	// within one seat.
+	seat := flag.Uint("seat", 0, "distill this slot alone; 0 keeps every seat")
+	flag.Parse()
+
+	v := Vocabulary()
+	if len(v.Features) == 0 || len(v.Actions) == 0 {
+		fmt.Println("distill: the vocabulary is empty; write Vocabulary in", entrySource())
+		return
+	}
+
+	records, err := Segment(*corpus, v, uint16(*seat))
+	if err != nil {
+		fatal(err)
+	}
+	if len(records) == 0 {
+		fmt.Printf("distill: no decisions under %s matched the vocabulary; record some play first\n", *corpus)
+		return
+	}
+
+	cands, uncovered, err := behavior.SequentialCovering{}.Propose(v, records)
+	if err != nil {
+		fatal(err)
+	}
+
+	lib, err := behavior.LoadLibrary(*library)
+	if err != nil {
+		fatal(err)
+	}
+	behavior.Merge(lib, cands)
+	if err := lib.Save(*library); err != nil {
+		fatal(err)
+	}
+	fmt.Printf("distill: %d decisions, %d uncovered, %d chips in %s\n",
+		len(records), len(uncovered), len(lib.Chips), *library)
+
+	// Only the approved half is generated, and nothing here approves
+	// anything. A miner optimizes for reproducing logged play, and
+	// logged play includes mistakes, exploits, and habits nobody meant
+	// to ship — so what reaches runtime is a developer's decision
+	// (rule:generated-behavior-requires-approval). Until there is one,
+	// the mined chips sit in the library and this stops.
+	approved := lib.Approved()
+	if len(approved) == 0 {
+		fmt.Printf("distill: nothing approved yet, so there is nothing to generate.\n")
+		fmt.Printf("distill: read %s and set \"approved\": true on the chips worth keeping.\n", *library)
+		return
+	}
+	src, err := behavior.GenerateAgent(Spec(), v, lib)
+	if err != nil {
+		fatal(err)
+	}
+	if err := os.MkdirAll(*out, 0o755); err != nil {
+		fatal(err)
+	}
+	file := filepath.Join(*out, "agent_gen.go")
+	if err := os.WriteFile(file, src, 0o644); err != nil {
+		fatal(err)
+	}
+	fmt.Printf("distill: %d approved chip(s) → %s\n", len(approved), file)
+}
+
+// Segment reads every episode under root and featurizes the decisions
+// the seat filter keeps.
+//
+// A corpus is a directory per episode (data:episode-log), so this walks
+// one level and reads the decisions stream of each. An episode that
+// cannot be read is reported rather than skipped: a corpus silently
+// missing half its games is the kind of thing that makes a mined rule
+// look better founded than it is.
+func Segment(root string, v *behavior.Vocabulary, seat uint16) ([]behavior.Record, error) {
+	entries, err := os.ReadDir(root)
+	if err != nil {
+		return nil, err
+	}
+	keep := func(uint16) bool { return true }
+	if seat != 0 {
+		keep = func(slot uint16) bool { return slot == seat }
+	}
+	var out []behavior.Record
+	for _, e := range entries {
+		if !e.IsDir() {
+			continue
+		}
+		f, err := os.Open(filepath.Join(root, e.Name(), "decisions.jsonl"))
+		if os.IsNotExist(err) {
+			continue
+		}
+		if err != nil {
+			return nil, err
+		}
+		recs, err := behavior.Segment(v, e.Name(), f, keep)
+		f.Close()
+		if err != nil {
+			return nil, fmt.Errorf("%s: %w", e.Name(), err)
+		}
+		out = append(out, recs...)
+	}
+	return out, nil
+}
+
+// env reads a variable the toolchain sets, falling back to the same
+// default the configuration has, so this entry also runs on its own.
+func env(name, def string) string {
+	if v := os.Getenv(name); v != "" {
+		return v
+	}
+	return def
+}
+
+// entrySource names this file in the message that asks for a vocabulary.
+func entrySource() string { return "./cmd/distill/main.go" }
+
+func fatal(err error) {
+	fmt.Fprintln(os.Stderr, "distill:", err)
+	os.Exit(1)
+}

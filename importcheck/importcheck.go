@@ -15,6 +15,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"os"
 	"os/exec"
 	"path"
 	"sort"
@@ -177,6 +178,12 @@ func listPackages(ctx context.Context, dir string, tags []string) ([]*listedPack
 	args = append(args, "./...")
 	cmd := exec.CommandContext(ctx, "go", args...)
 	cmd.Dir = dir
+	// The rule is about one module, and a workspace makes every module
+	// in it a main module — which would hold the framework's own
+	// packages to the entry patterns of whichever game is being checked.
+	// A module resolves its dependencies through its own go.mod here,
+	// which is what "the module rooted at dir" already meant.
+	cmd.Env = append(os.Environ(), "GOWORK=off")
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
 	out, err := cmd.StdoutPipe()

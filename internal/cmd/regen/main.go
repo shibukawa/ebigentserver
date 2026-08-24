@@ -1,8 +1,16 @@
 // Command regen runs the codec half of `ebigent generate` over this
-// repository, which has no ebigent.toml of its own to run the verb from.
+// repository, which is a framework rather than a game and so has no
+// ebigent.toml of its own to run the verb from.
 //
 // It is the same pipeline in the same order — ask, generate, verify,
-// delta — so the files committed here are the files a game gets.
+// delta — so the files committed under samples/, examples/, and
+// tutorial/ are the files a game gets.
+//
+//	go run ./internal/cmd/regen
+//
+// The tutorial steps are their own modules and each has an ebigent.toml,
+// so `ebigent generate` covers them on its own; this walks the tree
+// anyway, and reproduces what that verb writes.
 package main
 
 import (
