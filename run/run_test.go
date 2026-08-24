@@ -371,3 +371,67 @@ func matchOutcome(outcomes []session.SlotOutcome, slot session.SlotID) (session.
 	}
 	return session.EvaluationSignal{}, false
 }
+
+// TestResumeIndexSkipsWhatTheCorpusAlreadyHolds fixes the property that
+// makes a corpus worth keeping across launches: a second run adds to it.
+//
+// Without this, the second launch of a game numbers its first match zero
+// again and os.Create truncates — so playing three matches, quitting,
+// and playing three more leaves three episodes rather than six, with the
+// same seeds recorded on top of themselves.
+func TestResumeIndexSkipsWhatTheCorpusAlreadyHolds(t *testing.T) {
+	root := t.TempDir()
+	if got := run.ResumeIndex(root, "race", 0); got != 0 {
+		t.Fatalf("an empty corpus resumed at %d, want 0", got)
+	}
+	for _, id := range []string{"race-0000", "race-0001", "race-0002"} {
+		if err := os.MkdirAll(filepath.Join(root, id), 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if got := run.ResumeIndex(root, "race", 0); got != 3 {
+		t.Fatalf("resumed at %d, want 3", got)
+	}
+	// A second game shares the root without colliding: the name is part
+	// of the episode id, so one corpus can hold several of them.
+	if got := run.ResumeIndex(root, "chase", 0); got != 0 {
+		t.Fatalf("another game resumed at %d, want 0", got)
+	}
+	// Not recording is not a reason to go looking at the filesystem.
+	if got := run.ResumeIndex("", "race", 7); got != 7 {
+		t.Fatalf("a run with no corpus root resumed at %d, want 7", got)
+	}
+}
+
+// TestRecordingsAccumulateAcrossRuns is the same claim through the calls
+// a launch actually makes: open an episode, close it, resume, open the
+// next. Three launches leave three episodes and none of them is a
+// rewrite of an earlier one.
+func TestRecordingsAccumulateAcrossRuns(t *testing.T) {
+	root := t.TempDir()
+	seen := map[string]bool{}
+	for launch := 0; launch < 3; launch++ {
+		index := run.ResumeIndex(root, "race", 0)
+		rec, err := run.OpenRecording[state, action, sight](run.RecordOptions{
+			Root:      root,
+			EpisodeID: run.EpisodeID("race", index),
+		})
+		if err != nil {
+			t.Fatalf("launch %d: %v", launch, err)
+		}
+		if seen[rec.Dir] {
+			t.Fatalf("launch %d reopened %s, which an earlier launch had already recorded", launch, rec.Dir)
+		}
+		seen[rec.Dir] = true
+		if err := rec.Close(); err != nil {
+			t.Fatal(err)
+		}
+	}
+	entries, err := os.ReadDir(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) != 3 {
+		t.Fatalf("three launches left %d episodes, want 3", len(entries))
+	}
+}

@@ -32,6 +32,18 @@ type LobbyOptions struct {
 	// done. Without them the roster completes when the last person
 	// arrives, and that is the start signal.
 	NoBots bool
+	// StandIn offers a bot for the seats still open, taken by a press
+	// rather than seated at start. It is for a game whose empty seats
+	// belong to people — NoBots — but whose player is entitled to stop
+	// waiting for one.
+	//
+	// Step 2's rule was that a question with one answer is not worth
+	// asking, which is why hosting alone costs no press. This is the
+	// same rule read forwards: once there are two answers — wait, or
+	// play the stand-in — the press is worth asking for.
+	//
+	// It needs Binding.NewAgent; FillBots reports its absence.
+	StandIn bool
 	// Background paints the lobby.
 	Background color.Color
 }
@@ -201,7 +213,7 @@ func (l *Lobby[W, A, S]) hostAlone() error {
 	if l.err != nil {
 		return nil
 	}
-	return l.start()
+	return l.start(!l.lobby.NoBots)
 }
 
 // updateChoosing turns a click on a row into a seat on that host, and a
@@ -264,7 +276,7 @@ func (l *Lobby[W, A, S]) updateSeated() error {
 	// would mean somebody has to be watching the screen to notice —
 	// which is the job this scene was meant to do.
 	if l.lobby.NoBots && l.guest && l.roster.Complete() {
-		return l.start()
+		return l.start(false)
 	}
 	if !l.pressed() {
 		return nil
@@ -282,7 +294,11 @@ func (l *Lobby[W, A, S]) updateSeated() error {
 	if !l.guest {
 		return nil
 	}
-	return l.start()
+	// The press means "go" either way. What it seats differs: a solo
+	// game's enemies were always this machine's to fill, and a
+	// stand-in is the player saying they are done waiting for the
+	// person whose seat it is.
+	return l.start(!l.lobby.NoBots || l.lobby.StandIn)
 }
 
 // canJoin reports whether another person may sit down at this machine.
@@ -304,9 +320,11 @@ func (l *Lobby[W, A, S]) canJoin() bool {
 	return free && local < limit
 }
 
-// start fills the remaining seats and hands the roster to the wrapper.
-func (l *Lobby[W, A, S]) start() error {
-	if !l.lobby.NoBots {
+// start hands the roster to the wrapper, filling what is still open
+// first when bots says it may. A roster that is still short of a person
+// after that is not an error: the lobby simply keeps waiting.
+func (l *Lobby[W, A, S]) start(bots bool) error {
+	if bots {
 		if err := l.roster.FillBots(l.binder.NewAgent); err != nil {
 			l.err = err
 			return nil
@@ -341,7 +359,7 @@ func (l *Lobby[W, A, S]) drawRoom(screen *ebiten.Image) {
 	if title == "" {
 		title = "this room"
 	}
-	ebitenutil.DebugPrintAt(screen, "in "+title+" — press to sit, esc to go back", 8, 28)
+	ebitenutil.DebugPrintAt(screen, "in "+title+" - press to sit, esc to go back", 8, 28)
 	for i, seat := range room.Seats {
 		who := "empty"
 		if seat.Filled() {
@@ -494,22 +512,30 @@ func (l *Lobby[W, A, S]) previous() string {
 // actually waiting for.
 func (l *Lobby[W, A, S]) prompt() string {
 	if l.guest && l.lobby.NoBots && !l.roster.Complete() {
+		if l.lobby.StandIn {
+			return "waiting for another player - " + l.verb() + " to play the bot instead"
+		}
 		return "waiting for another player to join..."
 	}
 	if l.lobby.Prompt != "" && !l.guest {
 		return l.lobby.Prompt
 	}
-	verb := "press start"
+	if l.guest && !l.lobby.AutoStart {
+		return l.verb() + " to start"
+	}
+	return l.verb() + " to play"
+}
+
+// verb names the start signal in terms of a device the game declared, so
+// the instruction line never asks for input this build does not read.
+func (l *Lobby[W, A, S]) verb() string {
 	switch {
 	case l.opts.Devices.Has(run.Keyboard):
-		verb = "press any key"
+		return "press any key"
 	case l.opts.Devices.Has(run.Mouse):
-		verb = "click"
+		return "click"
 	case l.opts.Devices.Has(run.Gamepad):
-		verb = "press a gamepad button"
+		return "press a gamepad button"
 	}
-	if l.guest && !l.lobby.AutoStart {
-		return verb + " to start"
-	}
-	return verb + " to play"
+	return "press start"
 }

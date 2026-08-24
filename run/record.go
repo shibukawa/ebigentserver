@@ -9,6 +9,42 @@ import (
 	"github.com/shibukawa/ebigentserver/session"
 )
 
+// EpisodeID names one match's episode directory: the game name and the
+// match index, zero-padded so a corpus lists in the order it was played.
+func EpisodeID(name string, index int) string {
+	return fmt.Sprintf("%s-%04d", name, index)
+}
+
+// ResumeIndex reports the first match index at or after from that no
+// episode directory under root is already using.
+//
+// It exists because a match index is not only a name. It also carries
+// the seed (rule:shared-rng-seed), so a second launch that started
+// counting at zero again would both write over the episodes the first
+// one recorded and replay its seeds — and a corpus of the same match
+// recorded twice is worth one match, however many files it holds.
+//
+// The engine wrapper calls this once before its first lobby, because a
+// person who plays, quits, and comes back is adding to one corpus. Serve
+// does not: it is given a match count and a seed up front, so a headless
+// batch is a reproducible unit and re-running it is meant to produce the
+// same episodes. A headless caller that wants to accumulate instead
+// passes a resumed index in as its own starting seed.
+//
+// An empty root, or a root that cannot be read, returns from unchanged:
+// recording degrades rather than interrupting play.
+func ResumeIndex(root, name string, from int) int {
+	if root == "" {
+		return from
+	}
+	for {
+		if _, err := os.Stat(filepath.Join(root, EpisodeID(name, from))); err != nil {
+			return from
+		}
+		from++
+	}
+}
+
 // Recording is one episode's data:episode-log on disk, opened under a
 // corpus root as root/<id>/ so a run of many matches accumulates a corpus
 // the analysis and distillation tools read directly.

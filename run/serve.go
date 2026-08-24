@@ -133,7 +133,7 @@ func Serve[W, A, S any](ctx context.Context, opts Options, b Binding[W, A, S], s
 // serveOne gathers, runs, and closes one match.
 func serveOne[W, A, S any](ctx context.Context, opts Options, b Binding[W, A, S], sp ServeOptions, index int) (MatchResult, error) {
 	seed := sp.Seed + uint64(index)
-	id := fmt.Sprintf("%s-%04d", opts.Name, index)
+	id := EpisodeID(opts.Name, index)
 
 	roster, err := NewRoster[W, A, S](opts, b.Slots)
 	if err != nil {

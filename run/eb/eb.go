@@ -20,7 +20,6 @@ package eb
 import (
 	"context"
 	"errors"
-	"fmt"
 
 	"github.com/hajimehoshi/ebiten/v2"
 
@@ -133,6 +132,12 @@ func Run[W, A, S any](ctx context.Context, opts Options[W, A, S]) error {
 	}
 
 	a := &app[W, A, S]{opts: opts, ctx: ctx}
+	// Start numbering past whatever the corpus already holds. A person
+	// who plays, quits, and comes back is adding to one corpus, not
+	// starting a new one — and since the index carries the seed, a
+	// launch that began at zero again would write over the episodes the
+	// last one recorded and replay their seeds on top.
+	a.matches = run.ResumeIndex(opts.Record.Root, opts.Options.Name, 0)
 	if err := a.gather(); err != nil {
 		return err
 	}
@@ -236,7 +241,7 @@ func (a *app[W, A, S]) BecomeGuest(j run.Guest[W, A, S]) {
 // does so on a start press, and a game's own scene may do so on anything.
 func (a *app[W, A, S]) Start() error {
 	index := a.matches
-	id := fmt.Sprintf("%s-%04d", a.opts.Options.Name, index)
+	id := run.EpisodeID(a.opts.Options.Name, index)
 
 	rec, err := run.OpenRecording[W, A, S](run.RecordOptions{
 		Root:              a.opts.Record.Root,
