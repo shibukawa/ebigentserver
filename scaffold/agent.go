@@ -153,6 +153,10 @@ func WriteAgent(spec *AgentSpec) (string, error) {
 	return path, nil
 }
 
+// AgentTypeName is the Go type a policy name derives, which a caller
+// asking the question needs before the spec exists.
+func AgentTypeName(name string) string { return exported(name) }
+
 // exported turns a policy name into a Go type name: "tactic" becomes
 // Tactic, "hit_and_run" and "hit-and-run" both become HitAndRun.
 func exported(name string) string {

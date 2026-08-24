@@ -73,9 +73,13 @@ cd tutorial/step3-record && ebigent add agent tactic --type Bot --file bot.go
 ```
 
 step 2 で書いた `ebigent.toml` があるので、`add` は `var _ session.TickStageRuleSet[...]` を
-読んで視界と行動の型を取り、`game/bot.go` に型・表明・ファクトリ・4メソッドを書く。名前は
-**方策の名前**で、`--type` と `--file` はこのゲームがすでに `Bot` と呼んでいるものに合わせる
-ためのものだ。
+読んで視界と行動の型を取り、`game/bot.go` に型・表明・ファクトリ・4メソッドを書く。
+
+`agent` の後ろは全部**質問**で、渡したオプションはその初期値になるだけだ。だから
+`ebigent add agent` とだけ打っても、3問答えれば同じところに着く。答えは互いを狭める——
+型は名前から、ファイル名は型から出るので、2問目から先はたいてい enter を押すだけになる。
+名前は**方策の名前**で、`--type` と `--file` は、このゲームがすでに `Bot` と呼んでいるものに
+合わせるためのものだ。
 
 そして最後にこう言う。
 

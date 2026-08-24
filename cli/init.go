@@ -424,21 +424,39 @@ func (w *wizard) note(format string, args ...any) {
 }
 
 func (w *wizard) text(prompt, def string) string {
+	return w.textValid(prompt, def, nil)
+}
+
+// textValid is text with an answer the question can refuse. The
+// refusal carries the reason rather than repeating the question, since
+// a prompt that reappears unchanged tells the reader nothing about what
+// was wrong with what they typed.
+func (w *wizard) textValid(prompt, def string, validate func(string) error) string {
 	if w.auto {
 		w.note("%s: %s", prompt, def)
 		return def
 	}
 	if w.tui {
-		return w.askText(prompt, def, nil)
+		return w.askText(prompt, def, validate)
 	}
-	fmt.Fprintf(w.out, "%s [%s]: ", prompt, def)
-	if !w.in.Scan() {
-		return def
+	for {
+		fmt.Fprintf(w.out, "%s [%s]: ", prompt, def)
+		if !w.in.Scan() {
+			return def
+		}
+		answer := strings.TrimSpace(w.in.Text())
+		if answer == "" {
+			answer = def
+		}
+		if validate == nil {
+			return answer
+		}
+		if err := validate(answer); err == nil {
+			return answer
+		} else {
+			fmt.Fprintf(w.out, "  %v\n", err)
+		}
 	}
-	if answer := strings.TrimSpace(w.in.Text()); answer != "" {
-		return answer
-	}
-	return def
 }
 
 // list prints the numbered options, padding the labels to the longest one

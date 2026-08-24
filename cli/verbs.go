@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"go/token"
 	"io/fs"
 	"os"
 	"os/exec"
@@ -431,6 +432,12 @@ var AddKinds = []string{"agent"}
 // What this cannot write is Decide, which is the whole point of the
 // file. It is left as a TODO returning no action, which compiles and
 // plays: a seat that never acts is a legal seat.
+//
+// Everything after the kind is asked rather than required. Each answer
+// narrows the next — the type comes from the name, the file comes from
+// the type — so the questions after the first are usually a matter of
+// pressing enter, and an option supplied on the command line is what
+// they start at.
 func runAdd(c *context, opts *AddOptions) error {
 	if err := c.requireProject(); err != nil {
 		return err
@@ -438,31 +445,44 @@ func runAdd(c *context, opts *AddOptions) error {
 	if !slices.Contains(AddKinds, opts.Kind) {
 		return fmt.Errorf("add: %q is not something to add; the kinds are %s", opts.Kind, strings.Join(AddKinds, ", "))
 	}
+	w := newWizard(c.stdout, opts.Yes)
 
-	rules, err := ruleSetFor(c.res.ProjectRoot, opts.Package)
+	// Which game comes first, because it decides the two types every
+	// later answer is written against.
+	rules, err := askRuleSet(w, c.res.ProjectRoot, opts)
 	if err != nil {
 		return err
 	}
-	// The file is written into the rule set's own package, which is
-	// where the sight is declared and therefore where the fewest
-	// imports are needed. It is also where a reader looks for the
-	// rules and their stand-in together.
+	sight, action := rules.Sight.Qualified(rules.Dir), rules.Action.Qualified(rules.Dir)
+	// What it read, before what it will write. A developer who sees the
+	// wrong sight here stops now rather than after the file exists.
+	where := rules.Package
+	if r, err := filepath.Rel(c.res.ProjectRoot, rules.Dir); err == nil {
+		where = filepath.ToSlash(r)
+	}
+	w.note("Writing into %s: sight %s, action %s.", where, sight, action)
+
+	name := w.textValid("Agent name", either(opts.Name, "bot"), agentName)
 	spec := &scaffold.AgentSpec{
 		Dir:     rules.Dir,
 		Package: rules.Package,
-		Name:    opts.Name,
-		Type:    opts.Type,
-		File:    opts.File,
-		Sight:   rules.Sight.Qualified(rules.Dir),
-		Action:  rules.Action.Qualified(rules.Dir),
+		Name:    name,
+		Sight:   sight,
+		Action:  action,
 		Imports: agentImports(rules),
 		Root:    c.res.ProjectRoot,
 	}
+	// The derived answers are shown as answers rather than as rules, so
+	// a project that already calls its stand-in Bot edits one field
+	// instead of learning how the derivation works.
+	spec.Type = w.textValid("Go type name", either(opts.Type, spec.TypeName()), goTypeName)
+	spec.File = w.text("File name", either(opts.File, spec.FileName()))
+
 	if _, err := scaffold.WriteAgent(spec); err != nil {
 		return err
 	}
 
-	fmt.Fprintf(c.stdout, "wrote %s\n", spec.Rel())
+	fmt.Fprintf(c.stdout, "\nwrote %s\n", spec.Rel())
 	fmt.Fprintf(c.stdout, "\n%s answers from the sight and nothing else. Write Decide; the rest is the shape.\n", spec.TypeName())
 	// Seating it is one field, and it is the field a developer does not
 	// know to look for: run.Binding is where a game hands its rules to
@@ -472,42 +492,70 @@ func runAdd(c *context, opts *AddOptions) error {
 	return nil
 }
 
-// ruleSetFor picks the rule set to write against, insisting on a choice
-// when a project declares several rather than guessing which game a
-// developer meant.
-func ruleSetFor(root, pkg string) (codegen.RuleSet, error) {
+// agentName refuses a policy name the type name is derived from and
+// could not be. It reports what was typed rather than what it derived,
+// since the derivation is not what the question asked for.
+func agentName(s string) error {
+	if !token.IsIdentifier(scaffold.AgentTypeName(s)) {
+		return fmt.Errorf("%q does not give a Go type name; try tactic or hit_and_run", s)
+	}
+	return nil
+}
+
+// goTypeName refuses anything that is not an identifier.
+func goTypeName(s string) error {
+	if !token.IsIdentifier(s) {
+		return fmt.Errorf("%q is not a Go type name", s)
+	}
+	return nil
+}
+
+// askRuleSet settles which game the agent plays.
+//
+// One rule set answers itself. Several is a real question, and it is one
+// with no defensible default: an agent written against the wrong game
+// compiles and means nothing, so an unattended run insists on --package
+// rather than picking the first.
+func askRuleSet(w *wizard, root string, opts *AddOptions) (codegen.RuleSet, error) {
 	sets, err := codegen.RuleSets(root)
 	if err != nil {
 		return codegen.RuleSet{}, err
 	}
-	switch {
-	case len(sets) == 0:
+	if len(sets) == 0 {
 		return codegen.RuleSet{}, errors.New("add: no rule set declared in this project; a game states `var _ session.StageRuleSet[World, Action, Sight] = RuleSet{}` beside its rules")
-	case pkg == "" && len(sets) == 1:
-		return sets[0], nil
-	case pkg == "":
-		var names []string
-		for _, s := range sets {
-			r, err := filepath.Rel(root, s.Dir)
-			if err != nil {
-				r = s.Dir
-			}
-			names = append(names, filepath.ToSlash(r))
-		}
-		return codegen.RuleSet{}, fmt.Errorf("add: this project declares %d rule sets; name one with --package: %s",
-			len(sets), strings.Join(names, ", "))
 	}
-	want := filepath.Clean(pkg)
-	for _, s := range sets {
-		r, err := filepath.Rel(root, s.Dir)
+	labels := make([]string, len(sets))
+	help := map[string]string{}
+	byLabel := map[string]codegen.RuleSet{}
+	for i, s := range sets {
+		label, err := filepath.Rel(root, s.Dir)
 		if err != nil {
-			continue
+			label = s.Dir
 		}
-		if filepath.Clean(r) == want || filepath.Clean(s.Dir) == want {
-			return s, nil
-		}
+		labels[i] = filepath.ToSlash(label)
+		help[labels[i]] = fmt.Sprintf("sight %s, action %s",
+			s.Sight.Qualified(s.Dir), s.Action.Qualified(s.Dir))
+		byLabel[labels[i]] = s
 	}
-	return codegen.RuleSet{}, fmt.Errorf("add: no rule set is declared in %s", pkg)
+
+	if opts.Package != "" {
+		want := filepath.ToSlash(filepath.Clean(opts.Package))
+		for label, s := range byLabel {
+			if label == want || filepath.ToSlash(filepath.Clean(s.Dir)) == want {
+				return s, nil
+			}
+		}
+		return codegen.RuleSet{}, fmt.Errorf("add: no rule set is declared in %s; this project declares one in %s",
+			opts.Package, strings.Join(labels, ", "))
+	}
+	if len(sets) == 1 {
+		return sets[0], nil
+	}
+	if w.auto {
+		return codegen.RuleSet{}, fmt.Errorf("add: this project declares %d rule sets and there is no default worth taking; name one with --package: %s",
+			len(sets), strings.Join(labels, ", "))
+	}
+	return byLabel[w.choose("Which rules does it play?", labels, 0, help)], nil
 }
 
 // agentImports are the packages the generated file needs for the two

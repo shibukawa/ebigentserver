@@ -88,13 +88,16 @@ type AnalyzeOptions struct {
 // boilerplate that declaration implies.
 type AddOptions struct {
 	Kind string `arg:"required" help:"what to add; agent is the only kind so far"`
-	Name string `arg:"required" help:"the policy name, which is the id the factory returns"`
-	// The type and the file are derived from the name, and both are
-	// overridable because a project that already calls its stand-in Bot
-	// should not have to rename it to use this.
+	// Everything after the kind is a wizard question, and every option
+	// is that question's starting value rather than a way to skip it.
+	// The answers narrow each other — the type and the file are derived
+	// from the name — so seeing them filled in is most of what makes
+	// them easy to accept.
+	Name    string `arg:"optional" help:"the policy name, which is the id the factory returns"`
 	Type    string `default:"" help:"Go type name; defaults to the name in upper camel case"`
 	File    string `default:"" help:"file name; defaults to agent_<name>.go"`
-	Package string `default:"" help:"directory of the rule set to write against; required when a project declares several"`
+	Package string `default:"" help:"directory of the rule set to write against; asked when a project declares several"`
+	Yes     bool   `default:"false" help:"take the default for every question instead of prompting"`
 }
 
 type DistillOptions struct {

@@ -483,7 +483,9 @@ func TestAddAgentWritesAgainstTheDeclaredTypes(t *testing.T) {
 		t.Fatalf("init: exit %d\nstdout:\n%s\nstderr:\n%s", code, out, errOut)
 	}
 
-	code, out, errOut = run(t, dir, "add", "agent", "chaser")
+	// Everything after the kind is a question, so an unattended run
+	// takes the defaults — and the options are those defaults.
+	code, out, errOut = run(t, dir, "add", "agent", "chaser", "--yes")
 	if code != 0 {
 		t.Fatalf("add agent: exit %d\nstdout:\n%s\nstderr:\n%s", code, out, errOut)
 	}
@@ -514,7 +516,7 @@ func TestAddAgentWritesAgainstTheDeclaredTypes(t *testing.T) {
 
 	// An agent is hand written after this point, so a second run naming
 	// the same file would throw away the only part worth keeping.
-	code, _, errOut = run(t, dir, "add", "agent", "chaser")
+	code, _, errOut = run(t, dir, "add", "agent", "chaser", "--yes")
 	if code == 0 {
 		t.Fatal("a second add of the same agent should fail")
 	}
@@ -537,6 +539,60 @@ func TestAddRefusesAKindItCannotWrite(t *testing.T) {
 	}
 }
 
+// Every answer after the kind is a question, and every option is that
+// question's starting value rather than a way past it. A run that
+// supplies all three and takes the defaults has to land on all three.
+func TestAddOptionsAreTheAnswersTheWizardStartsFrom(t *testing.T) {
+	dir := t.TempDir()
+	writeProject(t, dir)
+	writeRuleSet(t, filepath.Join(dir, "rules"))
+
+	code, out, errOut := run(t, dir, "add", "agent", "tactic",
+		"--type", "Bot", "--file", "bot.go", "--yes")
+	if code != 0 {
+		t.Fatalf("exit %d\nstdout:\n%s\nstderr:\n%s", code, out, errOut)
+	}
+	// The questions are reported even when nothing was asked, so an
+	// unattended run still says what it chose.
+	for _, want := range []string{"Agent name: tactic", "Go type name: Bot", "File name: bot.go"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("the wizard did not report %q:\n%s", want, out)
+		}
+	}
+	body, err := os.ReadFile(filepath.Join(dir, "rules", "bot.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	// The id is the policy and the type is Go's; they are allowed to
+	// differ, which is the reason --type exists.
+	for _, want := range []string{"type Bot struct", `return "tactic", &Bot{}`} {
+		if !strings.Contains(string(body), want) {
+			t.Errorf("the generated agent does not carry %q:\n%s", want, body)
+		}
+	}
+}
+
+// With nothing supplied there is still an answer for every question, so
+// `ebigent add agent` on its own writes something.
+func TestAddAgentAnswersEveryQuestionOnItsOwn(t *testing.T) {
+	dir := t.TempDir()
+	writeProject(t, dir)
+	writeRuleSet(t, filepath.Join(dir, "rules"))
+
+	code, out, errOut := run(t, dir, "add", "agent", "--yes")
+	if code != 0 {
+		t.Fatalf("exit %d\nstdout:\n%s\nstderr:\n%s", code, out, errOut)
+	}
+	if _, err := os.Stat(filepath.Join(dir, "rules", "agent_bot.go")); err != nil {
+		t.Errorf("add agent with no name wrote nothing: %v\n%s", err, out)
+	}
+	// What it read comes before what it writes, so a wrong sight is
+	// caught before the file exists rather than after.
+	if !strings.Contains(out, "sight Sight, action Action") {
+		t.Errorf("the wizard did not report the types it read:\n%s", out)
+	}
+}
+
 // A repository holding several games cannot be guessed at: writing the
 // agent into the wrong one would compile and mean nothing.
 func TestAddNamesTheRuleSetsWhenThereAreSeveral(t *testing.T) {
@@ -545,11 +601,11 @@ func TestAddNamesTheRuleSetsWhenThereAreSeveral(t *testing.T) {
 	for _, name := range []string{"alpha", "beta"} {
 		writeRuleSet(t, filepath.Join(dir, name))
 	}
-	code, _, errOut := run(t, dir, "add", "agent", "tactic")
+	code, _, errOut := run(t, dir, "add", "agent", "tactic", "--yes")
 	if code == 0 {
 		t.Fatal("add agent should refuse to guess which game")
 	}
-	for _, want := range []string{"declares 2 rule sets", "alpha", "beta"} {
+	for _, want := range []string{"declares 2 rule sets", "no default worth taking", "alpha", "beta"} {
 		if !strings.Contains(errOut, want) {
 			t.Errorf("stderr does not mention %q: %q", want, errOut)
 		}
