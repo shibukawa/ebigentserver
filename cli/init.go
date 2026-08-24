@@ -20,23 +20,57 @@ import (
 // Every answer is also a command-line option, so the wizard is skipped
 // entirely when the options are supplied — which is what lets init run
 // unattended in a test or a script.
+//
+// A go.mod in the target directory changes what init is for. Without
+// one, it makes a project: a directory, a module, and a placeholder game
+// to replace a piece at a time. With one, the game already exists and
+// the module path is already decided, so init adds the framework's own
+// files beside them and touches nothing else. Both end at the same
+// place — a project ebigent's other verbs can read — which is why they
+// are one command rather than an init and an add.
 func runInit(c *context, opts *InitOptions) error {
 	w := newWizard(c.stdout, opts.Yes)
 
-	// The name comes first because it can decide where the project goes:
-	// given no directory, init makes one named after the game rather than
-	// scattering a project across whatever directory it was run in.
-	name := opts.Name
-	if name == "" {
-		name = w.text("Game name", defaultName(opts.Dir))
-	}
+	// Where before what: an existing module answers questions the wizard
+	// would otherwise ask, so the directory has to be settled first.
+	// Only a new project may be named into existence by its game name.
 	dir := opts.Dir
 	if dir == "" {
-		dir = name
+		dir = "."
 	}
 	abs, err := filepath.Abs(dir)
 	if err != nil {
 		return err
+	}
+	module, adopt, err := scaffold.ModulePath(abs)
+	if err != nil {
+		return err
+	}
+	if adopt && opts.Module != "" && opts.Module != module {
+		return fmt.Errorf("init: %s already declares module %s; --module %s would contradict it",
+			filepath.Join(dir, "go.mod"), module, opts.Module)
+	}
+
+	name := opts.Name
+	if name == "" {
+		if adopt {
+			// The module path names the project its author already
+			// chose; asking again would only invite a second name for
+			// the same thing.
+			name = defaultName(module)
+		} else {
+			name = w.text("Game name", defaultName(opts.Dir))
+			// The name can decide where a new project goes: given no
+			// directory, init makes one named after the game rather
+			// than scattering a project across whatever directory it
+			// was run in.
+			if opts.Dir == "" {
+				dir = name
+				if abs, err = filepath.Abs(dir); err != nil {
+					return err
+				}
+			}
+		}
 	}
 
 	spec := &scaffold.Spec{
@@ -49,8 +83,19 @@ func runInit(c *context, opts *InitOptions) error {
 		SharedScreen:  opts.SharedScreen == "yes",
 		SyncMode:      opts.Sync,
 		FrameworkPath: opts.FrameworkPath,
+		Adopt:         adopt,
 	}
-	if dir != "." {
+	if adopt {
+		spec.Module = module
+		w.note("%s declares module %s, so this is an existing project.", filepath.Join(dir, "go.mod"), module)
+		w.note("Adding the framework's files beside your game; nothing you wrote is touched.")
+		if spec.Detected, err = scaffold.DetectTargets(abs, nil); err != nil {
+			return err
+		}
+		for _, t := range spec.Detected {
+			w.note("  found %s (%s)", t.Entry(), t.Kind)
+		}
+	} else if dir != "." {
 		w.note("Writing into %s%c", dir, filepath.Separator)
 	}
 
@@ -75,7 +120,14 @@ func runInit(c *context, opts *InitOptions) error {
 		return nil
 	}
 	fmt.Fprintln(c.stdout, "\nresolving modules...")
-	if err := scaffold.InitModule(spec.Dir, spec, nil); err != nil {
+	// An adopted module already exists, so requiring the framework is
+	// all that is left of this step. Declaring the module again would
+	// fail, and it is the one thing init must not decide here.
+	resolve := scaffold.InitModule
+	if spec.Adopt {
+		resolve = scaffold.Require
+	}
+	if err := resolve(spec.Dir, spec, nil); err != nil {
 		return err
 	}
 	fmt.Fprintln(c.stdout, "building...")
@@ -91,7 +143,18 @@ func runInit(c *context, opts *InitOptions) error {
 				dir, scaffold.DedicatedTag, t.Entry())
 		}
 	}
-	fmt.Fprintln(c.stdout, "\nStart with game/game.go — the placeholder rules the session already runs.")
+	if spec.Adopt {
+		// The corpus is the one thing an adopted repository has to be
+		// told about: episodes accumulate without bound and replay from
+		// a seed, so committing them costs everything and buys nothing.
+		fmt.Fprintln(c.stdout, "\nAdd these to .gitignore — a corpus grows without bound and replays from its seed:")
+		fmt.Fprintln(c.stdout, "    /corpus/*")
+		fmt.Fprintln(c.stdout, "    !/corpus/.gitkeep")
+		fmt.Fprintf(c.stdout, "\nWrite the vocabulary in %s/main.go, then run ebigent distill.\n", scaffold.DistillEntry)
+	} else {
+		fmt.Fprintln(c.stdout, "\nStart with game/game.go — the placeholder rules the session already runs.")
+		fmt.Fprintf(c.stdout, "%s/main.go mines what you record; ebigent distill runs it.\n", scaffold.DistillEntry)
+	}
 	fmt.Fprintf(c.stdout, "The analysis skill is in %s; your agent finds it there on its own.\n",
 		scaffold.SkillDirFor(spec.Agent))
 	return nil

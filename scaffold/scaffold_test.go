@@ -4,10 +4,12 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"reflect"
 	"runtime"
 	"strings"
 	"testing"
 
+	"github.com/shibukawa/ebigentserver/config/buildconf"
 	"github.com/shibukawa/ebigentserver/scaffold"
 )
 
@@ -387,5 +389,142 @@ func TestDirectDepsFollowTheTargets(t *testing.T) {
 	}
 	if !contains(withClient, "github.com/shibukawa/fixmath") {
 		t.Errorf("every project uses fixed point, got %v", withClient)
+	}
+}
+
+// ModulePath answers the question init asks before it does anything
+// else, so the three answers it can give are all worth pinning: no
+// module, a module, and a file that claims to declare one and does not.
+func TestModulePathReadsWhatGoModDeclares(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		body string
+		want string
+		ok   bool
+		fail bool
+	}{
+		{name: "absent"},
+		{name: "plain", body: "module example.com/pong\n\ngo 1.25\n", want: "example.com/pong", ok: true},
+		{name: "quoted", body: "module \"example.com/pong\"\n", want: "example.com/pong", ok: true},
+		{name: "after a comment", body: "// a game\nmodule example.com/pong\n", want: "example.com/pong", ok: true},
+		{name: "declares nothing", body: "go 1.25\n", fail: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			dir := t.TempDir()
+			if tc.body != "" || tc.fail {
+				if err := os.WriteFile(filepath.Join(dir, "go.mod"), []byte(tc.body), 0o600); err != nil {
+					t.Fatal(err)
+				}
+			}
+			got, ok, err := scaffold.ModulePath(dir)
+			switch {
+			case tc.fail && err == nil:
+				t.Fatalf("a go.mod with no module path should be an error, got %q", got)
+			case tc.fail:
+				return
+			case err != nil:
+				t.Fatal(err)
+			}
+			if got != tc.want || ok != tc.ok {
+				t.Errorf("ModulePath = %q, %v; want %q, %v", got, ok, tc.want, tc.ok)
+			}
+		})
+	}
+}
+
+// An adopted module gets the framework's own files and keeps its own
+// sources, which is the whole of the difference between init's two jobs.
+func TestAdoptedProjectKeepsItsOwnSources(t *testing.T) {
+	s := spec(t, "solo", 0, false)
+	s.Adopt = true
+	s.Detected = []scaffold.Target{{Name: "pong", Dir: "cmd/pong", Kind: "client", Path: "./cmd/pong"}}
+	res, err := scaffold.Generate(s)
+	if err != nil {
+		t.Fatal(err)
+	}
+	written := map[string]bool{}
+	for _, f := range res.Files {
+		written[f] = true
+	}
+	for _, want := range []string{"ebigent.toml", "behavior/chips.json", "corpus/.gitkeep", "cmd/distill/main.go"} {
+		if !written[want] {
+			t.Errorf("adopting a module did not write %s; wrote %v", want, res.Files)
+		}
+	}
+	// The placeholder game exists to be replaced, and a module that has
+	// its own game has already done that. README.md and .gitignore
+	// belong to whoever started the repository.
+	for _, unwanted := range []string{"game/game.go", "game/game_test.go", "boundary_test.go", "README.md", ".gitignore", "cmd/pong/main.go", "cmd/simulation/main.go"} {
+		if written[unwanted] {
+			t.Errorf("adopting a module wrote %s, which is not init's to write", unwanted)
+		}
+	}
+	// The detected entry is what the configuration declares, because a
+	// generated cmd/<name> is not there to declare.
+	body, err := os.ReadFile(filepath.Join(s.Dir, "ebigent.toml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(body), `entry = "./cmd/pong"`) {
+		t.Errorf("ebigent.toml does not declare the detected entry:\n%s", body)
+	}
+}
+
+// A module with nothing to run cannot be configured: buildconf requires
+// a target, so every verb would refuse what init had just written.
+func TestAdoptingAModuleWithNoEntryPointIsRefused(t *testing.T) {
+	s := spec(t, "solo", 0, false)
+	s.Adopt = true
+	if err := s.Validate(); err == nil {
+		t.Fatal("a module with no main package should be refused")
+	} else if !strings.Contains(err.Error(), "no main package") {
+		t.Errorf("the error does not say what is missing: %v", err)
+	}
+}
+
+// DetectTargets reads the kind off the import graph rather than the
+// directory name, which is the only evidence an adopted repository
+// actually carries.
+func TestDetectTargetsReadsTheImportGraph(t *testing.T) {
+	if testing.Short() {
+		t.Skip("shells out to the go toolchain")
+	}
+	s := spec(t, "solo", 0, false)
+	generateAndTidy(t, s)
+
+	targets, err := scaffold.DetectTargets(s.Dir, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	kinds := map[string]string{}
+	for _, target := range targets {
+		kinds[target.Entry()] = target.Kind
+	}
+	// The playable entry links the engine; the headless one must not,
+	// and that difference is rule:engine-import-confined-to-client-entry
+	// read back out of a built module.
+	if kinds["./cmd/mygame"] != "client" {
+		t.Errorf("the rendering entry should be a client, got %q", kinds["./cmd/mygame"])
+	}
+	if kinds["./cmd/simulation"] != "simulation" {
+		t.Errorf("the headless entry should be a simulation, got %q", kinds["./cmd/simulation"])
+	}
+	// The distillation entry is a tool init wrote, not an artifact the
+	// project ships, so declaring it would put it in front of build.
+	if _, listed := kinds[scaffold.DistillEntry]; listed {
+		t.Errorf("%s should not be declared as a build target: %v", scaffold.DistillEntry, kinds)
+	}
+}
+
+// DistillEntry repeats the behavior.distill default because a struct tag
+// cannot name a constant. This is what keeps the two honest, so a
+// project that never edits its configuration still distills.
+func TestDistillEntryMatchesTheConfigDefault(t *testing.T) {
+	field, ok := reflect.TypeFor[buildconf.Behavior]().FieldByName("Distill")
+	if !ok {
+		t.Fatal("buildconf.Behavior has no Distill field")
+	}
+	if got := field.Tag.Get("default"); got != scaffold.DistillEntry {
+		t.Errorf("behavior.distill defaults to %q but init writes %q", got, scaffold.DistillEntry)
 	}
 }

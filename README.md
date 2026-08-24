@@ -193,7 +193,7 @@
 - `analysis` — corpus集計とDuckDB SQL生成(ゲームプロセス外の分析ツール)。
 - `config/buildconf`, `config/runconf`, `config/confload` — `ebigent.toml` 1ファイルを prefix でセクション分けして bind。既定 < ファイル < 環境変数 < オプションの順で上書き。`[protocol]` はビルド時に定数化されるので起動時に読まれない。`[run]` は同じ成果物の2回の起動で正当に違いうるものだけを持つ。
 - `codegen` — `StageRuleSet` の宣言を読み、そこから World / Action のコーデックを依頼し、ライブラリが生成しなくなったものを出す。差分(diff/patch/エンコード)、スキーマ指紋、決定性ゲート(float / 素の int / map の拒否)、そして生成結果の検証(依頼した型が丸ごと・メンバ落ちなく生成されたか)。対象は設定しない。
-- `scaffold` — `ebigent init` が書き出すプロジェクト雛形。既定は Ebitengine の Flappy Bird 風(2羽が同じパイプ列を飛ぶ、操作はflapのみ)で、リアルタイムsession・固定小数点物理・シード付きRNG・engineをclientエントリに閉じ込める構成が最初から動く。生成物がビルドでき自身のテスト(境界テスト含む)が通ることをテストで担保している。
+- `scaffold` — `ebigent init` が書き出すプロジェクト雛形。既定は Ebitengine の Flappy Bird 風(2羽が同じパイプ列を飛ぶ、操作はflapのみ)で、リアルタイムsession・固定小数点物理・シード付きRNG・engineをclientエントリに閉じ込める構成が最初から動く。`cmd/simulation` は最初からエピソードを記録し、`cmd/distill` がそれを掘るので、`go run ./cmd/simulation && ebigent distill` が生成直後に通る。生成物がビルドでき自身のテスト(境界テスト含む)が通ることをテストで担保している。既存モジュールに対しては、ゲームを生成せずフレームワーク側のファイルだけを足す。
   ウィザードは3問: **プレイスタイル**(1人 / 2人 / マルチ) → **最大人数**(マルチのときだけ) → **1台で複数人が遊べるようにするか**(1人以外)。生成されるコードパターンは5通り。
   2人が独立したスタイルなのは、star型P2Pでは**3人以上だとピア経由もサーバ経由も等しく2ホップ**になり、1ホップの直結が2人のときだけ成立するため。したがって2人は rollback/delay が射程内、3人以上は権威型。ピアかdedicatedかはコード差ではなく `data:run-config` の値で、**マルチでもlistenは許容**(ブラウザがWebRTCでN人をホストする `concept:static-host-mode` はバックエンド不要)。
   3問目が「カメラが共有か」でないのは、**画面分割**が「カメラは各自 + 1台を共有」で二択に収まらないため。1台を共有するかを聞けば、その中のカメラは描画の詳細になる(`concept:view-arrangement`)。ホストがplayingかdedicatedかは `cmd/server/` 1ディレクトリを `listen` ビルドタグで切り替える(`rule:build-tag-only-for-linkage`)。到達可能なトランスポートの組み合わせは `concept:deployment-combination` に列挙。
@@ -208,7 +208,9 @@
 - `statesync` — framework側delta生成。生成コーデックを差し込む`Codec`、受信者ごとの`Sender`/`Receiver`(双方が履歴保持)、baseline mode 3種、ループバック`Hub`。
 - `samples/reversi` — 合法手列挙つき視界と記録/再生の実証。`go run ./samples/reversi/cmd/reversi` で人間対greedy bot、`-record=DIR` でエピソード記録。
 - `samples/pong` — 最小リアルタイム。`go run ./samples/pong/cmd/pong` でbot対bot(観戦チャネルがスコア表示)、`-record=DIR` 対応。`go run ./samples/pong/cmd/pong-client` でEbitengine描画クライアント(W/S・↑/↓で左パドル操作、`-left=bot`で観戦)。clientエントリだけがengineをimportできる(`samples/*/cmd/*client*`)。
-- `importcheck` — 依存の閉じ込め検査。ゲームモジュールは `importcheck.Enforce(t, ".", importcheck.Default())` を 1 テスト持つ。
+- `importcheck` — 依存の閉じ込め検査。ゲームモジュールは `importcheck.Enforce(t, ".", importcheck.Default())` を 1 テスト持つ。ルールは1モジュールについてのものなので `GOWORK=off` で走る——workspace は全モジュールを main 扱いにするため、そうしないと検査対象のゲームのエントリパターンでフレームワーク自身が裁かれる。
+- `internal/cmd/regen` — このリポジトリ自身の再生成。フレームワークであってゲームではないので `ebigent.toml` を持たず、`ebigent generate` と同じ順序(ask → generate → verify → delta)を `samples/`・`examples/`・`tutorial/` に対して走らせる。`go run ./internal/cmd/regen`。
+- `tutorial/` — [ボードゲーム編](tutorial/)。**各ステップが独立したモジュール**で、step2 は `ebigent init` を実際に走らせた結果を持つ(`init` は `go.mod` の有無で仕事を変えるので、読者と同じものを走らせるにはそれが要る)。ルートの `go.work` が5つをまとめるので `go run ./tutorial/stepN-xxx` はそのまま動き、各ステップの `replace` は手元のチェックアウトを指す。
 - `examples/solo` — **ソロゲームで一周が閉じることの証明**([README](examples/solo/README.md))。一人が二体の敵に追われるだけのゲームだが、敵が席に座っているので判断が視界つきで記録される。`solo-client`(窓)/ `solo-sim`(ヘッドレス)/ `solo-distill`(コーパス→チップ→Go)の3エントリ。**蒸留した敵を座らせると手書きの敵と1tickも違わない試合になる**(`TestDistilledEnemiesPlayTheSameMatch`)。同じ語彙・同じコーパスから敵2種が別の決定リストになることもテストで担保している。
 - `examples/phase0` — Phase 0 の証明: 固定小数点型 + 生成 CBOR コーデック + delta、build target ごとの cmd エントリポイント。
 - `examples/phase0/sim` — Phase 0 スタック全体（fixmath の Sin/Atan2/Sqrt → 宣言スケール量子化 → 生成 delta エンコード）を通した決定的エピソード。digest をテストで固定しており、これが Phase 2 のクロスアーキテクチャ検証の種になる。
@@ -225,10 +227,30 @@ go build -o bin/ebigent ./cmd/ebigent
 ebigent init            # ウィザードでプロジェクト雛形を生成
 ebigent generate        # 設定が確定させたものを Go にする
 ebigent build [target]  # generate してから build target をビルド
+ebigent add agent NAME  # ルールセットの宣言を読んで session.Agent の骨組みを書く
+ebigent distill         # コーパスを掘って behavior チップと生成エージェントを更新
 ebigent config show     # 実効値と、それを設定した層
 ebigent doctor          # 動かない理由
 ebigent --help          # 全 verb
 ```
+
+`init` は呼ばれた場所によって仕事が変わる。`go.mod` がなければプロジェクトを作る——
+ディレクトリ、モジュール、そして一枚ずつ差し替えるためのサンプルゲーム。`go.mod` が
+あればモジュールパスもエントリポイントも決まっているので、フレームワーク側のファイル
+(`ebigent.toml`、`corpus/`、`behavior/chips.json`、`cmd/distill`、解析スキル)だけを
+足し、既存のソースには触れない。エントリポイントの種別は import グラフから読む:
+Ebitengine に到達するものが client で、しないものが simulation。
+
+`add` は `var _ session.StageRuleSet[World, Action, Sight]` を構文として読む。ゲームを
+リンクせずにゲームの型を知れる場所はそこしかなく(`requirement:stage-declares-its-wire`)、
+そこには `session.Agent` の実装に要る2つがすでに書いてある。書き出すのは型・表明・
+ファクトリ・4メソッドで、`Decide` だけが TODO として残る——決めることがあるのはそこだけ
+だからだ。座らせる1行(`NewAgent: NewXxx,`)は印刷して終わる。手で書いたコードは書き換えない。
+
+`distill` は掘る処理そのものを持たず、`behavior.distill` が指すパッケージを `go run`
+する。述語は sight を受け取る Go の関数であって値ではないので、ゲームのコードを
+リンクしていない `ebigent` バイナリには受け取りようがない——`build` が `go build` を
+呼ぶのと同じ理由だ。
 
 `build` が `generate` を先に走らせるので、生成を思い出す必要はない。古い定数で
 コンパイルされたターゲットこそ、生成が防ごうとしている失敗だからだ。

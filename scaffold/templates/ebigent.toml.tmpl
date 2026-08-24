@@ -97,6 +97,11 @@ console = "127.0.0.1:8930"
 
 [behavior]
 library = "behavior/chips.json"
+corpus = "corpus"
+# The package `ebigent distill` spawns. Mining needs this game's
+# predicates, and a predicate is a Go function over a sight rather than a
+# value, so the step lives in the project and the toolchain runs it.
+distill = "{{.DistillEntry}}"
 
 # Read at startup, so the same artifact runs under either of these.
 [run]

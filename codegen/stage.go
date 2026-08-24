@@ -383,3 +383,133 @@ func AskedWorlds(asks []Ask) []string {
 	sort.Strings(out)
 	return out
 }
+
+// TypeRef is one of a rule set's three positions, resolved to the
+// package that declares it.
+type TypeRef struct {
+	// Name is the type as written where it is declared.
+	Name string
+	// Dir is that package's directory, and Import its path.
+	Dir    string
+	Import string
+	// Package is the package name, which is what qualifies Name in a
+	// file that has to import it.
+	Package string
+}
+
+// Qualified renders the type as a file in dir would have to write it:
+// bare when the type is declared there, package-qualified otherwise.
+func (t TypeRef) Qualified(dir string) string {
+	if sameDir(t.Dir, dir) {
+		return t.Name
+	}
+	return t.Package + "." + t.Name
+}
+
+// RuleSet is one game's rule set declaration: where it was written, and
+// what its three positions name.
+type RuleSet struct {
+	// File is the source file holding the assertion, and Dir and
+	// Package the package that made it.
+	File    string
+	Dir     string
+	Package string
+	// World, Action, and Sight are the three positions, in the order
+	// the type parameters are written.
+	World, Action, Sight TypeRef
+}
+
+// RuleSets reports every rule set declared under root.
+//
+// It reads the same assertion Stages does and for the same reason: it is
+// the one place a game meets the framework, so it is the one place a
+// tool can learn a game's types without linking it
+// (requirement:stage-declares-its-wire). Stages needs two of the three
+// positions because only two travel; anything writing an
+// api:agent-interface implementation needs the sight as well, since that
+// is what an agent is handed.
+//
+// Syntax, not types, for the same reason as Stages: the codecs a project
+// is about to generate do not exist yet, so the package may not compile.
+func RuleSets(root string) ([]RuleSet, error) {
+	mod, err := moduleOf(root)
+	if err != nil {
+		return nil, err
+	}
+	var out []RuleSet
+	err = filepath.WalkDir(root, func(p string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if d.IsDir() {
+			if p != root && skipDir(d.Name()) {
+				return fs.SkipDir
+			}
+			return nil
+		}
+		if !strings.HasSuffix(p, ".go") || strings.HasSuffix(p, "_test.go") {
+			return nil
+		}
+		fset := token.NewFileSet()
+		f, err := parser.ParseFile(fset, p, nil, 0)
+		if err != nil {
+			return err
+		}
+		dir := filepath.Dir(p)
+		for _, decl := range f.Decls {
+			args := assertedRuleSet(decl)
+			if args == nil {
+				continue
+			}
+			rs := RuleSet{File: p, Dir: dir, Package: f.Name.Name}
+			positions := []*TypeRef{&rs.World, &rs.Action, &rs.Sight}
+			for i, name := range []string{"world", "action", "sight"} {
+				ref, ok := typeRef(root, mod, dir, f, args[i])
+				if !ok {
+					return fmt.Errorf("codegen: %s: the %s position of the rule set is %s, which no package here declares",
+						rel(root, p), name, exprString(args[i]))
+				}
+				*positions[i] = ref
+			}
+			out = append(out, rs)
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].File < out[j].File })
+	return out, nil
+}
+
+// typeRef resolves one position to the package that declares it, adding
+// the import path and package name resolveType has no use for.
+func typeRef(root, mod, dir string, f *ast.File, e ast.Expr) (TypeRef, bool) {
+	d, name, ok := resolveType(root, mod, dir, f, e)
+	if !ok {
+		return TypeRef{}, false
+	}
+	imp := mod
+	if r := rel(root, d); r != "." {
+		imp = mod + "/" + filepath.ToSlash(r)
+	}
+	pkg, err := PackageName(d)
+	if err != nil {
+		return TypeRef{}, false
+	}
+	return TypeRef{Name: name, Dir: d, Import: imp, Package: pkg}, true
+}
+
+// sameDir compares two directories through their absolute forms, so a
+// caller that resolved one of them differently still matches.
+func sameDir(a, b string) bool {
+	x, err := filepath.Abs(a)
+	if err != nil {
+		return a == b
+	}
+	y, err := filepath.Abs(b)
+	if err != nil {
+		return a == b
+	}
+	return x == y
+}

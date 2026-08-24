@@ -2,6 +2,7 @@ package cli_test
 
 import (
 	"bytes"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -94,6 +95,89 @@ func TestInitNonInteractiveProducesAWorkingProject(t *testing.T) {
 	if code != 0 {
 		t.Fatalf("build in a fresh project: exit %d\nstdout:\n%s\nstderr:\n%s", code, out, errOut)
 	}
+}
+
+// A go.mod changes what init is for: the module path and the entry
+// points are already decided, so init adds the framework's files beside
+// the game instead of writing one.
+func TestInitAdoptsAModuleThatAlreadyExists(t *testing.T) {
+	if testing.Short() {
+		t.Skip("shells out to the go toolchain")
+	}
+	dir := existingModule(t)
+	code, out, errOut := run(t, "", "init", dir, "--yes",
+		"--style", "solo", "--agent", "other",
+		"--framework_path", frameworkRoot(t))
+	if code != 0 {
+		t.Fatalf("exit %d\nstdout:\n%s\nstderr:\n%s", code, out, errOut)
+	}
+	for _, want := range []string{"ebigent.toml", "behavior/chips.json", "cmd/distill/main.go"} {
+		if _, err := os.Stat(filepath.Join(dir, want)); err != nil {
+			t.Errorf("init did not write %s", want)
+		}
+	}
+	// The point of the mode: the sources that were already there are
+	// still the ones there.
+	for _, unwanted := range []string{"game/game.go.orig", "README.md", ".gitignore", "cmd/simulation/main.go"} {
+		if _, err := os.Stat(filepath.Join(dir, unwanted)); err == nil {
+			t.Errorf("init wrote %s into a module that did not ask for one", unwanted)
+		}
+	}
+	body, err := os.ReadFile(filepath.Join(dir, "game", "game.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(body), "the game that was already here") {
+		t.Errorf("init overwrote the module's own game:\n%s", body)
+	}
+	if !strings.Contains(out, "existing project") {
+		t.Errorf("init did not say which mode it was in:\n%s", out)
+	}
+
+	// And what it wrote has to satisfy the validation every project-scoped
+	// verb runs, which for an adopted module means the entry it detected
+	// is one the go tool agrees exists.
+	code, out, errOut = run(t, dir, "build", "pong")
+	if code != 0 {
+		t.Fatalf("build in an adopted project: exit %d\nstdout:\n%s\nstderr:\n%s", code, out, errOut)
+	}
+}
+
+// The module path is the one thing an adopted project has already
+// settled, so an option that disagrees is a mistake worth naming rather
+// than a preference to honour.
+func TestInitRefusesAModulePathThatContradictsGoMod(t *testing.T) {
+	dir := existingModule(t)
+	code, _, errOut := run(t, "", "init", dir, "--yes",
+		"--module", "example.com/somethingelse", "--style", "solo", "--skip_tidy")
+	if code == 0 {
+		t.Fatal("init should refuse to rename an existing module")
+	}
+	if !strings.Contains(errOut, "already declares module example.com/pong") {
+		t.Errorf("stderr = %q", errOut)
+	}
+}
+
+// existingModule is a repository that has a game and a way to run it,
+// and has never heard of ebigent.
+func existingModule(t *testing.T) string {
+	t.Helper()
+	dir := t.TempDir()
+	files := map[string]string{
+		"go.mod":           "module example.com/pong\n\ngo 1.25\n",
+		"cmd/pong/main.go": "package main\n\nimport \"fmt\"\n\nfunc main() { fmt.Println(\"pong\") }\n",
+		"game/game.go":     "// Package game is the game that was already here.\npackage game\n\n// Sight is what a seat may see.\ntype Sight struct{ Score int }\n\n// Action is one decision.\ntype Action struct{ Up bool }\n",
+	}
+	for name, body := range files {
+		full := filepath.Join(dir, filepath.FromSlash(name))
+		if err := os.MkdirAll(filepath.Dir(full), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(full, []byte(body), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	return dir
 }
 
 // A second init must not overwrite a live project.
@@ -382,3 +466,135 @@ high = 3000
 // GeneratedDirSlash is cli.GeneratedDir, spelled here so the test names
 // the same directory the verb writes to and cannot drift from it.
 const GeneratedDirSlash = cli.GeneratedDir
+
+// The agent interface is four methods over two type parameters, and both
+// parameters are decided in the rule set assertion rather than in the
+// file being written. That is the gap `add agent` closes, so what it
+// writes has to compile against the game it read.
+func TestAddAgentWritesAgainstTheDeclaredTypes(t *testing.T) {
+	if testing.Short() {
+		t.Skip("shells out to the go toolchain")
+	}
+	dir := t.TempDir()
+	code, out, errOut := run(t, "", "init", dir,
+		"--yes", "--module", "example.com/probe", "--name", "probe",
+		"--style", "solo", "--framework_path", frameworkRoot(t))
+	if code != 0 {
+		t.Fatalf("init: exit %d\nstdout:\n%s\nstderr:\n%s", code, out, errOut)
+	}
+
+	code, out, errOut = run(t, dir, "add", "agent", "chaser")
+	if code != 0 {
+		t.Fatalf("add agent: exit %d\nstdout:\n%s\nstderr:\n%s", code, out, errOut)
+	}
+	body, err := os.ReadFile(filepath.Join(dir, "game", "agent_chaser.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	// The two positions come from `var _ session.TickStageRuleSet[State,
+	// Action, Sight]` in the generated rules; nothing here was told them.
+	for _, want := range []string{
+		"var _ session.Agent[Sight, Action] = (*Chaser)(nil)",
+		"func NewChaser(session.SlotID) (string, session.Agent[Sight, Action])",
+		`return "chaser", &Chaser{}`,
+	} {
+		if !strings.Contains(string(body), want) {
+			t.Errorf("the generated agent does not carry %q:\n%s", want, body)
+		}
+	}
+	// Seating it is one field, and it is the one a developer does not
+	// know to look for, so the verb has to name it.
+	if !strings.Contains(out, "NewAgent: NewChaser,") {
+		t.Errorf("add agent did not say how to seat it:\n%s", out)
+	}
+
+	if err := goRunIn(dir, "build", "./..."); err != nil {
+		t.Fatalf("the generated agent does not compile: %v", err)
+	}
+
+	// An agent is hand written after this point, so a second run naming
+	// the same file would throw away the only part worth keeping.
+	code, _, errOut = run(t, dir, "add", "agent", "chaser")
+	if code == 0 {
+		t.Fatal("a second add of the same agent should fail")
+	}
+	if !strings.Contains(errOut, "game/agent_chaser.go already exists") {
+		t.Errorf("the refusal does not name the file as a person would type it: %q", errOut)
+	}
+}
+
+// The kind is a positional, so a typo lands as a kind rather than as an
+// unknown verb, and the message has to say what the kinds are.
+func TestAddRefusesAKindItCannotWrite(t *testing.T) {
+	dir := t.TempDir()
+	writeProject(t, dir)
+	code, _, errOut := run(t, dir, "add", "stage", "bonus")
+	if code == 0 {
+		t.Fatal("add stage should fail while agent is the only kind")
+	}
+	if !strings.Contains(errOut, "the kinds are agent") {
+		t.Errorf("stderr = %q", errOut)
+	}
+}
+
+// A repository holding several games cannot be guessed at: writing the
+// agent into the wrong one would compile and mean nothing.
+func TestAddNamesTheRuleSetsWhenThereAreSeveral(t *testing.T) {
+	dir := t.TempDir()
+	writeProject(t, dir)
+	for _, name := range []string{"alpha", "beta"} {
+		writeRuleSet(t, filepath.Join(dir, name))
+	}
+	code, _, errOut := run(t, dir, "add", "agent", "tactic")
+	if code == 0 {
+		t.Fatal("add agent should refuse to guess which game")
+	}
+	for _, want := range []string{"declares 2 rule sets", "alpha", "beta"} {
+		if !strings.Contains(errOut, want) {
+			t.Errorf("stderr does not mention %q: %q", want, errOut)
+		}
+	}
+}
+
+// writeProject is the smallest thing the project-scoped verbs accept: a
+// module and a configuration that validates.
+func writeProject(t *testing.T, dir string) {
+	t.Helper()
+	files := map[string]string{
+		"go.mod": "module example.com/probe\n\ngo 1.25\n",
+		"ebigent.toml": "[project]\nmodule = \"example.com/probe\"\n\n" +
+			"[protocol]\npackage = \"example.com/probe\"\ntitle = \"probe\"\nshape = \"solo\"\ndevices = [\"keyboard\"]\n\n" +
+			"[protocol.seats]\ncount = 1\n\n" +
+			"[[build.target]]\nname = \"probe\"\nkind = \"client\"\nentry = \".\"\n",
+	}
+	for name, body := range files {
+		if err := os.WriteFile(filepath.Join(dir, name), []byte(body), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
+// writeRuleSet plants one rule set assertion, which is all `add` reads.
+func writeRuleSet(t *testing.T, dir string) {
+	t.Helper()
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	pkg := filepath.Base(dir)
+	body := "package " + pkg + "\n\nimport \"github.com/shibukawa/ebigentserver/session\"\n\n" +
+		"type World struct{}\ntype Action struct{}\ntype Sight struct{}\ntype RuleSet struct{}\n\n" +
+		"var _ session.StageRuleSet[World, Action, Sight] = RuleSet{}\n"
+	if err := os.WriteFile(filepath.Join(dir, pkg+".go"), []byte(body), 0o600); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// goRunIn runs the go tool in dir, reporting its output on failure.
+func goRunIn(dir string, args ...string) error {
+	cmd := exec.Command("go", args...)
+	cmd.Dir = dir
+	if out, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("go %s: %w\n%s", strings.Join(args, " "), err, out)
+	}
+	return nil
+}

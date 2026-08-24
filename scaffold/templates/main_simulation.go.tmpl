@@ -9,20 +9,29 @@ package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"os"
 
 	"{{.Module}}/game"
 	"github.com/shibukawa/ebigentserver/config/confload"
 	"github.com/shibukawa/ebigentserver/config/runconf"
+	"github.com/shibukawa/ebigentserver/run"
 	"github.com/shibukawa/ebigentserver/session"
 )
 
 func main() {
-	run := runconf.Bind()
+	// Where the episodes go. It is a flag rather than a run setting
+	// because data:run-config has no episode section yet; the default is
+	// the behavior.corpus of ebigent.toml, which is what ./cmd/distill
+	// reads back.
+	corpus := flag.String("corpus", env("EBIGENT_CORPUS", "corpus"), "corpus root; empty records nothing")
+	flag.Parse()
+
+	cfgRun := runconf.Bind()
 	if _, err := confload.Load(confload.Options{
 		Owned:    runconf.Prefixes(),
-		Validate: []func() error{func() error { return run.Validate() }},
+		Validate: []func() error{func() error { return cfgRun.Validate() }},
 	}); err != nil {
 		fatal(err)
 	}
@@ -30,15 +39,36 @@ func main() {
 	// Holding the seed fixed is what makes a run reproducible; vary it
 	// to sweep, never to add entropy (rule:shared-rng-seed).
 	const seed = 1
+	const id = "{{.Name}}-sim-0001"
 
 	bots := make([]*game.Bot, 0, len(game.Slots()))
 	var drivers []*game.Driver
 
-	s, err := session.New(game.Config("{{.Name}}-sim", seed, func(_ session.Tick, world *game.State) {
+	cfg := game.Config(id, seed, func(_ session.Tick, world *game.State) {
 		for _, d := range drivers {
 			d.OnWorld(world)
 		}
-	}))
+	})
+	// Recording is why running headless is worth anything beyond a smoke
+	// test: every decision every seat made lands in data:episode-log with
+	// the sight it was made from, which is the input ./cmd/distill needs
+	// and the one thing a hand-written enemy loop never produces.
+	kinds := map[session.SlotID]string{}
+	for _, slot := range game.Slots() {
+		kinds[slot] = "bot"
+	}
+	rec, err := run.OpenRecording[game.State, game.Action, game.Sight](run.RecordOptions{
+		Root:       *corpus,
+		EpisodeID:  id,
+		AgentKinds: kinds,
+	})
+	if err != nil {
+		fatal(err)
+	}
+	defer rec.Close()
+	cfg.Recorder = rec.Recorder()
+
+	s, err := session.New(cfg)
 	if err != nil {
 		fatal(err)
 	}
@@ -71,6 +101,23 @@ func main() {
 		fmt.Printf(", slot %d %s (%d pipes)", i+1, b.Result.Signal.Terminal, b.Result.Signal.Score)
 	}
 	fmt.Println()
+	if err := rec.Close(); err != nil {
+		fatal(err)
+	}
+	// A nil recording is what an empty root produces, so wiring it
+	// unconditionally is safe and only the report has to ask.
+	if rec != nil {
+		fmt.Printf("recorded %s; ebigent distill reads it from %s\n", rec.Dir, *corpus)
+	}
+}
+
+// env reads a variable the toolchain sets, falling back to the same
+// default the configuration has.
+func env(name, def string) string {
+	if v := os.Getenv(name); v != "" {
+		return v
+	}
+	return def
 }
 
 func fatal(err error) {

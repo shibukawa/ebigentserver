@@ -1,0 +1,65 @@
+package {{.Package}}
+
+import (
+	"context"
+{{range .Imports}}
+	{{printf "%q" .}}
+{{- end}}
+)
+
+// {{.Type}} controls a seat (api:agent-interface).
+//
+// Nothing about it says whether a person or a program is behind it. The
+// session hands every seat the same four calls, and the seat this one
+// takes could just as well hold somebody at a keyboard
+// (decision:no-ai-game-mode) — which is what makes what it does here
+// recordable as ordinary play rather than as a separate bot log.
+//
+// Decide is the part to write. The rest is the shape.
+type {{.Type}} struct {
+	// sight is the last projection this seat was handed. Keeping it is
+	// the whole of an agent's memory unless the game needs more.
+	sight {{.Sight}}
+}
+
+var _ session.Agent[{{.Sight}}, {{.Action}}] = (*{{.Type}})(nil)
+
+// New{{.Type}} is the factory run.Binding.NewAgent takes.
+//
+// The id names the policy rather than the seat. It is what a lobby
+// shows, and what tells one kind of bot from another in the agent_kind
+// column of a recorded episode — so a corpus can be split by kind later
+// without guessing.
+func New{{.Type}}(session.SlotID) (string, session.Agent[{{.Sight}}, {{.Action}}]) {
+	return "{{.Name}}", &{{.Type}}{}
+}
+
+// Joined records nothing. Which seat this is arrives on every sight, so
+// there is one source of truth rather than two that can disagree.
+func (*{{.Type}}) Joined(session.SlotID) {}
+
+// Observe retains the latest sight and decides nothing. The session
+// delivers to every seat before any of them acts, so work done here sits
+// on the tick.
+func ({{.Receiver}} *{{.Type}}) Observe(sight {{.Sight}}) { {{.Receiver}}.sight = sight }
+
+// Decide answers from the last sight, and only from the last sight.
+//
+// It never sees the world state, which is the seam that makes this agent
+// survive a game where the two differ — and it is also
+// rule:analysis-restricted-to-visible-fields holding by construction: a
+// policy distilled from what this seat recorded can only name things
+// that were in front of it.
+//
+// Returning false means "no action this step", which is the honest
+// answer when it is not this seat's turn or the game is over.
+func ({{.Receiver}} *{{.Type}}) Decide(context.Context) ({{.Action}}, bool) {
+	// TODO: read {{.Receiver}}.sight and return the action this policy would take.
+	var none {{.Action}}
+	return none, false
+}
+
+// Ended does nothing. An agent that learned between matches would put
+// the order they were played in into the corpus, and nothing downstream
+// reads a corpus in order.
+func (*{{.Type}}) Ended(session.Result) {}

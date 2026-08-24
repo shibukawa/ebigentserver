@@ -79,6 +79,30 @@ type AnalyzeOptions struct {
 	SQL    string `default:"" help:"also write a DuckDB report script to this path"`
 }
 
+// DistillOptions runs the project's own distillation entry point.
+// AddOptions adds one piece to an existing project.
+//
+// The kind is a positional rather than its own verb because the list is
+// going to grow — a stage, a seat, a condition — and each one is the
+// same act: read what the project already declares, and write the
+// boilerplate that declaration implies.
+type AddOptions struct {
+	Kind string `arg:"required" help:"what to add; agent is the only kind so far"`
+	Name string `arg:"required" help:"the policy name, which is the id the factory returns"`
+	// The type and the file are derived from the name, and both are
+	// overridable because a project that already calls its stand-in Bot
+	// should not have to rename it to use this.
+	Type    string `default:"" help:"Go type name; defaults to the name in upper camel case"`
+	File    string `default:"" help:"file name; defaults to agent_<name>.go"`
+	Package string `default:"" help:"directory of the rule set to write against; required when a project declares several"`
+}
+
+type DistillOptions struct {
+	Entry   string `default:"" help:"package to run; defaults to the behavior.distill setting"`
+	Corpus  string `default:"" help:"corpus root passed to the entry; defaults to the behavior.corpus setting"`
+	Library string `default:"" help:"chip library passed to the entry; defaults to the behavior.library setting"`
+}
+
 // MergeOptions folds analyzer proposals into a chip library.
 type MergeOptions struct {
 	Request   string `arg:"required" help:"analysis-request.json the proposals answer"`
@@ -117,6 +141,8 @@ func Run(stdout, stderr io.Writer) int {
 	configOpts := configbind.SubCommand[ConfigOptions]("config", "render or explain the configuration")
 	generateOpts := configbind.SubCommand[GenerateOptions]("generate", "emit the code the configuration settles")
 	analyzeOpts := configbind.SubCommand[AnalyzeOptions]("analyze", "aggregate a recorded episode corpus")
+	addOpts := configbind.SubCommand[AddOptions]("add", "write the boilerplate a declaration implies, such as an agent")
+	distillOpts := configbind.SubCommand[DistillOptions]("distill", "mine the corpus into behavior candidates and regenerate the agent")
 	mergeOpts := configbind.SubCommand[MergeOptions]("merge", "fold analyzer proposals into a chip library")
 	doctorOpts := configbind.SubCommand[DoctorOptions]("doctor", "report environment problems")
 	versionOpts := configbind.SubCommand[VersionOptions]("version", "print the toolchain version")
@@ -173,6 +199,10 @@ func Run(stdout, stderr io.Writer) int {
 		return ctx.report(runConfig(ctx, configOpts))
 	case analyzeOpts != nil:
 		return ctx.report(runAnalyze(ctx, analyzeOpts))
+	case addOpts != nil:
+		return ctx.report(runAdd(ctx, addOpts))
+	case distillOpts != nil:
+		return ctx.report(runDistill(ctx, distillOpts))
 	case mergeOpts != nil:
 		return ctx.report(runMerge(ctx, mergeOpts))
 	case doctorOpts != nil:

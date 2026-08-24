@@ -88,6 +88,15 @@ type Behavior struct {
 	// Corpus is the data:episode-log root that analysis and the
 	// evidence pane read.
 	Corpus string `default:"corpus" help:"episode corpus root"`
+	// Distill is the package `ebigent distill` runs.
+	//
+	// It is a path rather than a set of options because the step it
+	// names cannot be described in configuration: mining needs the
+	// game's predicates, and a predicate is a Go function over a sight,
+	// not a value. So the toolchain spawns the project's own entry the
+	// way `ebigent build` spawns `go build`, and what happens inside is
+	// the game's to write.
+	Distill string `default:"./cmd/distill" help:"package ebigent distill runs"`
 }
 
 // Config is every toolchain section, bound in one call.

@@ -1,18 +1,24 @@
 package cli
 
 import (
+	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"strconv"
 	"strings"
 
 	"github.com/shibukawa/ebigentserver/analysis"
 	"github.com/shibukawa/ebigentserver/behavior"
+	"github.com/shibukawa/ebigentserver/codegen"
 	"github.com/shibukawa/ebigentserver/config/confload"
+	"github.com/shibukawa/ebigentserver/scaffold"
 	"github.com/shibukawa/tinybind-go/configbind"
 )
 
@@ -339,4 +345,224 @@ func either(value, fallback string) string {
 		return fallback
 	}
 	return value
+}
+
+// runDistill hands the mining step to the project's own entry point.
+//
+// It is the `ebigent build` shape rather than the `ebigent analyze` one,
+// and the difference is not a preference. Analysis reads files, so the
+// toolchain can do it alone. Mining cannot: a data:derived-predicate is
+// a Go function over a concept:sight, and a prebuilt binary has no way
+// to receive one from a module it was compiled without. So the game
+// writes the step and this verb spawns it, the way build spawns
+// `go build` instead of compiling anything itself.
+//
+// What crosses the boundary is two paths and nothing else. The verb
+// never names a corpus size or a seed: a recipe living here as well as
+// in the entry is a second place for it to be wrong, which is exactly
+// how a regeneration loop stops closing.
+func runDistill(c *context, opts *DistillOptions) error {
+	if err := c.requireProject(); err != nil {
+		return err
+	}
+	entry := either(opts.Entry, c.build.Behavior.Distill)
+	if entry == "" {
+		return errors.New("distill: no entry point; set behavior.distill or pass --entry")
+	}
+	// A missing entry is the ordinary state of a project that has not
+	// written one yet, so it is worth saying plainly rather than letting
+	// the go tool report an empty directory.
+	if dir := c.path(filepath.FromSlash(strings.TrimPrefix(entry, "./"))); !hasGoFiles(dir) {
+		return fmt.Errorf("distill: %s holds no Go files; run `ebigent init` to write a starting entry, or point behavior.distill at the one this project uses", entry)
+	}
+
+	cmd := exec.Command("go", "run", entry)
+	cmd.Dir = c.res.ProjectRoot
+	cmd.Stdout = c.stdout
+	cmd.Stderr = c.stdout
+	// The entry reads these rather than taking flags, so an entry that
+	// ignores them still runs. A flag it had not declared would fail the
+	// spawn instead, which is a worse way to learn that somebody rewrote
+	// the file.
+	cmd.Env = append(os.Environ(),
+		"EBIGENT_CORPUS="+either(opts.Corpus, c.build.Behavior.Corpus),
+		"EBIGENT_LIBRARY="+either(opts.Library, c.build.Behavior.Library),
+	)
+
+	fmt.Fprintf(c.stdout, "distill: go run %s\n", entry)
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("distill %s: %w", entry, err)
+	}
+	// Nothing here approves anything. The entry mines candidates and
+	// regenerates from what a developer has already accepted; the gate
+	// itself is ui:behavior-tree-editor
+	// (rule:generated-behavior-requires-approval).
+	return nil
+}
+
+// hasGoFiles reports whether a directory holds anything the go tool
+// would compile.
+func hasGoFiles(dir string) bool {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return false
+	}
+	for _, e := range entries {
+		if !e.IsDir() && strings.HasSuffix(e.Name(), ".go") {
+			return true
+		}
+	}
+	return false
+}
+
+// AddKinds are the pieces `ebigent add` knows how to write.
+var AddKinds = []string{"agent"}
+
+// runAdd writes the boilerplate a declaration already implies.
+//
+// The first kind is an agent, and it is the one where the gap is widest.
+// An api:agent-interface implementation is four methods over two type
+// parameters, and both parameters are decided somewhere else — in the
+// rule set assertion, which may name types from a package the agent's
+// own file does not import yet. All of that is mechanical and none of it
+// is the policy, so a developer copying it out of another game is
+// copying the part that has no decisions in it.
+//
+// What this cannot write is Decide, which is the whole point of the
+// file. It is left as a TODO returning no action, which compiles and
+// plays: a seat that never acts is a legal seat.
+func runAdd(c *context, opts *AddOptions) error {
+	if err := c.requireProject(); err != nil {
+		return err
+	}
+	if !slices.Contains(AddKinds, opts.Kind) {
+		return fmt.Errorf("add: %q is not something to add; the kinds are %s", opts.Kind, strings.Join(AddKinds, ", "))
+	}
+
+	rules, err := ruleSetFor(c.res.ProjectRoot, opts.Package)
+	if err != nil {
+		return err
+	}
+	// The file is written into the rule set's own package, which is
+	// where the sight is declared and therefore where the fewest
+	// imports are needed. It is also where a reader looks for the
+	// rules and their stand-in together.
+	spec := &scaffold.AgentSpec{
+		Dir:     rules.Dir,
+		Package: rules.Package,
+		Name:    opts.Name,
+		Type:    opts.Type,
+		File:    opts.File,
+		Sight:   rules.Sight.Qualified(rules.Dir),
+		Action:  rules.Action.Qualified(rules.Dir),
+		Imports: agentImports(rules),
+		Root:    c.res.ProjectRoot,
+	}
+	if _, err := scaffold.WriteAgent(spec); err != nil {
+		return err
+	}
+
+	fmt.Fprintf(c.stdout, "wrote %s\n", spec.Rel())
+	fmt.Fprintf(c.stdout, "\n%s answers from the sight and nothing else. Write Decide; the rest is the shape.\n", spec.TypeName())
+	// Seating it is one field, and it is the field a developer does not
+	// know to look for: run.Binding is where a game hands its rules to
+	// the wrapper, and NewAgent is the only thing on it that decides
+	// who fills a seat nobody took.
+	fmt.Fprintf(c.stdout, "\nSeat it by naming the factory in run.Binding:\n\n    NewAgent: %s,\n", bindingCall(c.res.ProjectRoot, rules, spec))
+	return nil
+}
+
+// ruleSetFor picks the rule set to write against, insisting on a choice
+// when a project declares several rather than guessing which game a
+// developer meant.
+func ruleSetFor(root, pkg string) (codegen.RuleSet, error) {
+	sets, err := codegen.RuleSets(root)
+	if err != nil {
+		return codegen.RuleSet{}, err
+	}
+	switch {
+	case len(sets) == 0:
+		return codegen.RuleSet{}, errors.New("add: no rule set declared in this project; a game states `var _ session.StageRuleSet[World, Action, Sight] = RuleSet{}` beside its rules")
+	case pkg == "" && len(sets) == 1:
+		return sets[0], nil
+	case pkg == "":
+		var names []string
+		for _, s := range sets {
+			r, err := filepath.Rel(root, s.Dir)
+			if err != nil {
+				r = s.Dir
+			}
+			names = append(names, filepath.ToSlash(r))
+		}
+		return codegen.RuleSet{}, fmt.Errorf("add: this project declares %d rule sets; name one with --package: %s",
+			len(sets), strings.Join(names, ", "))
+	}
+	want := filepath.Clean(pkg)
+	for _, s := range sets {
+		r, err := filepath.Rel(root, s.Dir)
+		if err != nil {
+			continue
+		}
+		if filepath.Clean(r) == want || filepath.Clean(s.Dir) == want {
+			return s, nil
+		}
+	}
+	return codegen.RuleSet{}, fmt.Errorf("add: no rule set is declared in %s", pkg)
+}
+
+// agentImports are the packages the generated file needs for the two
+// type names it writes. A position declared in the rule set's own
+// package is spelled bare and imports nothing.
+func agentImports(rules codegen.RuleSet) []string {
+	var out []string
+	for _, ref := range []codegen.TypeRef{rules.Sight, rules.Action} {
+		if ref.Qualified(rules.Dir) != ref.Name {
+			out = append(out, ref.Import)
+		}
+	}
+	return out
+}
+
+// bindingCall renders the factory as the file holding run.Binding would
+// have to write it — bare when that file is in the same package, and
+// qualified when it is somewhere else, which is the difference between
+// a line that compiles and one that does not.
+func bindingCall(root string, rules codegen.RuleSet, spec *scaffold.AgentSpec) string {
+	call := "New" + spec.TypeName()
+	dir, ok := bindingDir(root)
+	if !ok || dir == rules.Dir {
+		return call
+	}
+	return rules.Package + "." + call
+}
+
+// bindingDir finds the directory of the file that builds a run.Binding.
+// It is a text scan rather than a parse because the answer only decides
+// how a printed suggestion is spelled: being wrong costs a package
+// qualifier, not a build.
+func bindingDir(root string) (string, bool) {
+	var found string
+	_ = filepath.WalkDir(root, func(p string, d fs.DirEntry, err error) error {
+		if err != nil || found != "" {
+			return err
+		}
+		if d.IsDir() {
+			if p != root && strings.HasPrefix(d.Name(), ".") {
+				return fs.SkipDir
+			}
+			return nil
+		}
+		if !strings.HasSuffix(p, ".go") || strings.HasSuffix(p, "_test.go") {
+			return nil
+		}
+		body, err := os.ReadFile(p)
+		if err != nil {
+			return nil
+		}
+		if bytes.Contains(body, []byte("run.Binding[")) {
+			found = filepath.Dir(p)
+		}
+		return nil
+	})
+	return found, found != ""
 }

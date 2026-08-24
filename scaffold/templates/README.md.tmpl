@@ -86,8 +86,28 @@ agree on. A client reconstructs state against the profile the host runs,
 so two machines with different tick rates do not negotiate — they
 desynchronize. Set it per deployment, not per machine.
 
-## Recording
+## Recording, and what it is for
 
-`corpus/` and `behavior/chips.json` are already in place, and the corpus
-root is the `[behavior]` setting of the same name. A corpus cannot be
-collected retroactively, so turn recording on before you need the data.
+A corpus cannot be collected retroactively, so the pipeline is wired
+before there is any data to put through it. `cmd/simulation` records
+every decision every seat made, with the sight it was made from:
+
+    go run ./cmd/simulation      # writes corpus/{{.Name}}-sim-0001/
+    ebigent distill              # mines it into behavior/chips.json
+
+`ebigent distill` spawns `{{.DistillEntry}}`, which is a program in this
+project rather than something inside the toolchain. It has to be: a rule
+about this game is a Go function over a `game.Sight`, and a compiled
+`ebigent` has no way to receive one from a module it was built without.
+
+`Vocabulary` in that file is the part to write. It ships with two
+judgements about the placeholder bird, which is enough for the first run
+to find something and not enough for anything else — a rule that names a
+fact about the position generalizes, and a rule that names a coordinate
+memorizes.
+
+Nothing is generated until you approve it. Distillation reproduces logged
+play, and logged play includes mistakes, so the mined chips wait in
+`behavior/chips.json` with `"approved": false` until you say otherwise.
+Approve some and run `ebigent distill` again to get `behavior/gen` — an
+ordinary `session.Agent`, in Go you can read and diff.

@@ -21,6 +21,7 @@ import (
 	"path"
 	"path/filepath"
 	"slices"
+	"strconv"
 	"strings"
 	"text/template"
 
@@ -74,6 +75,16 @@ func SkillDirFor(agent string) string { return agentSkillDir[agent] }
 // generated code — it becomes the data:run-config topology value, which a
 // project flips without regenerating anything.
 var Reaches = []string{"local", "linked"}
+
+// DistillEntry is the package `ebigent distill` spawns, and the one
+// init writes a starting version of.
+//
+// It repeats the behavior.distill default rather than importing it,
+// because a struct tag cannot name a constant and the dependency would
+// only run the wrong way. TestDistillEntryMatchesTheConfigDefault holds
+// the two together, so a project that never edits behavior.distill
+// needs no configuration for distillation to run.
+const DistillEntry = "./cmd/distill"
 
 // DedicatedTag makes the game entry a headless server instead of a
 // playing one. The tag removes the renderer rather than adding it, so the
@@ -201,10 +212,19 @@ type Target struct {
 	HasDedicated bool
 	// Kind is the concept:build-target row this artifact occupies.
 	Kind string
+	// Path is the main package path, for an entry init found rather
+	// than wrote. A generated one leaves it empty and takes the cmd
+	// layout init also created.
+	Path string
 }
 
 // Entry is the main package path of this target.
-func (t Target) Entry() string { return "./cmd/" + t.Dir }
+func (t Target) Entry() string {
+	if t.Path != "" {
+		return t.Path
+	}
+	return "./cmd/" + t.Dir
+}
 
 // Tagged reports whether this target also builds headless under
 // DedicatedTag (rule:build-tag-only-for-linkage).
@@ -255,6 +275,20 @@ type Spec struct {
 	FrameworkPath string
 	// GoVersion pins the toolchain of the generated project.
 	GoVersion string
+	// Adopt marks a directory that already holds a go.mod.
+	//
+	// The placeholder game exists to be replaced, so a module that has
+	// its own game has nothing to gain from it and everything to lose:
+	// generating game/game.go beside a real one would either collide or
+	// look like the project grew a second rule set. So an adopted module
+	// gets only what the framework itself owns — the configuration, the
+	// corpus root, the chip library, the distillation entry, and the
+	// analysis skill — and its sources are left alone.
+	Adopt bool
+	// Detected are the entry points found in an adopted module, which
+	// is where its [[build.target]] blocks come from. In a generated
+	// project the entry points are known instead (Targets).
+	Detected []Target
 }
 
 // Validate rejects a spec that could not produce a working project.
@@ -286,8 +320,13 @@ func (s *Spec) Validate() error {
 		errs = append(errs, fmt.Errorf("a session needs at least one seat, not %d", s.Seats))
 	}
 
-	if s.Seats > 8 {
+	if s.Seats > 8 && !s.Adopt {
 		errs = append(errs, fmt.Errorf("%d seats is past what the generated placeholder renders; declare the slots by hand instead", s.Seats))
+	}
+	// A project with no [[build.target]] fails buildconf validation, so
+	// every ebigent verb would refuse to run on what init just wrote.
+	if s.Adopt && len(s.Detected) == 0 {
+		errs = append(errs, errors.New("no main package found in this module; ebigent needs at least one entry point to declare as a build target"))
 	}
 	switch modes := SyncModesFor(s.Seats); {
 	case len(modes) == 0 && s.SyncMode != "":
@@ -301,8 +340,14 @@ func (s *Spec) Validate() error {
 	return nil
 }
 
-// Targets is the entry point set this process boundary generates.
-func (s *Spec) Targets() []Target { return targetsFor(s.Name, s.Seats) }
+// Targets is the entry point set this project declares: the generated
+// one in a new project, and whatever `go list` found in an adopted one.
+func (s *Spec) Targets() []Target {
+	if s.Adopt {
+		return s.Detected
+	}
+	return targetsFor(s.Name, s.Seats)
+}
 
 // Topology is the data:run-config topology this boundary starts at.
 func (s *Spec) Topology() string { return TopologyForStyle(s.Style) }
@@ -348,20 +393,33 @@ func (s *Spec) SlotNames() []string {
 
 // DevTarget is the target ebigent dev runs by default: the one a
 // developer would want in front of them, which is the playable client.
+//
+// An adopted module can have several, so the game's own name breaks the
+// tie before the kind does — a repository whose entry is named after the
+// game is naming the thing a developer runs.
 func (s *Spec) DevTarget() string {
-	for _, t := range s.Targets() {
-		if t.Kind == "client" {
+	targets := s.Targets()
+	for _, t := range targets {
+		if t.Name == s.Name {
 			return t.Name
 		}
 	}
-	if ts := s.Targets(); len(ts) > 0 {
-		return ts[0].Name
+	for _, t := range targets {
+		if t.Kind == "client" || t.Kind == "listen" {
+			return t.Name
+		}
+	}
+	if len(targets) > 0 {
+		return targets[0].Name
 	}
 	return ""
 }
 
 // Framework reports the framework module path for templates.
 func (s *Spec) Framework() string { return FrameworkModule }
+
+// DistillEntry reports the distillation entry package for templates.
+func (s *Spec) DistillEntry() string { return DistillEntry }
 
 // Result lists what a Generate run wrote, relative to the project root.
 type Result struct {
@@ -414,12 +472,16 @@ func Generate(spec *Spec) (*Result, error) {
 func render(spec *Spec) (map[string][]byte, error) {
 	out := map[string][]byte{}
 
-	fixed := map[string]string{
-		"ebigent.toml":      "ebigent.toml.tmpl",
-		".gitignore":        "gitignore.tmpl",
-		"README.md":         "README.md.tmpl",
-		"game/game.go":      "game.go.tmpl",
-		"game/game_test.go": "game_test.go.tmpl",
+	// ebigent.toml is the only one of these an adopted module wants.
+	// The rest describe the placeholder game, and .gitignore and
+	// README.md belong to whoever started the repository — writing over
+	// either would be init deciding something it was not asked about.
+	fixed := map[string]string{"ebigent.toml": "ebigent.toml.tmpl"}
+	if !spec.Adopt {
+		fixed[".gitignore"] = "gitignore.tmpl"
+		fixed["README.md"] = "README.md.tmpl"
+		fixed["game/game.go"] = "game.go.tmpl"
+		fixed["game/game_test.go"] = "game_test.go.tmpl"
 	}
 	for name, tmpl := range fixed {
 		body, err := execute(tmpl, spec)
@@ -436,7 +498,8 @@ func render(spec *Spec) (map[string][]byte, error) {
 
 	// The boundary test needs the playable entry in scope: it is the one
 	// allowed to link the engine, and the one whose tagged form must not.
-	for _, t := range spec.Targets() {
+	// It names cmd/<game>, so it only exists where that was generated.
+	for _, t := range generatedTargets(spec) {
 		if t.Kind == "simulation" {
 			continue
 		}
@@ -453,7 +516,7 @@ func render(spec *Spec) (map[string][]byte, error) {
 		out["boundary_test.go"] = body
 	}
 
-	for _, t := range spec.Targets() {
+	for _, t := range generatedTargets(spec) {
 		data := struct {
 			*Spec
 			Target Target
@@ -488,14 +551,24 @@ func render(spec *Spec) (map[string][]byte, error) {
 	}
 
 	// decision:ai-pipeline-always-scaffolded: the corpus root, the chip
-	// library, and the analysis skill exist before there is any data,
-	// because recording has to be in place first.
+	// library, the distillation entry, and the analysis skill exist
+	// before there is any data, because recording has to be in place
+	// first.
 	lib, err := execute("chips.json.tmpl", spec)
 	if err != nil {
 		return nil, err
 	}
 	out["behavior/chips.json"] = lib
 	out["corpus/.gitkeep"] = []byte{}
+
+	distill, err := execute("main_distill.go.tmpl", spec)
+	if err != nil {
+		return nil, err
+	}
+	if distill, err = gofmtSource(DistillEntry+"/main.go", distill); err != nil {
+		return nil, err
+	}
+	out[strings.TrimPrefix(DistillEntry, "./")+"/main.go"] = distill
 
 	if err := fs.WalkDir(skills.BehaviorAnalyze, ".", func(p string, d fs.DirEntry, err error) error {
 		if err != nil || d.IsDir() {
@@ -511,6 +584,16 @@ func render(spec *Spec) (map[string][]byte, error) {
 		return nil, err
 	}
 	return out, nil
+}
+
+// generatedTargets is the entry points init writes source for, which is
+// none of them in an adopted module: its entries are the ones already
+// there, and init only learned their names to declare them.
+func generatedTargets(spec *Spec) []Target {
+	if spec.Adopt {
+		return nil
+	}
+	return spec.Targets()
 }
 
 func execute(name string, data any) ([]byte, error) {
@@ -572,6 +655,18 @@ func InitModule(dir string, spec *Spec, env []string) error {
 	if err := goRun(dir, env, "mod", "init", spec.Module); err != nil {
 		return err
 	}
+	return Require(dir, spec, env)
+}
+
+// Require adds the framework to a module that already has a go.mod,
+// which is everything InitModule does except declaring the module.
+//
+// It is the same call in both directions on purpose. An adopted project
+// needs the framework required, the codec generator recorded as a tool,
+// and tidy run over the entry init just wrote — no less than a generated
+// one does, and by the same route, so there is one description of what
+// depending on ebigent means.
+func Require(dir string, spec *Spec, env []string) error {
 	if spec.FrameworkPath != "" {
 		if err := goRun(dir, env, "mod", "edit",
 			"-require="+FrameworkModule+"@v0.0.0",
@@ -593,6 +688,98 @@ func InitModule(dir string, spec *Spec, env []string) error {
 	}
 	return Tidy(dir, env)
 }
+
+// ModulePath reads the module path out of a go.mod, and reports
+// whether there was one to read.
+//
+// Missing is not an error: it is the question init asks to decide which
+// of its two jobs it is doing. A go.mod that exists but declares nothing
+// is an error, because that module cannot be built either way.
+func ModulePath(dir string) (string, bool, error) {
+	body, err := os.ReadFile(filepath.Join(dir, "go.mod"))
+	if errors.Is(err, fs.ErrNotExist) {
+		return "", false, nil
+	}
+	if err != nil {
+		return "", false, err
+	}
+	for line := range strings.Lines(string(body)) {
+		line = strings.TrimSpace(line)
+		if line, ok := strings.CutPrefix(line, "module"); ok {
+			path := strings.TrimSpace(line)
+			if p, err := strconv.Unquote(path); err == nil {
+				path = p
+			}
+			if path == "" {
+				break
+			}
+			return path, true, nil
+		}
+	}
+	return "", false, fmt.Errorf("scaffold: %s declares no module path", filepath.Join(dir, "go.mod"))
+}
+
+// DetectTargets reports the entry points an existing module already has,
+// so init can declare them instead of inventing directories beside them.
+//
+// The kind is read off the import graph rather than guessed from the
+// name: rule:engine-import-confined-to-client-entry says the engine
+// reaches exactly one kind of entry, so an entry that transitively links
+// Ebitengine is a playing one and an entry that does not is headless.
+// That is the same distinction concept:build-target draws, arrived at
+// from the only evidence an adopted repository actually carries.
+//
+// The distillation entry is excluded. It is a tool init itself writes,
+// not an artifact the project ships, and listing it would put it in
+// front of `ebigent build`.
+func DetectTargets(dir string, env []string) ([]Target, error) {
+	// -e keeps a package that does not compile in the listing: an
+	// adopted module is often mid-edit, and refusing to configure it
+	// until it builds would be the wrong order.
+	out, err := goOutput(dir, env, "list", "-e", "-f", "{{.Name}}\t{{.ImportPath}}\t{{.Dir}}\t{{join .Deps \" \"}}", "./...")
+	if err != nil {
+		return nil, err
+	}
+	root, err := filepath.Abs(dir)
+	if err != nil {
+		return nil, err
+	}
+	var targets []Target
+	for line := range strings.Lines(out) {
+		fields := strings.Split(strings.TrimRight(line, "\n"), "\t")
+		if len(fields) < 3 || fields[0] != "main" {
+			continue
+		}
+		rel, err := filepath.Rel(root, fields[2])
+		if err != nil {
+			continue
+		}
+		// A main package at the module root is "." and not "./.", which
+		// go build accepts and a person reading the configuration does
+		// not. The name comes from the import path rather than the
+		// directory for the same reason: at the root the directory is a
+		// dot and the import path is the module.
+		rel = filepath.ToSlash(rel)
+		entry := "./" + rel
+		if rel == "." {
+			entry = "."
+		}
+		if entry == DistillEntry {
+			continue
+		}
+		kind := "simulation"
+		if len(fields) > 3 && slices.Contains(strings.Fields(fields[3]), EngineModule) {
+			kind = "client"
+		}
+		targets = append(targets, Target{Name: path.Base(fields[1]), Dir: rel, Kind: kind, Path: entry})
+	}
+	slices.SortFunc(targets, func(a, b Target) int { return strings.Compare(a.Entry(), b.Entry()) })
+	return targets, nil
+}
+
+// EngineModule is the renderer whose presence in an import graph makes
+// an entry a playing one.
+const EngineModule = "github.com/hajimehoshi/ebiten/v2"
 
 // CodecGenerator is the tool `ebigent generate` drives to write codecs.
 const CodecGenerator = "github.com/shibukawa/tinybind-go/cmd/tinybind-gen"
@@ -628,16 +815,23 @@ func Tidy(dir string, env []string) error { return goRun(dir, env, "mod", "tidy"
 func BuildAll(dir string, env []string) error { return goRun(dir, env, "build", "./...") }
 
 func goRun(dir string, env []string, args ...string) error {
+	_, err := goOutput(dir, env, args...)
+	return err
+}
+
+func goOutput(dir string, env []string, args ...string) (string, error) {
 	cmd := exec.Command("go", args...)
 	cmd.Dir = dir
 	if len(env) > 0 {
 		cmd.Env = append(os.Environ(), env...)
 	}
-	out, err := cmd.CombinedOutput()
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+	out, err := cmd.Output()
 	if err != nil {
-		return fmt.Errorf("scaffold: go %s: %w\n%s", strings.Join(args, " "), err, out)
+		return "", fmt.Errorf("scaffold: go %s: %w\n%s", strings.Join(args, " "), err, stderr.Bytes())
 	}
-	return nil
+	return string(out), nil
 }
 
 // Realtime is the concept:realtime-intensity a project starts at.
