@@ -197,10 +197,22 @@ func shortType(t types.Type) string {
 	return strings.ReplaceAll(s, ".", "")
 }
 
-// SortedNames returns names in a stable order, for a caller that
-// discovered them from a map.
+// SortedNames returns names once each, in a stable order, for a caller
+// that gathered them from more than one place.
+//
+// Two sources name the same world on purpose: the rule set declares it,
+// and a package may still ask for it by hand. Emitting the delta twice
+// would not fail to compile — it would move the schema fingerprint, and
+// the two ends would refuse each other over a duplicate.
 func SortedNames(names []string) []string {
-	out := append([]string(nil), names...)
+	seen := map[string]bool{}
+	out := make([]string, 0, len(names))
+	for _, n := range names {
+		if !seen[n] {
+			seen[n] = true
+			out = append(out, n)
+		}
+	}
 	sort.Strings(out)
 	return out
 }

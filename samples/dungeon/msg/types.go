@@ -10,8 +10,6 @@ import (
 	"github.com/shibukawa/tinybind-go/cborbind"
 )
 
-//go:generate go run github.com/shibukawa/tinybind-go/cmd/tinybind-gen generate -openapi=false
-
 // Grid dimensions; the explored and wall bitmaps are row-major, one bit
 // per cell.
 const (
@@ -149,31 +147,10 @@ type DMView struct {
 	Winner      uint8        `json:"winner"`
 }
 
-// The calls below are what ask the generator for each codec: there is no
-// declaration to write any more, and naming an entry point is the ask
-// (requirement:cborbind-migration).
-//
-// Which container a type uses is a contract rather than a preference. An
-// input is an array — positional, no field names on the wire, and both
-// ends rebuilt together — which is concept:cbor-wire-profile. A world
-// state is a map, so a decoder can skip a key it does not know and the two
-// ends may ship apart, which is concept:cbor-world-profile.
-
-// AppendActionInput writes one actioninput in the array shape.
-func AppendActionInput(dst []byte, v ActionInput) []byte { return cborbind.AppendCBORInArrayTo(dst, v) }
-
-// DecodeActionInput reads one actioninput.
-func DecodeActionInput(data []byte) (ActionInput, error) {
-	return cborbind.DecodeCBORInArrayFrom[ActionInput](data)
-}
-
-// AppendDungeonState writes one dungeonstate in the map shape.
-func AppendDungeonState(dst []byte, v DungeonState) []byte { return cborbind.AppendCBORInMapTo(dst, v) }
-
-// DecodeDungeonState reads one dungeonstate.
-func DecodeDungeonState(data []byte) (DungeonState, error) {
-	return cborbind.DecodeCBORInMapFrom[DungeonState](data)
-}
+// The two views below are still asked for by hand. They are not the rule
+// set's world — they are the per-role projections this game synchronises
+// alongside it — so no rule set declaration names them and the ask has to
+// be written (requirement:stage-declares-its-wire).
 
 // AppendAdventurerView writes one adventurerview in the map shape.
 func AppendAdventurerView(dst []byte, v AdventurerView) []byte {

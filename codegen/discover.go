@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 )
 
@@ -133,4 +134,39 @@ func argType(file *ast.File, arg ast.Expr) string {
 		return true
 	})
 	return found
+}
+
+// cborbindPath is the runtime package a codec ask is written against.
+const cborbindPath = "github.com/shibukawa/tinybind-go/cborbind"
+
+// NeedsCodecs reports whether dir asks for CBOR codecs at all, which is
+// true exactly when its source imports the runtime the entry points live
+// in.
+//
+// It is what decides where the codec generator runs. Asking the import
+// list beats asking a //go:generate comment: the comment is a second
+// place to keep in step, and a package that imports cborbind and forgot
+// the comment silently gets no codecs.
+func NeedsCodecs(dir string) (bool, error) {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return false, fmt.Errorf("codegen: %w", err)
+	}
+	fset := token.NewFileSet()
+	for _, e := range entries {
+		name := e.Name()
+		if e.IsDir() || !strings.HasSuffix(name, ".go") || strings.HasSuffix(name, "_gen.go") {
+			continue
+		}
+		file, err := parser.ParseFile(fset, filepath.Join(dir, name), nil, parser.ImportsOnly)
+		if err != nil {
+			return false, fmt.Errorf("codegen: %w", err)
+		}
+		for _, imp := range file.Imports {
+			if path, err := strconv.Unquote(imp.Path.Value); err == nil && path == cborbindPath {
+				return true, nil
+			}
+		}
+	}
+	return false, nil
 }

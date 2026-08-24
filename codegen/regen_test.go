@@ -17,6 +17,10 @@ import (
 // as a wire mismatch on somebody's LAN — and it makes the committed output
 // a fixture that never has to be maintained by hand.
 func TestGeneratorReproducesTheCommittedFiles(t *testing.T) {
+	asks, err := codegen.Stages("..")
+	if err != nil {
+		t.Fatal(err)
+	}
 	dirs := []string{
 		"../tutorial/step2-lobby/msg",
 		"../samples/dungeon/msg",
@@ -27,10 +31,15 @@ func TestGeneratorReproducesTheCommittedFiles(t *testing.T) {
 	}
 	for _, dir := range dirs {
 		t.Run(dir, func(t *testing.T) {
+			// A world reaches the delta generator two ways: named by a
+			// rule set declaration, or asked for by hand where no
+			// declaration names it. Both have to be covered or a
+			// committed file would look unreachable.
 			names, err := codegen.Discover(dir)
 			if err != nil {
 				t.Fatalf("discover: %v", err)
 			}
+			names = codegen.SortedNames(append(names, codegen.AskedWorlds(asks[dir])...))
 			if len(names) == 0 {
 				t.Fatalf("%s declares no world state", dir)
 			}
@@ -44,6 +53,26 @@ func TestGeneratorReproducesTheCommittedFiles(t *testing.T) {
 			}
 			same(t, filepath.Join(dir, "delta_gen.go"), src)
 			same(t, filepath.Join(dir, "schema_gen.go"), codegen.EmitVersion(pkg, structs))
+
+			if len(asks[dir]) == 0 {
+				return
+			}
+			// The asks are generated too, so the committed file has to
+			// be what the declaration produces today.
+			name, err := codegen.PackageName(dir)
+			if err != nil {
+				t.Fatalf("package name: %v", err)
+			}
+			same(t, filepath.Join(dir, "wire_gen.go"), codegen.EmitAsks(name, asks[dir]))
+
+			// And what the codec generator answered has to be whole. A
+			// codec missing a member compiles and loses it on every
+			// send, so the committed one is checked rather than trusted.
+			if _, problems := codegen.CheckAsks(dir, asks[dir]); len(problems) > 0 {
+				for _, p := range problems {
+					t.Error(p)
+				}
+			}
 		})
 	}
 }

@@ -578,6 +578,9 @@ func InitModule(dir string, spec *Spec, env []string) error {
 			"-replace="+FrameworkModule+"="+spec.FrameworkPath); err != nil {
 			return err
 		}
+		if err := addTool(dir, env); err != nil {
+			return err
+		}
 		return Tidy(dir, env)
 	}
 	for _, mod := range append([]string{FrameworkModule}, spec.DirectDeps()...) {
@@ -585,7 +588,29 @@ func InitModule(dir string, spec *Spec, env []string) error {
 			return err
 		}
 	}
+	if err := addTool(dir, env); err != nil {
+		return err
+	}
 	return Tidy(dir, env)
+}
+
+// CodecGenerator is the tool `ebigent generate` drives to write codecs.
+const CodecGenerator = "github.com/shibukawa/tinybind-go/cmd/tinybind-gen"
+
+// addTool records the codec generator as a tool dependency, before tidy
+// runs so tidy resolves what it needs.
+//
+// A tool directive is what makes the generator's own dependencies
+// reachable. tidy pins what the game imports, and the generator is not
+// one of those — the game imports the runtime, never the thing that
+// writes against it — so without this the first generate fails on a
+// go.sum the project had no reason to have.
+//
+// It edits rather than gets: the version is already settled by whatever
+// required tinybind, and asking a proxy to resolve it again would make
+// project creation need a network it otherwise does not.
+func addTool(dir string, env []string) error {
+	return goRun(dir, env, "mod", "edit", "-tool="+CodecGenerator)
 }
 
 // Tidy runs go mod tidy, resolving whatever the sources import and

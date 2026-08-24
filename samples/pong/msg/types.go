@@ -7,11 +7,8 @@ package msg
 
 import (
 	"github.com/shibukawa/fixmath"
-	"github.com/shibukawa/tinybind-go/cborbind"
 	"github.com/shibukawa/tinygodriver/encoding/cbor"
 )
-
-//go:generate go run github.com/shibukawa/tinybind-go/cmd/tinybind-gen generate -openapi=false
 
 // Fixed1024 is a fixed-point value at 1/1024 (shift 10): positions.
 type Fixed1024 int64
@@ -93,30 +90,4 @@ type PongState struct {
 	// Winner is the winning slot, 0 while playing.
 	Winner uint16 `json:"win"`
 	Over   bool   `json:"over"`
-}
-
-// The calls below are what ask the generator for each codec: there is no
-// declaration to write any more, and naming an entry point is the ask
-// (requirement:cborbind-migration).
-//
-// Which container a type uses is a contract rather than a preference. An
-// input is an array — positional, no field names on the wire, and both
-// ends rebuilt together — which is concept:cbor-wire-profile. A world
-// state is a map, so a decoder can skip a key it does not know and the two
-// ends may ship apart, which is concept:cbor-world-profile.
-
-// AppendPaddleInput writes one paddleinput in the array shape.
-func AppendPaddleInput(dst []byte, v PaddleInput) []byte { return cborbind.AppendCBORInArrayTo(dst, v) }
-
-// DecodePaddleInput reads one paddleinput.
-func DecodePaddleInput(data []byte) (PaddleInput, error) {
-	return cborbind.DecodeCBORInArrayFrom[PaddleInput](data)
-}
-
-// AppendPongState writes one pongstate in the map shape.
-func AppendPongState(dst []byte, v PongState) []byte { return cborbind.AppendCBORInMapTo(dst, v) }
-
-// DecodePongState reads one pongstate.
-func DecodePongState(data []byte) (PongState, error) {
-	return cborbind.DecodeCBORInMapFrom[PongState](data)
 }

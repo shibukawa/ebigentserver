@@ -10,8 +10,6 @@ import (
 	"github.com/shibukawa/tinybind-go/cborbind"
 )
 
-//go:generate go run github.com/shibukawa/tinybind-go/cmd/tinybind-gen generate -openapi=false
-
 // Map dimensions in cells.
 const (
 	MapW = 96
@@ -94,31 +92,10 @@ type PlayerView struct {
 	Winner     uint16 `json:"winner"`
 }
 
-// The calls below are what ask the generator for each codec: there is no
-// declaration to write any more, and naming an entry point is the ask
-// (requirement:cborbind-migration).
-//
-// Which container a type uses is a contract rather than a preference. An
-// input is an array — positional, no field names on the wire, and both
-// ends rebuilt together — which is concept:cbor-wire-profile. A world
-// state is a map, so a decoder can skip a key it does not know and the two
-// ends may ship apart, which is concept:cbor-world-profile.
-
-// AppendCommand writes one command in the array shape.
-func AppendCommand(dst []byte, v Command) []byte { return cborbind.AppendCBORInArrayTo(dst, v) }
-
-// DecodeCommand reads one command.
-func DecodeCommand(data []byte) (Command, error) {
-	return cborbind.DecodeCBORInArrayFrom[Command](data)
-}
-
-// AppendRTSState writes one rtsstate in the map shape.
-func AppendRTSState(dst []byte, v RTSState) []byte { return cborbind.AppendCBORInMapTo(dst, v) }
-
-// DecodeRTSState reads one rtsstate.
-func DecodeRTSState(data []byte) (RTSState, error) {
-	return cborbind.DecodeCBORInMapFrom[RTSState](data)
-}
+// The view below is still asked for by hand. It is not the rule set's
+// world — it is the per-player projection this game synchronises
+// alongside it — so no rule set declaration names it and the ask has to
+// be written (requirement:stage-declares-its-wire).
 
 // AppendPlayerView writes one playerview in the map shape.
 func AppendPlayerView(dst []byte, v PlayerView) []byte { return cborbind.AppendCBORInMapTo(dst, v) }

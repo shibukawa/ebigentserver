@@ -69,3 +69,5 @@ require (
 	golang.org/x/time v0.14.0 // indirect
 	golang.org/x/tools v0.48.0 // indirect
 )
+
+tool github.com/shibukawa/tinybind-go/cmd/tinybind-gen

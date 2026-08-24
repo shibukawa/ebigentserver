@@ -6,11 +6,13 @@ import (
 	"go/format"
 	"io/fs"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
 	"text/template"
+	"time"
 
 	"github.com/shibukawa/ebigentserver/codegen"
 	"github.com/shibukawa/ebigentserver/config/buildconf"
@@ -48,7 +50,7 @@ func runGenerate(c *context) error {
 	if err := writeIfChanged(c, filepath.Join(dir, generatedFile), src); err != nil {
 		return err
 	}
-	return generateDeltas(c)
+	return generateCodecs(c)
 }
 
 // writeIfChanged writes only when the bytes differ, and says which it did.
@@ -72,23 +74,45 @@ func writeIfChanged(c *context, path string, src []byte) error {
 	return nil
 }
 
-// generateDeltas emits the delta half of concept:state-synchronization for
-// every package declaring a world state, which since v0.5.23 no library
-// does (requirement:cborbind-migration).
+// tinybindGen is the codec generator ebigent drives, named as init
+// recorded it. A game asks for a codec by calling an entry point; running
+// the tool that answers is ebigent's job, not something a game repeats in
+// a //go:generate comment beside every message type.
+const tinybindGen = "tinybind-gen"
+
+// generateCodecs emits the two halves of concept:state-synchronization
+// for every package that asks: the whole-value codecs, which tinybind
+// writes, and the delta, which since v0.5.23 no library writes
+// (requirement:cborbind-migration).
 //
-// Which packages those are is not configured. A type asked for the map
-// shape is a world state, and asking is the declaration — the same idiom
-// tinybind adopted — so there is no list to keep in step with the source.
-func generateDeltas(c *context) error {
+// Both halves run from one command because they answer one question. A
+// game that had to remember `go generate` for the codec and
+// `ebigent generate` for the delta would be keeping the framework's build
+// order in its head, and the first symptom of forgetting is a delta
+// computed against a codec that moved.
+//
+// Which packages those are is not configured. A package that imports the
+// runtime is asking, and a type asked for the map shape is a world state
+// — asking is the declaration, the same idiom tinybind adopted — so there
+// is no list to keep in step with the source.
+func generateCodecs(c *context) error {
 	dirs, err := worldPackages(c.res.ProjectRoot)
 	if err != nil {
 		return err
 	}
+	asks, err := codegen.Stages(c.res.ProjectRoot)
+	if err != nil {
+		return err
+	}
 	for _, dir := range dirs {
+		if asks[dir], err = c.askAndGenerate(dir, asks[dir]); err != nil {
+			return err
+		}
 		names, err := codegen.Discover(dir)
 		if err != nil {
 			return err
 		}
+		names = codegen.SortedNames(append(names, codegen.AskedWorlds(asks[dir])...))
 		if len(names) == 0 {
 			continue
 		}
@@ -106,6 +130,164 @@ func generateDeltas(c *context) error {
 		if err := writeIfChanged(c, filepath.Join(dir, "schema_gen.go"), codegen.EmitVersion(pkg, structs)); err != nil {
 			return err
 		}
+	}
+	return nil
+}
+
+// askAndGenerate writes one package's asks, runs the codec generator over
+// them, and returns the ones that came back whole.
+//
+// An ask the generator cannot answer is withdrawn and reported rather
+// than kept: the file is rewritten without it and the generator runs
+// again, so what lands is a codec for everything that works and nothing
+// for what does not. A half-written codec that compiles is the outcome
+// worth avoiding, because it loses members quietly on every send.
+func (c *context) askAndGenerate(dir string, asks []codegen.Ask) ([]codegen.Ask, error) {
+	// Asking is how the answer is found out, so a withdrawn ask means
+	// writing the file twice. Remembering what was there lets the second
+	// write undo the first completely, mtime included, or
+	// flow:dev-rebuild-loop would see a change every pass and rebuild
+	// because it just rebuilt.
+	before := c.snapshot(dir, askFile, codecFile)
+	if len(asks) > 0 {
+		if err := c.writeAsks(dir, asks); err != nil {
+			return nil, err
+		}
+	}
+	if err := runCodecGenerator(c, dir, len(asks) > 0); err != nil {
+		return nil, err
+	}
+	if len(asks) == 0 {
+		return nil, nil
+	}
+	// A generated codec imports the CBOR runtime, which nothing the game
+	// wrote imports, so the module graph is one dependency short until
+	// the first codec lands. Settling it here rather than at init keeps
+	// the version the one the toolchain resolves when it is first
+	// needed, and means a project that never declares a stage never
+	// requires it at all.
+	if err := c.tidyOnce(); err != nil {
+		return nil, err
+	}
+	kept, problems := codegen.CheckAsks(dir, asks)
+	if len(problems) == 0 {
+		return kept, nil
+	}
+	rel, err := filepath.Rel(c.res.ProjectRoot, dir)
+	if err != nil {
+		rel = dir
+	}
+	for _, p := range problems {
+		fmt.Fprintf(c.stderr, "%s: %v\n", rel, p)
+	}
+	if err := c.writeAsks(dir, kept); err != nil {
+		return nil, err
+	}
+	if err := runCodecGenerator(c, dir, len(kept) > 0); err != nil {
+		return nil, err
+	}
+	restore(before)
+	return kept, nil
+}
+
+// codecFile is what the codec generator writes.
+const codecFile = "tinybind_gen.go"
+
+// stamp is one file as it stood before generation touched it.
+type stamp struct {
+	path string
+	body []byte
+	mod  time.Time
+}
+
+// snapshot records files whose content may end up where it started.
+func (c *context) snapshot(dir string, names ...string) []stamp {
+	out := make([]stamp, 0, len(names))
+	for _, n := range names {
+		path := filepath.Join(dir, n)
+		info, err := os.Stat(path)
+		if err != nil {
+			continue
+		}
+		body, err := os.ReadFile(path)
+		if err != nil {
+			continue
+		}
+		out = append(out, stamp{path: path, body: body, mod: info.ModTime()})
+	}
+	return out
+}
+
+// restore puts back the modification time of every file that ended the
+// run holding exactly what it held at the start.
+func restore(before []stamp) {
+	for _, s := range before {
+		if body, err := os.ReadFile(s.path); err == nil && bytes.Equal(body, s.body) {
+			_ = os.Chtimes(s.path, s.mod, s.mod)
+		}
+	}
+}
+
+// tidyOnce settles the module graph, at most once per generate.
+func (c *context) tidyOnce() error {
+	if c.tidied {
+		return nil
+	}
+	c.tidied = true
+	cmd := exec.Command("go", "mod", "tidy")
+	cmd.Dir = c.res.ProjectRoot
+	cmd.Env = os.Environ()
+	if combined, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("generate: settling the module graph: %w\n%s", err, combined)
+	}
+	return nil
+}
+
+// writeAsks puts one package's asks on disk, or removes the file when
+// there are none left to make.
+func (c *context) writeAsks(dir string, asks []codegen.Ask) error {
+	path := filepath.Join(dir, askFile)
+	if len(asks) == 0 {
+		if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
+			return fmt.Errorf("generate: %w", err)
+		}
+		return nil
+	}
+	pkg, err := codegen.PackageName(dir)
+	if err != nil {
+		return err
+	}
+	return writeIfChanged(c, path, codegen.EmitAsks(pkg, asks))
+}
+
+// askFile is where the generated codec asks go. It sits beside the types
+// it names rather than in GeneratedDir, because the codec generator reads
+// one package at a time and the ask has to be in the package.
+const askFile = "wire_gen.go"
+
+// runCodecGenerator runs the codec generator in one package, and only in
+// a package that asked for one.
+//
+// The check is what keeps the walk cheap: a project is mostly packages
+// with no wire types at all, and starting a toolchain process in each of
+// them to be told there is nothing to do would make generate cost more
+// than the build it precedes.
+func runCodecGenerator(c *context, dir string, asked bool) error {
+	if !asked {
+		needs, err := codegen.NeedsCodecs(dir)
+		if err != nil || !needs {
+			return err
+		}
+	}
+	cmd := exec.Command("go", "tool", tinybindGen, "generate", "-openapi=false")
+	cmd.Dir = dir
+	cmd.Env = os.Environ()
+	if combined, err := cmd.CombinedOutput(); err != nil {
+		rel, relErr := filepath.Rel(c.res.ProjectRoot, dir)
+		if relErr != nil {
+			rel = dir
+		}
+		return fmt.Errorf("generate: codecs for %s: %w\n%s", rel, err, combined)
 	}
 	return nil
 }

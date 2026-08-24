@@ -203,6 +203,9 @@ type context struct {
 	build          *buildconf.Config
 	run            *runconf.Run
 	res            *confload.Result
+	// tidied records that generate has already settled the module
+	// graph, so a project with several stage packages tidies once.
+	tidied bool
 }
 
 func (c *context) report(err error) int {

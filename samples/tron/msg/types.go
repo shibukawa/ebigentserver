@@ -5,12 +5,6 @@
 // cheaper than snapshots (sample:tron's synchronization note).
 package msg
 
-import (
-	"github.com/shibukawa/tinybind-go/cborbind"
-)
-
-//go:generate go run github.com/shibukawa/tinybind-go/cmd/tinybind-gen generate -openapi=false
-
 // Grid dimensions; positions are cell coordinates, so plain uint8 needs
 // no fixed-point scale.
 const (
@@ -59,30 +53,4 @@ type TronState struct {
 	Over      bool        `json:"over"`
 	// Winner is the surviving slot, 0 on a mutual crash or timeout.
 	Winner uint16 `json:"winner"`
-}
-
-// The calls below are what ask the generator for each codec: there is no
-// declaration to write any more, and naming an entry point is the ask
-// (requirement:cborbind-migration).
-//
-// Which container a type uses is a contract rather than a preference. An
-// input is an array — positional, no field names on the wire, and both
-// ends rebuilt together — which is concept:cbor-wire-profile. A world
-// state is a map, so a decoder can skip a key it does not know and the two
-// ends may ship apart, which is concept:cbor-world-profile.
-
-// AppendTurnInput writes one turninput in the array shape.
-func AppendTurnInput(dst []byte, v TurnInput) []byte { return cborbind.AppendCBORInArrayTo(dst, v) }
-
-// DecodeTurnInput reads one turninput.
-func DecodeTurnInput(data []byte) (TurnInput, error) {
-	return cborbind.DecodeCBORInArrayFrom[TurnInput](data)
-}
-
-// AppendTronState writes one tronstate in the map shape.
-func AppendTronState(dst []byte, v TronState) []byte { return cborbind.AppendCBORInMapTo(dst, v) }
-
-// DecodeTronState reads one tronstate.
-func DecodeTronState(data []byte) (TronState, error) {
-	return cborbind.DecodeCBORInMapFrom[TronState](data)
 }
