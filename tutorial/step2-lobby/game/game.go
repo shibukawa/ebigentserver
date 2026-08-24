@@ -65,13 +65,6 @@ func MarkOf(slot session.SlotID) Mark {
 	}
 }
 
-// World is concept:world-state, and it is the wire type itself: a board
-// this small has nothing to gain from a second shape.
-type World = msg.TTTWorld
-
-// Action is concept:action: claim a cell.
-type Action = msg.Move
-
 // Sight is what a seat is allowed to see. Tic-tac-toe has global
 // visibility, so it is the same board for both — but it is still a
 // distinct type, because the projection is the seam every later game
@@ -107,19 +100,19 @@ var Lines = [8][3]uint8{
 // ready to use.
 type RuleSet struct{}
 
-var _ session.TickStageRuleSet[World, Action, Sight] = RuleSet{}
+var _ session.TickStageRuleSet[msg.TTTWorld, msg.Move, Sight] = RuleSet{}
 
 // Start deals an empty board with X to move. Tic-tac-toe is
 // deterministic, so the seed goes unused — it is still recorded, and a
 // game that grows randomness derives it from here rather than the clock.
-func (RuleSet) Start(uint64) World {
-	return World{Cells: make([]uint8, 9), Turn: uint16(SlotX)}
+func (RuleSet) Start(uint64) msg.TTTWorld {
+	return msg.TTTWorld{Cells: make([]uint8, 9), Turn: uint16(SlotX)}
 }
 
 // ActingSlots returns the seat whose turn it is: strict alternation, one
 // decision at a time. It is empty once the game is over, which is legal
 // only because every seat then evaluates terminal.
-func (RuleSet) ActingSlots(s *World) []session.SlotID {
+func (RuleSet) ActingSlots(s *msg.TTTWorld) []session.SlotID {
 	if s.Over || s.Turn == 0 {
 		return nil
 	}
@@ -128,7 +121,7 @@ func (RuleSet) ActingSlots(s *World) []session.SlotID {
 
 // Legal reports whether the seat to move may take cell. It is the same
 // judgement step 1 made, now also the one api:action-validator asks.
-func Legal(s *World, slot session.SlotID, cell uint8) bool {
+func Legal(s *msg.TTTWorld, slot session.SlotID, cell uint8) bool {
 	if s.Over || session.SlotID(s.Turn) != slot {
 		return false
 	}
@@ -137,7 +130,7 @@ func Legal(s *World, slot session.SlotID, cell uint8) bool {
 
 // Apply takes the cell for the seat to move. Legality was settled before
 // the call, so this cannot fail.
-func (RuleSet) Apply(s *World, slot session.SlotID, a Action) {
+func (RuleSet) Apply(s *msg.TTTWorld, slot session.SlotID, a msg.Move) {
 	if !Legal(s, slot, a.Cell) {
 		return
 	}
@@ -162,10 +155,10 @@ func (RuleSet) Apply(s *World, slot session.SlotID, a Action) {
 // answering "nothing happened" is a real answer rather than a gap — it
 // is what lets the same loop, the same recording, and the same link
 // serve a board game and a shooter.
-func (RuleSet) Advance(*World) {}
+func (RuleSet) Advance(*msg.TTTWorld) {}
 
 // Project builds the sight a seat is allowed to see.
-func (g RuleSet) Project(s *World, slot session.SlotID) Sight {
+func (g RuleSet) Project(s *msg.TTTWorld, slot session.SlotID) Sight {
 	obs := Sight{
 		You:    slot,
 		Mark:   MarkOf(slot),
@@ -189,7 +182,7 @@ func (g RuleSet) Project(s *World, slot session.SlotID) Sight {
 
 // Evaluate computes the seat's data:evaluation-signal. The session calls
 // it; a controller never scores itself.
-func (RuleSet) Evaluate(s *World, slot session.SlotID) session.EvaluationSignal {
+func (RuleSet) Evaluate(s *msg.TTTWorld, slot session.SlotID) session.EvaluationSignal {
 	sig := session.EvaluationSignal{Score: int64(s.Moves)}
 	switch {
 	case !s.Over:
@@ -205,9 +198,9 @@ func (RuleSet) Evaluate(s *World, slot session.SlotID) session.EvaluationSignal 
 }
 
 // Config builds one match's session configuration.
-func Config(id string, seed uint64) session.Config[World, Action, Sight] {
+func Config(id string, seed uint64) session.Config[msg.TTTWorld, msg.Move, Sight] {
 	tune := Tuning()
-	return session.Config[World, Action, Sight]{
+	return session.Config[msg.TTTWorld, msg.Move, Sight]{
 		ID:        id,
 		Slots:     Slots(),
 		RuleSet:   RuleSet{},
@@ -233,7 +226,7 @@ func Tuning() session.TuningProfile {
 type Validator struct{}
 
 // Legal refuses a move that is not this seat's to make.
-func (Validator) Legal(s *World, slot session.SlotID, a Action) error {
+func (Validator) Legal(s *msg.TTTWorld, slot session.SlotID, a msg.Move) error {
 	if Legal(s, slot, a.Cell) {
 		return nil
 	}
@@ -252,17 +245,17 @@ func (e errIllegal) Error() string {
 // Codec carries the board between the two machines. Snapshot and delta
 // both come from the generated code, so neither end can drift from the
 // other without the protocol version moving with it.
-func Codec() statesync.Codec[World, msg.TTTWorldDelta] {
-	return statesync.Codec[World, msg.TTTWorldDelta]{
-		AppendSnapshot: func(dst []byte, s *World) []byte { return s.AppendCBORTo(dst) },
-		DecodeSnapshot: func(s *World, data []byte) error { return s.DecodeCBORFrom(data) },
-		Diff:           func(base, cur *World) msg.TTTWorldDelta { return msg.DiffTTTWorld(*base, *cur) },
+func Codec() statesync.Codec[msg.TTTWorld, msg.TTTWorldDelta] {
+	return statesync.Codec[msg.TTTWorld, msg.TTTWorldDelta]{
+		AppendSnapshot: func(dst []byte, s *msg.TTTWorld) []byte { return s.AppendCBORTo(dst) },
+		DecodeSnapshot: func(s *msg.TTTWorld, data []byte) error { return s.DecodeCBORFrom(data) },
+		Diff:           func(base, cur *msg.TTTWorld) msg.TTTWorldDelta { return msg.DiffTTTWorld(*base, *cur) },
 		AppendDelta:    func(dst []byte, d *msg.TTTWorldDelta) []byte { return d.AppendCBORTo(dst) },
 		DecodeDelta:    func(d *msg.TTTWorldDelta, data []byte) error { return d.DecodeCBORFrom(data) },
 		ApplyDelta:     msg.ApplyTTTWorldDelta,
 		// The board is a slice, so a value copy would alias it and
 		// every retained baseline would silently be the newest state.
-		Clone: func(s *World) World {
+		Clone: func(s *msg.TTTWorld) msg.TTTWorld {
 			c := *s
 			c.Cells = append([]uint8(nil), s.Cells...)
 			c.Line = append([]uint8(nil), s.Line...)
@@ -272,14 +265,14 @@ func Codec() statesync.Codec[World, msg.TTTWorldDelta] {
 }
 
 // Canonical encodes the state for data:state-checkpoint.
-func Canonical(s *World) []byte { return s.AppendCBORTo(nil) }
+func Canonical(s *msg.TTTWorld) []byte { return s.AppendCBORTo(nil) }
 
 // EncodeAction and DecodeAction carry data:player-input.
-func EncodeAction(dst []byte, a Action) []byte { return append(dst, a.AppendCBORTo(nil)...) }
+func EncodeAction(dst []byte, a msg.Move) []byte { return append(dst, a.AppendCBORTo(nil)...) }
 
 // DecodeAction reads one input off the wire.
-func DecodeAction(b []byte) (Action, error) {
-	var a Action
+func DecodeAction(b []byte) (msg.Move, error) {
+	var a msg.Move
 	err := a.DecodeCBORFrom(b)
 	return a, err
 }
@@ -291,7 +284,7 @@ func other(slot session.SlotID) session.SlotID {
 	return SlotX
 }
 
-func lineFor(s *World, mark uint8) ([3]uint8, bool) {
+func lineFor(s *msg.TTTWorld, mark uint8) ([3]uint8, bool) {
 	for _, line := range Lines {
 		if s.Cells[line[0]] == mark && s.Cells[line[1]] == mark && s.Cells[line[2]] == mark {
 			return line, true

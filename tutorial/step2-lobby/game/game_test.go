@@ -5,10 +5,11 @@ import (
 
 	"github.com/shibukawa/ebigentserver/session"
 	"github.com/shibukawa/ebigentserver/tutorial/step2-lobby/game"
+	"github.com/shibukawa/ebigentserver/tutorial/step2-lobby/msg"
 )
 
 // play applies a sequence of cells for whoever is to move.
-func play(t *testing.T, cells ...uint8) game.World {
+func play(t *testing.T, cells ...uint8) msg.TTTWorld {
 	t.Helper()
 	var sim game.RuleSet
 	s := sim.Start(0)
@@ -18,10 +19,10 @@ func play(t *testing.T, cells ...uint8) game.World {
 			t.Fatalf("move %d: %d seats acting, want 1", i, len(acting))
 		}
 		slot := acting[0]
-		if err := (game.Validator{}).Legal(&s, slot, game.Action{Cell: cell}); err != nil {
+		if err := (game.Validator{}).Legal(&s, slot, msg.Move{Cell: cell}); err != nil {
 			t.Fatalf("move %d: %v", i, err)
 		}
-		sim.Apply(&s, slot, game.Action{Cell: cell})
+		sim.Apply(&s, slot, msg.Move{Cell: cell})
 	}
 	return s
 }
@@ -32,7 +33,7 @@ func TestXMovesFirstAndTurnsAlternate(t *testing.T) {
 	if got := sim.ActingSlots(&s); len(got) != 1 || got[0] != game.SlotX {
 		t.Fatalf("first acting seat = %v, want [X]", got)
 	}
-	sim.Apply(&s, game.SlotX, game.Action{Cell: 0})
+	sim.Apply(&s, game.SlotX, msg.Move{Cell: 0})
 	if got := sim.ActingSlots(&s); len(got) != 1 || got[0] != game.SlotO {
 		t.Fatalf("second acting seat = %v, want [O]", got)
 	}
@@ -41,14 +42,14 @@ func TestXMovesFirstAndTurnsAlternate(t *testing.T) {
 func TestValidatorRefusesTheSeatThatIsNotToMove(t *testing.T) {
 	var sim game.RuleSet
 	s := sim.Start(0)
-	if err := (game.Validator{}).Legal(&s, game.SlotO, game.Action{Cell: 0}); err == nil {
+	if err := (game.Validator{}).Legal(&s, game.SlotO, msg.Move{Cell: 0}); err == nil {
 		t.Fatal("O was allowed to move first")
 	}
 }
 
 func TestOccupiedCellIsRefused(t *testing.T) {
 	s := play(t, 4)
-	if err := (game.Validator{}).Legal(&s, game.SlotO, game.Action{Cell: 4}); err == nil {
+	if err := (game.Validator{}).Legal(&s, game.SlotO, msg.Move{Cell: 4}); err == nil {
 		t.Fatal("an occupied cell was accepted")
 	}
 }
@@ -111,7 +112,7 @@ func TestCodecRoundTripsTheBoard(t *testing.T) {
 	s := play(t, 0, 3, 1, 4, 2)
 	codec := game.Codec()
 
-	var back game.World
+	var back msg.TTTWorld
 	if err := codec.DecodeSnapshot(&back, codec.AppendSnapshot(nil, &s)); err != nil {
 		t.Fatal(err)
 	}
@@ -147,7 +148,7 @@ func TestCodecRoundTripsTheBoard(t *testing.T) {
 func TestCloneDoesNotAliasTheBoard(t *testing.T) {
 	s := play(t, 4)
 	clone := game.Codec().Clone(&s)
-	(game.RuleSet{}).Apply(&s, game.SlotO, game.Action{Cell: 0})
+	(game.RuleSet{}).Apply(&s, game.SlotO, msg.Move{Cell: 0})
 	if clone.Cells[0] != uint8(game.Empty) {
 		t.Fatal("the clone shares its board with the live state")
 	}

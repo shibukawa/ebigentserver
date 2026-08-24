@@ -52,11 +52,14 @@ step 1 の盤面は `State` という**1つの状態**だった。それをメ�
 「全部」だった——真実であり、画面に出すものであり、判断の材料でもあった。ネットワーク越しでは
 その3つが別々の場所に、別々の頻度で存在する。だから名前も3つに分かれる。
 
-型引数もそのまま3つ並ぶ。
+型引数もそのまま3つ並ぶ。名前は `World` / `Action` / `Sight` でなくてよい——
+**型引数の位置が役割を決める**ので、型そのものはゲームの言葉で名乗れる。
 
 ```go
-eb.Options[game.World, game.Action, game.Sight]{ ... }
+eb.Options[msg.TTTWorld, msg.Move, game.Sight]{ ... }
 ```
+
+盤面と着手は線を渡るので `msg` パッケージに、視界は渡らないので `game` に置いてある。
 
 <Aside type="note" title="三目並べに Sight が要るのか">
 盤面が全部見えるゲームなので、`Sight` の中身は `World` とほとんど同じになる。それでも
@@ -110,10 +113,10 @@ step 2 では**シミュレーションがフレームループから外れる**
 残った `Intake` の側は、**決める仕事が抜けた**姿になる。
 
 ```go
-func (v *view) Intake(controls run.Controls[game.Action]) {
+func (v *view) Intake(controls run.Controls[msg.Move]) {
 	for _, seat := range controls.LocalSeats() {
 		// 不正なセルは上流のバリデータが弾くので、盤上ならどこでも送ってよい
-		_ = controls.Submit(seat.Slot, game.Action{Cell: cell})
+		_ = controls.Submit(seat.Slot, msg.Move{Cell: cell})
 	}
 }
 ```
@@ -257,7 +260,7 @@ func Binding() run.Binding[World, Action, Sight] {
 
 ```go
 // tutorial/step2-lobby/main.go — ウィンドウの隣
-func matchmaking() run.Matchmaking[game.World, game.Action, game.Sight] {
+func matchmaking() run.Matchmaking[msg.TTTWorld, msg.Move, game.Sight] {
 	return lan.Preset(lan.Options[...]{ /* codec と入出力 */ })
 }
 ```

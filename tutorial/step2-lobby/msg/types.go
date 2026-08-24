@@ -50,10 +50,10 @@ func AppendMove(dst []byte, v Move) []byte { return cborbind.AppendCBORInArrayTo
 // DecodeMove reads one move.
 func DecodeMove(data []byte) (Move, error) { return cborbind.DecodeCBORInArrayFrom[Move](data) }
 
-// AppendTTTState writes one board in the map shape.
-func AppendTTTState(dst []byte, v TTTWorld) []byte { return cborbind.AppendCBORInMapTo(dst, v) }
+// AppendTTTWorld writes one board in the map shape.
+func AppendTTTWorld(dst []byte, v TTTWorld) []byte { return cborbind.AppendCBORInMapTo(dst, v) }
 
-// DecodeTTTState reads one board.
-func DecodeTTTState(data []byte) (TTTWorld, error) {
+// DecodeTTTWorld reads one board.
+func DecodeTTTWorld(data []byte) (TTTWorld, error) {
 	return cborbind.DecodeCBORInMapFrom[TTTWorld](data)
 }

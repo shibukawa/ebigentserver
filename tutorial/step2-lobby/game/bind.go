@@ -1,6 +1,9 @@
 package game
 
-import "github.com/shibukawa/ebigentserver/run"
+import (
+	"github.com/shibukawa/ebigentserver/run"
+	"github.com/shibukawa/ebigentserver/tutorial/step2-lobby/msg"
+)
 
 // This file is everything the wrapper needs to know about these rules,
 // and it lives beside them so the window build and any later headless
@@ -30,8 +33,8 @@ func Options() run.Options {
 // NewAgent is absent on purpose. The empty seat is not a seat for a bot:
 // it belongs to the other person, who cannot exist until this game is
 // already running. Step 3 is where a bot gets a name.
-func Binding() run.Binding[World, Action, Sight] {
-	return run.Binding[World, Action, Sight]{
+func Binding() run.Binding[msg.TTTWorld, msg.Move, Sight] {
+	return run.Binding[msg.TTTWorld, msg.Move, Sight]{
 		Slots:             Slots(),
 		Config:            Config,
 		ProtocolVersion:   Protocol,

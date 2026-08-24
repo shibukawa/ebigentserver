@@ -51,7 +51,7 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()
 
-	err := eb.Run(ctx, eb.Options[game.World, game.Action, game.Sight]{
+	err := eb.Run(ctx, eb.Options[msg.TTTWorld, msg.Move, game.Sight]{
 		Options:     game.Options(),
 		Binding:     game.Binding(),
 		Client:      &view{hover: noCell},
@@ -80,8 +80,8 @@ func main() {
 // It lives here rather than beside the rules because which transport
 // reaches the other player is a property of where this build runs. A
 // browser build of the same rules would name a different one.
-func matchmaking() run.Matchmaking[game.World, game.Action, game.Sight] {
-	return lan.Preset(lan.Options[game.World, game.Action, msg.TTTWorldDelta, game.Sight]{
+func matchmaking() run.Matchmaking[msg.TTTWorld, msg.Move, game.Sight] {
+	return lan.Preset(lan.Options[msg.TTTWorld, msg.Move, msg.TTTWorldDelta, game.Sight]{
 		Name:        "tictactoe",
 		Protocol:    game.Protocol,
 		Codec:       game.Codec(),
@@ -96,7 +96,7 @@ func matchmaking() run.Matchmaking[game.World, game.Action, game.Sight] {
 // rules at all.
 type view struct {
 	mu    sync.Mutex
-	world game.World
+	world msg.TTTWorld
 	got   bool
 
 	you   session.SlotID
@@ -116,7 +116,7 @@ func cellAt(x, y int) (uint8, bool) {
 // Intake turns this frame's click into an action for the seat this
 // machine plays. Where the action goes — an inbox one goroutine away or
 // a socket one machine away — is the seating's business, not this file's.
-func (v *view) Intake(seating run.Controls[game.Action]) {
+func (v *view) Intake(seating run.Controls[msg.Move]) {
 	seats := seating.LocalSeats()
 
 	// Which seat this machine plays is known from the first frame, not
@@ -144,7 +144,7 @@ func (v *view) Intake(seating run.Controls[game.Action]) {
 	for _, seat := range seats {
 		// An illegal cell is refused upstream by the validator, so a
 		// click anywhere on the board is safe to send.
-		_ = seating.Submit(seat.Slot, game.Action{Cell: cell})
+		_ = seating.Submit(seat.Slot, msg.Move{Cell: cell})
 	}
 }
 
@@ -164,7 +164,7 @@ func (v *view) playable(cell uint8) bool {
 // produced it — the session's when this instance hosts, the link's when
 // it joined — so it copies rather than retaining, and the board is a
 // slice, so the copy has to be deep.
-func (v *view) Apply(_ session.Tick, world *game.World) {
+func (v *view) Apply(_ session.Tick, world *msg.TTTWorld) {
 	v.mu.Lock()
 	defer v.mu.Unlock()
 	v.world = *world
@@ -231,7 +231,7 @@ func (v *view) Draw(screen *ebiten.Image) {
 
 // status is the one line under the board. The debug font covers Latin-1
 // only, so it stays ASCII.
-func status(world game.World, you session.SlotID) string {
+func status(world msg.TTTWorld, you session.SlotID) string {
 	mine := game.MarkOf(you)
 	switch {
 	case world.Winner != 0 && uint16(you) == world.Winner:

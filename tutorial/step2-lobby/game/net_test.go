@@ -19,13 +19,13 @@ import (
 // the same code drives the host's match and the guest's link.
 type player struct {
 	mu    sync.Mutex
-	world game.World
+	world msg.TTTWorld
 	got   bool
 	you   session.SlotID
 	moves int
 }
 
-func (p *player) apply(_ session.Tick, world *game.World) {
+func (p *player) apply(_ session.Tick, world *msg.TTTWorld) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	p.world = *world
@@ -34,7 +34,7 @@ func (p *player) apply(_ session.Tick, world *game.World) {
 }
 
 // intake is the play scene's Intake, called every frame.
-func (p *player) intake(seating run.Controls[game.Action]) {
+func (p *player) intake(seating run.Controls[msg.Move]) {
 	p.mu.Lock()
 	world, got := p.world, p.got
 	p.mu.Unlock()
@@ -52,7 +52,7 @@ func (p *player) intake(seating run.Controls[game.Action]) {
 		if len(obs.Legal) == 0 {
 			continue
 		}
-		if err := seating.Submit(seat.Slot, game.Action{Cell: obs.Legal[0]}); err == nil {
+		if err := seating.Submit(seat.Slot, msg.Move{Cell: obs.Legal[0]}); err == nil {
 			p.mu.Lock()
 			p.moves++
 			p.mu.Unlock()
@@ -60,7 +60,7 @@ func (p *player) intake(seating run.Controls[game.Action]) {
 	}
 }
 
-func (p *player) board() (game.World, bool) {
+func (p *player) board() (msg.TTTWorld, bool) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	return p.world, p.got
@@ -68,8 +68,8 @@ func (p *player) board() (game.World, bool) {
 
 // lanOptions is what main.go declares at the entry point, repeated here
 // because a test is another entry point: it chooses a transport too.
-func lanOptions() lan.Options[game.World, game.Action, msg.TTTWorldDelta, game.Sight] {
-	return lan.Options[game.World, game.Action, msg.TTTWorldDelta, game.Sight]{
+func lanOptions() lan.Options[msg.TTTWorld, msg.Move, msg.TTTWorldDelta, game.Sight] {
+	return lan.Options[msg.TTTWorld, msg.Move, msg.TTTWorldDelta, game.Sight]{
 		Name:        "tictactoe",
 		Protocol:    game.Protocol,
 		Codec:       game.Codec(),
@@ -89,7 +89,7 @@ func TestTwoInstancesPlayOneBoard(t *testing.T) {
 	defer cancel()
 
 	opts := lanOptions()
-	roster, err := run.NewRoster[game.World, game.Action, game.Sight](
+	roster, err := run.NewRoster[msg.TTTWorld, msg.Move, game.Sight](
 		game.Options(), game.Slots())
 	if err != nil {
 		t.Fatal(err)
@@ -104,7 +104,7 @@ func TestTwoInstancesPlayOneBoard(t *testing.T) {
 	}
 	defer host.Close()
 
-	guestReady := make(chan *lan.Guest[game.World, game.Action, msg.TTTWorldDelta, game.Sight], 1)
+	guestReady := make(chan *lan.Guest[msg.TTTWorld, msg.Move, msg.TTTWorldDelta, game.Sight], 1)
 	guestFail := make(chan error, 1)
 	go func() {
 		// Two acts, as the second instance really performs them: reach
@@ -129,7 +129,7 @@ func TestTwoInstancesPlayOneBoard(t *testing.T) {
 	hostPlayer := &player{}
 	cfg := game.Config("tutorial-step2-0000", 1)
 	appBroadcast := cfg.Broadcast
-	cfg.Broadcast = func(tick session.Tick, world *game.World) {
+	cfg.Broadcast = func(tick session.Tick, world *msg.TTTWorld) {
 		if appBroadcast != nil {
 			appBroadcast(tick, world)
 		}
@@ -146,7 +146,7 @@ func TestTwoInstancesPlayOneBoard(t *testing.T) {
 	}
 	match.Start(ctx, session.Paced)
 
-	var guest *lan.Guest[game.World, game.Action, msg.TTTWorldDelta, game.Sight]
+	var guest *lan.Guest[msg.TTTWorld, msg.Move, msg.TTTWorldDelta, game.Sight]
 	select {
 	case guest = <-guestReady:
 	case err := <-guestFail:
@@ -225,7 +225,7 @@ func TestTwoInstancesPlayOneBoard(t *testing.T) {
 }
 
 // pump is the frame loop: intake, over and over, at no particular rate.
-func pump(ctx context.Context, p *player, seating run.Controls[game.Action]) {
+func pump(ctx context.Context, p *player, seating run.Controls[msg.Move]) {
 	tick := time.NewTicker(8 * time.Millisecond)
 	defer tick.Stop()
 	for {
