@@ -3,6 +3,7 @@ package distill_test
 import (
 	"context"
 	"encoding/json"
+	"flag"
 	"os"
 	"testing"
 
@@ -145,25 +146,22 @@ func TestGeneratedSourcesAreCurrent(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	committed, err := os.ReadFile("gen/agent_gen.go")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if string(agent) != string(committed) {
-		t.Fatal("gen/agent_gen.go is stale: regenerate it")
-	}
+	current(t, "gen/agent_gen.go", agent)
+
 	tests, err := behavior.GenerateTests(distill.Spec(), records, 24)
 	if err != nil {
 		t.Fatal(err)
 	}
-	committedTests, err := os.ReadFile("gen/agent_gen_test.go")
-	if err != nil {
-		t.Fatal(err)
+	current(t, "gen/agent_gen_test.go", tests)
+
+	// And the library artifact itself. It is compared as decoded JSON
+	// rather than as bytes, so its formatting is not part of the claim.
+	if *update {
+		if err := lib.Save("chips.json"); err != nil {
+			t.Fatal(err)
+		}
+		return
 	}
-	if string(tests) != string(committedTests) {
-		t.Fatal("gen/agent_gen_test.go is stale: regenerate it")
-	}
-	// And the library artifact itself.
 	committedLib, err := behavior.LoadLibrary("chips.json")
 	if err != nil {
 		t.Fatal(err)
@@ -171,7 +169,7 @@ func TestGeneratedSourcesAreCurrent(t *testing.T) {
 	a, _ := json.Marshal(lib)
 	b, _ := json.Marshal(committedLib)
 	if string(a) != string(b) {
-		t.Fatal("chips.json is stale: regenerate it")
+		t.Fatal("chips.json is stale; rerun: go test ./samples/tictactoe/distill -update")
 	}
 }
 
@@ -321,11 +319,36 @@ func TestGeneratedLoadoutIsCurrent(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	committed, err := os.ReadFile("gen/loadout_gen.go")
+	current(t, "gen/loadout_gen.go", src)
+}
+
+// update rewrites the committed generated sources instead of comparing
+// against them:
+//
+//	go test ./samples/tictactoe/distill -update
+//
+// The regeneration lives here rather than in a command of its own so
+// that what is written and what is compared are the same call. A
+// separate generator is a second thing to keep in step, and the failure
+// it produces looks identical to a real drift.
+var update = flag.Bool("update", false, "rewrite the committed generated sources instead of comparing against them")
+
+// current reports whether the committed copy of one generated file is
+// what regeneration produces now, and rewrites it under -update.
+func current(t *testing.T, path string, generated []byte) {
+	t.Helper()
+	if *update {
+		if err := os.WriteFile(path, generated, 0o644); err != nil {
+			t.Fatal(err)
+		}
+		t.Logf("wrote %s", path)
+		return
+	}
+	committed, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if string(src) != string(committed) {
-		t.Fatal("gen/loadout_gen.go is stale: regenerate it")
+	if string(generated) != string(committed) {
+		t.Fatalf("%s is stale; rerun: go test ./samples/tictactoe/distill -update", path)
 	}
 }

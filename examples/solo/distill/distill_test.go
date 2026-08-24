@@ -16,18 +16,16 @@ import (
 	"github.com/shibukawa/ebigentserver/session"
 )
 
-// The committed generated code came from this corpus. Regenerating from
-// anything else would compare two different things.
-const (
-	corpusMatches = 16
-	corpusSeed    = 1
-)
-
 // corpus records the canonical corpus once per test binary.
+//
+// The recipe comes from the distill package rather than from a constant
+// here, because solo-distill needs the same one: this test compares
+// against what that command writes, so a corpus of its own would compare
+// two different things while reporting it as drift.
 func corpus(t *testing.T) string {
 	t.Helper()
 	root := t.TempDir()
-	if err := distill.Play(context.Background(), root, corpusMatches, corpusSeed); err != nil {
+	if err := distill.Play(context.Background(), root, distill.CorpusMatches, distill.CorpusSeed); err != nil {
 		t.Fatal(err)
 	}
 	return root
@@ -101,24 +99,73 @@ func TestKindsDistillDifferently(t *testing.T) {
 	}
 }
 
-// TestGeneratedCodeMatchesTheCorpus keeps the committed source honest: it
-// is what this corpus produces today, not what it produced once. A change
-// to the rules, the sample enemies, or the vocabulary fails here until
-// solo-distill is run again and the diff is reviewed.
+// TestGeneratedCodeMatchesTheCorpus keeps the committed sources honest:
+// they are what this corpus produces today, not what it produced once. A
+// change to the rules, the sample enemies, or the vocabulary fails here
+// until solo-distill is run again and the diff is reviewed.
+//
+// It regenerates into a temporary directory through the same
+// Compiled.Write the command uses, then compares directories rather than
+// named files. Checking one file by name was how fixtures_gen_test.go
+// went stale unnoticed: only agent_gen.go was ever compared, so the two
+// files beside it could drift for as long as nobody looked.
 func TestGeneratedCodeMatchesTheCorpus(t *testing.T) {
 	root := corpus(t)
+	fresh := t.TempDir()
 	for _, kind := range distill.Kinds() {
 		c, err := distill.Compile(root, kind)
 		if err != nil {
 			t.Fatal(err)
 		}
-		path := filepath.Join("gen", kind.Package, "agent_gen.go")
-		committed, err := os.ReadFile(path)
-		if err != nil {
-			t.Fatalf("%s: %v", path, err)
+		regenerated := filepath.Join(fresh, kind.Package)
+		if err := c.Write(regenerated); err != nil {
+			t.Fatal(err)
 		}
-		if !bytes.Equal(committed, c.Agent) {
-			t.Errorf("%s is stale; rerun: go run ./examples/solo/cmd/solo-distill", path)
+		sameTree(t, filepath.Join("gen", kind.Package), regenerated)
+	}
+}
+
+// sameTree reports every way the committed directory differs from a
+// freshly regenerated one — missing files, extra files, and changed
+// content — rather than stopping at the first.
+func sameTree(t *testing.T, committedDir, freshDir string) {
+	t.Helper()
+	const rerun = "rerun: go run ./examples/solo/cmd/solo-distill"
+
+	entries, err := os.ReadDir(freshDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	generated := map[string]bool{}
+	for _, e := range entries {
+		generated[e.Name()] = true
+		fresh, err := os.ReadFile(filepath.Join(freshDir, e.Name()))
+		if err != nil {
+			t.Fatal(err)
+		}
+		path := filepath.Join(committedDir, e.Name())
+		committed, err := os.ReadFile(path)
+		if os.IsNotExist(err) {
+			t.Errorf("%s is missing; %s", path, rerun)
+			continue
+		}
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !bytes.Equal(committed, fresh) {
+			t.Errorf("%s is stale; %s", path, rerun)
+		}
+	}
+
+	// A file nothing generates any more is as much a lie as a stale
+	// one: it is committed output that no rerun would produce.
+	entries, err = os.ReadDir(committedDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, e := range entries {
+		if !generated[e.Name()] {
+			t.Errorf("%s is committed but nothing generates it any more", filepath.Join(committedDir, e.Name()))
 		}
 	}
 }

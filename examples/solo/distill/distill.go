@@ -292,6 +292,20 @@ func Kinds() []Kind {
 	}
 }
 
+// CorpusMatches and CorpusSeed are the recipe the committed generated
+// sources under gen/ came from, and the only recipe that reproduces them.
+//
+// They live here rather than in either caller because there are two, and
+// they have to agree: solo-distill writes the files and the test
+// compares against them. When those two disagreed, the command named in
+// the staleness message wrote output that same message then rejected —
+// a loop that cannot close, and one nothing detects, because each half
+// is individually consistent.
+const (
+	CorpusMatches = 16
+	CorpusSeed    = 1
+)
+
 // Play records matches into root — the corpus every later step reads.
 // Every seat is an agent, so this is the same unattended run solo-sim
 // performs, called from a library instead of a command.
@@ -312,6 +326,26 @@ type Compiled struct {
 	Records []behavior.Record
 	Agent   []byte
 	Tests   []byte
+}
+
+// Write puts one kind's output into dir, the package directory under
+// gen/.
+//
+// It is the only writer of those files. solo-distill calls it to
+// regenerate them and the staleness test calls it to produce what it
+// compares against, so a file added here is covered by both without
+// either being told about it.
+func (c *Compiled) Write(dir string) error {
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return err
+	}
+	if err := os.WriteFile(filepath.Join(dir, "agent_gen.go"), c.Agent, 0o644); err != nil {
+		return err
+	}
+	if err := os.WriteFile(filepath.Join(dir, "fixtures_gen_test.go"), c.Tests, 0o644); err != nil {
+		return err
+	}
+	return c.Library.Save(filepath.Join(dir, "chips.json"))
 }
 
 // Compile runs the whole pipeline for one kind over a recorded corpus:

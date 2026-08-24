@@ -45,6 +45,10 @@ flanker  3739 decisions → 8 chips → examples/solo/distill/gen/flanker
 
 生成物は [distill/gen/chaser/agent_gen.go](distill/gen/chaser/agent_gen.go) にコミットされている。読めるGoであり、diffできる。
 
+**引数なしで動かすと、コミットされているものがそのまま出る。** `-matches` と `-seed` の既定値は
+`distill.CorpusMatches` / `distill.CorpusSeed` で、コミット済みの生成物が出てきた唯一のレシピだ。
+別の値を渡すのは実験であって再生成ではなく、`TestGeneratedCodeMatchesTheCorpus` がそう言う。
+
 ## 何が証明されているか
 
 | 主張 | テスト |
@@ -56,7 +60,7 @@ flanker  3739 decisions → 8 chips → examples/solo/distill/gen/flanker
 | 記録された視界が蒸留に必要な中身を持っている | `TestRecordedDecisionCarriesItsSight` |
 | 記録された判断が一つ残らず語彙で説明できる | `TestEveryDecisionIsCovered` |
 | **同じ語彙・同じコーパスから、2種の敵が別の決定リストになる** | `TestKindsDistillDifferently` |
-| コミット済み生成コードが古びていない | `TestGeneratedCodeMatchesTheCorpus` |
+| コミット済みの生成物が古びていない(コマンドが書く3ファイルすべて、両方向) | `TestGeneratedCodeMatchesTheCorpus` |
 | **蒸留した敵を座らせると、手書きの敵と1tickも違わない試合になる** | `TestDistilledEnemiesPlayTheSameMatch` |
 
 最後の2つが一周の閉じ目だ。語彙は両種で共有されている——述語は「獲物がどちらにいるか」「どちらの軸で離れているか」という**世界についての事実**でしかない。それでも採掘結果は別物になる。もし同じ決定リストが出てきたら、決めているのはコーパスではなく語彙だったということで、`TestKindsDistillDifferently` はそれを落とす。
@@ -80,7 +84,7 @@ distill/       語彙と蒸留パイプライン
 
 ## 手を入れるとき
 
-- 敵の性格を変える → `agent.go` を書き換え、`solo-distill` を再実行し、生成コードのdiffを読む
+- 敵の性格を変える → `agent.go` を書き換え、`solo-distill` を**引数なしで**再実行し、生成コードのdiffを読む
 - 敵を賢くする → 語彙(`distill/distill.go` の `Vocabulary`)に述語を足す。足りなければ `Synthesize` が「被覆できなかった」と言って止まる
 - 人間の対局から学ぶ → `solo-client -record DIR` で録り、`distill.Records(DIR, game.Player)` で自分の席を採掘する。フレームワークから見れば人間もエージェントなので、追加の機構は要らない
 - ネットワーク対応にする → ルールは1行も変わらない。席の埋め方(`api:roster`)が変わるだけ

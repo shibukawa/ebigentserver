@@ -19,8 +19,11 @@ import (
 )
 
 func main() {
-	matches := flag.Int("matches", 24, "matches to record before mining")
-	seed := flag.Uint64("seed", 1, "seed of the first match")
+	// The defaults are the recipe the committed sources came from, so
+	// running this with no arguments is what regenerates them. Passing
+	// something else is an experiment, and the staleness test will say so.
+	matches := flag.Int("matches", distill.CorpusMatches, "matches to record before mining")
+	seed := flag.Uint64("seed", distill.CorpusSeed, "seed of the first match")
 	corpus := flag.String("corpus", "", "corpus directory; empty uses a temporary one")
 	out := flag.String("out", "examples/solo/distill/gen", "where the generated packages are written")
 	flag.Parse()
@@ -46,16 +49,7 @@ func main() {
 			fatal(fmt.Errorf("%s: %w", kind.Name, err))
 		}
 		dir := filepath.Join(*out, kind.Package)
-		if err := os.MkdirAll(dir, 0o755); err != nil {
-			fatal(err)
-		}
-		if err := os.WriteFile(filepath.Join(dir, "agent_gen.go"), c.Agent, 0o644); err != nil {
-			fatal(err)
-		}
-		if err := os.WriteFile(filepath.Join(dir, "fixtures_gen_test.go"), c.Tests, 0o644); err != nil {
-			fatal(err)
-		}
-		if err := c.Library.Save(filepath.Join(dir, "chips.json")); err != nil {
+		if err := c.Write(dir); err != nil {
 			fatal(err)
 		}
 		fmt.Printf("%-8s %d decisions → %d chips → %s\n",
