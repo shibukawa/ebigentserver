@@ -137,8 +137,8 @@ func (a *app) Draw(screen *ebiten.Image) {
 		return
 	}
 	for _, p := range world.Pipes {
-		x := float32(p.X.FloorToInt()-game.PipeW/2) * scale
-		gap := float32(p.GapY.FloorToInt()) * scale
+		x := float32(p.Pos().FloorToInt()-game.PipeW/2) * scale
+		gap := float32(p.Gap().FloorToInt()) * scale
 		half := float32(game.GapH/2) * scale
 		w := float32(game.PipeW) * scale
 		vector.DrawFilledRect(screen, x, 0, w, gap-half, pipeC, false)
@@ -149,7 +149,7 @@ func (a *app) Draw(screen *ebiten.Image) {
 			continue
 		}
 		vector.DrawFilledCircle(screen,
-			float32(game.BirdX)*scale, float32(b.Y.FloorToInt())*scale,
+			float32(game.BirdX)*scale, float32(b.Height().FloorToInt())*scale,
 			float32(game.BirdR)*scale, seatColors[i%len(seatColors)], true)
 	}
 	msg := "space to flap   "

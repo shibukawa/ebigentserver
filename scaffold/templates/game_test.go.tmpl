@@ -97,8 +97,8 @@ func TestFlapSetsUpwardVelocityExactly(t *testing.T) {
 	g := RuleSet{}
 	s := g.Start(1)
 	g.Apply(&s, Slots()[0], Action{Flap: true})
-	if s.Bird[0].VY != flapVY {
-		t.Errorf("VY = %v, want %v", s.Bird[0].VY, flapVY)
+	if s.Bird[0].Rise() != flapVY {
+		t.Errorf("VY = %v, want %v", s.Bird[0].Rise(), flapVY)
 	}
 }
 

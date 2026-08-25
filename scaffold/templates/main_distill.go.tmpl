@@ -92,7 +92,7 @@ func Vocabulary() *behavior.Vocabulary {
 		behavior.Feature{
 			Name:   "below_mid_field",
 			Doc:    "the flyer is under the middle of the field",
-			GoExpr: fmt.Sprintf("obs.Self.Y > fixmath.FromInt32(%d)", game.FieldH/2),
+			GoExpr: fmt.Sprintf("obs.Self.Height() > fixmath.FromInt32(%d)", game.FieldH/2),
 			Eval: func(raw json.RawMessage) (bool, error) {
 				return sightOf(raw, func(s sight) bool { return s.Self.Y > int64(fixmath.FromInt32(game.FieldH/2)) })
 			},

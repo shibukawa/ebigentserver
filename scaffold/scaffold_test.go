@@ -581,3 +581,58 @@ func TestDistillEntryMatchesTheConfigDefault(t *testing.T) {
 		t.Errorf("behavior.distill defaults to %q but init writes %q", got, scaffold.DistillEntry)
 	}
 }
+
+// The world a project starts with has to be sendable, or the project can
+// only ever be played alone.
+//
+// Nothing else catches this. `ebigent init` builds what it wrote, and
+// what it wrote compiles whether or not a codec exists for the world —
+// the codec is generated later, and a withdrawn one is a line of output
+// rather than a build failure. So this runs the real verb over a real
+// generated project and reads what it says.
+func TestTheGeneratedWorldGetsACodec(t *testing.T) {
+	if testing.Short() {
+		t.Skip("shells out to the go toolchain")
+	}
+	s := spec(t, "duo", 0, true)
+	generateAndTidy(t, s)
+
+	// The tool rather than the codegen package, because the failure this
+	// pins is the one a person sees: they run ebigent generate and their
+	// world quietly has no way across a link.
+	tool := filepath.Join(t.TempDir(), "ebigent")
+	build := exec.Command("go", "build", "-o", tool, "./cmd/ebigent")
+	build.Dir = frameworkRoot(t)
+	if out, err := build.CombinedOutput(); err != nil {
+		t.Fatalf("building the tool: %v\n%s", err, out)
+	}
+	cmd := exec.Command(tool, "generate")
+	cmd.Dir = s.Dir
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("generate: %v\n%s", err, out)
+	}
+	// A withdrawn codec is reported and the run still succeeds, which is
+	// why the exit status above is not the test.
+	if strings.Contains(string(out), "no codec for") {
+		t.Errorf("the generated world carries something the codec generator will not take:\n%s", out)
+	}
+	for _, want := range []string{"wire_gen.go", "delta_gen.go", "schema_gen.go"} {
+		if _, err := os.Stat(filepath.Join(s.Dir, "game", want)); err != nil {
+			t.Errorf("generate wrote no game/%s:\n%s", want, out)
+		}
+	}
+	// And what it wrote has to compile. The delta is generated Go over
+	// the same types, and it needs them comparable where the codec only
+	// needs them carried — two constraints, one struct.
+	if out, err := goBuild(s.Dir); err != nil {
+		t.Fatalf("the generated project does not compile after generate: %v\n%s", err, out)
+	}
+}
+
+// goBuild compiles every package of a generated project.
+func goBuild(dir string) ([]byte, error) {
+	cmd := exec.Command("go", "build", "./...")
+	cmd.Dir = dir
+	return cmd.CombinedOutput()
+}

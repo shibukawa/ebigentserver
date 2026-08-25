@@ -85,32 +85,72 @@ func Slots() []session.SlotID {
 }
 
 // Bird is one slot's flyer.
+//
+// Y and VY are fixed point stored as the int64 behind it, and the two
+// methods below are where that ends. Everything the world commits has to
+// cross a link, and the codec generator carries no named type from
+// another package — fixmath.F64 and session.Tick both hit that — so a
+// world holding one gets no codec at all and the game cannot be played
+// over a link (requirement:stage-declares-its-wire).
 type Bird struct {
-	Y     fixmath.F64
-	VY    fixmath.F64
+	Y     int64
+	VY    int64
 	Alive bool
 	// Passed counts pipes cleared, which is the score.
 	Passed int32
 }
 
+// Height and Rise are Y and VY as arithmetic. Converting here rather
+// than at every use keeps the raw form in the struct and nowhere else.
+func (b Bird) Height() fixmath.F64 { return fixmath.FromRaw(b.Y) }
+func (b Bird) Rise() fixmath.F64   { return fixmath.FromRaw(b.VY) }
+
 // Pipe is one obstacle: a vertical wall with a gap centered on GapY.
+// X and GapY are raw fixed point for the same reason Bird's are.
 type Pipe struct {
-	X    fixmath.F64
-	GapY fixmath.F64
+	X    int64
+	GapY int64
 	// Cleared records, per slot index, that this pipe was already
 	// counted, so a score cannot tick twice on one pipe.
-	Cleared [Seats]bool
+	//
+	// One bit per seat rather than an array of them. A fixed-size array
+	// is not something the codec generator can decode into, and a slice
+	// would make Pipe uncomparable — which the generated delta needs it
+	// to be, since a delta is what changed between two of them. A
+	// bitmask is both, and eight seats is already the ceiling init
+	// generates for.
+	Cleared uint8
 }
+
+// ClearedBy reports whether this pipe was already counted for a seat,
+// and Clear records that it has been.
+func (p Pipe) ClearedBy(i int) bool { return p.Cleared&(1<<uint(i)) != 0 }
+func (p *Pipe) Clear(i int)         { p.Cleared |= 1 << uint(i) }
+
+// Pos is the pipe's centre and Gap the height its opening is centred on.
+func (p Pipe) Pos() fixmath.F64 { return fixmath.FromRaw(p.X) }
+func (p Pipe) Gap() fixmath.F64 { return fixmath.FromRaw(p.GapY) }
 
 // State is the concept:world-state: everything the session commits.
 type State struct {
-	Tick  session.Tick
-	Bird  [Seats]Bird
+	// Tick is a plain uint64 rather than session.Tick, for the reason
+	// Bird's fields are raw.
+	Tick uint64
+	// Bird is one entry per seat, in slot order. A slice for the same
+	// reason Pipe.Cleared is one.
+	Bird  []Bird
 	Pipes []Pipe
-	// Rand travels with the state so the pipe field is a function of the
-	// seed alone. Advancing it anywhere but a simulation step would make
-	// the episode unreproducible (rule:shared-rng-seed).
-	Rand fixmath.Rand
+	// Seed and Spawned describe the pipe field completely: the gap of
+	// the n-th pipe is drawn from a generator derived from the two.
+	//
+	// The generator itself does not live here, and could not: it is a
+	// named type from another package like the rest. Two plain numbers
+	// say the same thing and travel — which is what
+	// rule:shared-rng-seed actually asks for, since what it wants is
+	// that the stream be a function of the state and never of the
+	// clock.
+	Seed    uint64
+	Spawned int32
 	// Since counts ticks since the last spawn.
 	Since int32
 	Over  bool
@@ -155,8 +195,8 @@ var _ session.TickStageRuleSet[State, Action, Sight] = RuleSet{}
 // RNG seed (rule:shared-rng-seed). Two runs with the same seed produce
 // the same pipes, which is what makes an episode replayable.
 func (RuleSet) Start(seed uint64) State {
-	s := State{Rand: fixmath.NewRand(seed)}
-	mid := fixmath.FromInt32(FieldH / 2)
+	s := State{Seed: seed, Bird: make([]Bird, Seats)}
+	mid := fixmath.FromInt32(FieldH / 2).Raw()
 	for i := range s.Bird {
 		s.Bird[i] = Bird{Y: mid, Alive: true}
 	}
@@ -165,12 +205,22 @@ func (RuleSet) Start(seed uint64) State {
 }
 
 // spawn appends one pipe at the right edge with a random gap height.
+//
+// The generator is built from the seed and the spawn number rather than
+// carried between calls. Same seed, same field — and because the two
+// numbers are in the state, a peer that reconstructs the state
+// reconstructs the field with it.
 func (s *State) spawn() {
 	const margin = GapH/2 + 20
 	span := int64(FieldH - 2*margin)
-	gap := fixmath.FromInt32(int32(margin + int(s.Rand.Int64n(span))))
-	s.Pipes = append(s.Pipes, Pipe{X: fixmath.FromInt32(FieldW + PipeW), GapY: gap})
+	r := fixmath.NewRand(s.Seed + uint64(s.Spawned))
+	gap := fixmath.FromInt32(int32(margin + int(r.Int64n(span))))
+	s.Pipes = append(s.Pipes, Pipe{
+		X:    fixmath.FromInt32(FieldW + PipeW).Raw(),
+		GapY: gap.Raw(),
+	})
 	s.Since = 0
+	s.Spawned++
 }
 
 // ActingSlots returns the slots still flying. A realtime session reads
@@ -194,7 +244,7 @@ func (RuleSet) ActingSlots(s *State) []session.SlotID {
 func (RuleSet) Apply(s *State, slot session.SlotID, a Action) {
 	b := &s.Bird[index(slot)]
 	if a.Flap && b.Alive {
-		b.VY = flapVY
+		b.VY = flapVY.Raw()
 	}
 }
 
@@ -205,25 +255,29 @@ func (RuleSet) Advance(s *State) {
 	if s.Over {
 		return
 	}
+	// Each loop converts once at its top and writes back once at its
+	// bottom. The arithmetic in between is the same fixed point it
+	// always was; only what the struct holds changed.
 	for i := range s.Bird {
 		b := &s.Bird[i]
 		if !b.Alive {
 			continue
 		}
-		b.VY = b.VY.Add(gravity).Min(maxVY)
-		b.Y = b.Y.Add(b.VY)
-		if b.Y.Sub(birdR) <= 0 || b.Y.Add(birdR) >= floorY {
+		vy := b.Rise().Add(gravity).Min(maxVY)
+		y := b.Height().Add(vy)
+		b.VY, b.Y = vy.Raw(), y.Raw()
+		if y.Sub(birdR) <= 0 || y.Add(birdR) >= floorY {
 			b.Alive = false
 		}
 	}
 
 	for i := range s.Pipes {
-		s.Pipes[i].X = s.Pipes[i].X.Add(pipeVX)
+		s.Pipes[i].X = s.Pipes[i].Pos().Add(pipeVX).Raw()
 	}
 	// Drop pipes that have left the field, oldest first.
 	keep := s.Pipes[:0]
 	for _, p := range s.Pipes {
-		if p.X.Add(pipeHW) > 0 {
+		if p.Pos().Add(pipeHW) > 0 {
 			keep = append(keep, p)
 		}
 	}
@@ -231,19 +285,21 @@ func (RuleSet) Advance(s *State) {
 
 	for i := range s.Pipes {
 		p := &s.Pipes[i]
+		x, gap := p.Pos(), p.Gap()
 		for j := range s.Bird {
 			b := &s.Bird[j]
 			if !b.Alive {
 				continue
 			}
-			if overlapsX(p.X) {
-				if b.Y.Sub(birdR) < p.GapY.Sub(halfGap) || b.Y.Add(birdR) > p.GapY.Add(halfGap) {
+			y := b.Height()
+			if overlapsX(x) {
+				if y.Sub(birdR) < gap.Sub(halfGap) || y.Add(birdR) > gap.Add(halfGap) {
 					b.Alive = false
 					continue
 				}
 			}
-			if !p.Cleared[j] && p.X.Add(pipeHW) < birdXF.Sub(birdR) {
-				p.Cleared[j] = true
+			if !p.ClearedBy(j) && x.Add(pipeHW) < birdXF.Sub(birdR) {
+				p.Clear(j)
 				b.Passed++
 			}
 		}
@@ -282,7 +338,7 @@ func (g RuleSet) Project(s *State, slot session.SlotID) Sight {
 		Self:   s.Bird[me],
 		Others: others,
 		Pipes:  append([]Pipe(nil), s.Pipes...),
-		Tick:   s.Tick,
+		Tick:   session.Tick(s.Tick),
 		Over:   s.Over,
 		Signal: g.Evaluate(s, slot),
 	}
@@ -402,12 +458,12 @@ func (b *Bot) Decide(context.Context) (Action, bool) {
 	}
 	target := fixmath.FromInt32(FieldH / 2)
 	for _, p := range b.last.Pipes {
-		if p.X.Add(pipeHW) >= birdXF.Sub(birdR) {
-			target = p.GapY
+		if p.Pos().Add(pipeHW) >= birdXF.Sub(birdR) {
+			target = p.Gap()
 			break
 		}
 	}
-	if b.last.Self.Y > target {
+	if b.last.Self.Height() > target {
 		return Action{Flap: true}, true
 	}
 	return Action{}, false

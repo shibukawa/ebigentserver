@@ -47,9 +47,26 @@ constant is `fixmath.F64`. Fixed point is what makes a replay reproduce
 on a different machine, and it is the precondition for rollback
 netcode. A stray `float64` in `Advance` compiles and then desyncs.
 
-**The RNG lives inside `State`.** The pipe field is a function of the
-seed alone, so the same seed replays the same episode. Calling
-`rand.Intn` from anywhere would break that quietly.
+**The world stores plain types, and converts at the edges.** `Bird.Y` is
+an `int64` — the raw fixed point behind an `fixmath.F64` — and `Height()`
+is where it becomes arithmetic again. That is not a style: everything
+`State` holds crosses a link, and the codec generator carries no named
+type from another package, so a world holding `fixmath.F64` or
+`session.Tick` gets no codec at all and the game cannot be played over
+one. `ebigent generate` says so when it happens, and a test in the
+framework fails when this project's world stops being sendable.
+
+The same constraint decides two smaller things. `Pipe.Cleared` is a
+bitmask rather than an array of bools, because the generated delta needs
+`Pipe` comparable and the codec cannot decode into a fixed-size array.
+And the RNG is not in the world at all.
+
+**The RNG is two numbers in `State`.** `Seed` and `Spawned` describe the
+pipe field completely: the n-th gap comes from a generator built from the
+pair, so the same seed replays the same episode and a peer that
+reconstructs the state reconstructs the field with it. A carried
+`fixmath.Rand` would say the same thing and not survive the trip.
+Calling `rand.Intn` from anywhere breaks all of it quietly.
 
 `Sight` is the piece worth attention early. It is a separate type
 from `State` even though this placeholder copies the whole pipe list into
