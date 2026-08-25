@@ -197,6 +197,20 @@ var _ session.TickStageRuleSet[msg.TTTWorld, msg.Move, Sight] = RuleSet{}
 World は差分つき——毎 tick 盤面をまるごと送らないため——で、Action は1回きりのメッセージ
 なので全体だけ。どの型を送るかを別の場所にもう一度書く必要はない。
 
+<Aside type="caution" title="運べる型には制限がある">
+`msg.TTTWorld` の `Cells` は `[]uint8` で、`game.Sight` の `Cells` は `[]Mark` だ。同じ盤の
+同じ9マスなのに型が違うのは、片方が線を渡るからだ。
+
+生成器は他パッケージの名前付き型を運べない（`session.Tick`、`fixmath.F64`）し、名前付き要素の
+コレクション（`[]Mark`）も断る。そして**半分だけ運ぶことはしない**——1フィールド落ちたまま
+送り続けるより送れないと言うほうがましなので、コーデックごと取り下げる。取り下げられたことは
+`ebigent generate` の出力に出るが、ビルドは通ってしまう。
+
+視界は線を渡らないので、そちらは `[]Mark` のままでいられる。固定小数点を持つゲームなら、
+World には生の `int64` を置いて、物理の入口と出口で `fixmath.FromRaw` / `.Raw()` を通すことに
+なる。
+</Aside>
+
 <Aside type="note" title="Stage が別の階層である理由">
 このゲームには Stage が1つしかないので、Match と Stage の区別は今は効いてこない。効くのは
 **本編のあとにボーナスステージ**を足したときだ。ルールも、World の型も、送るデータも変わるが、
