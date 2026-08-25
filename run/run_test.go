@@ -112,10 +112,10 @@ func binding() run.Binding[state, action, sight] {
 		NewAgent: newAgent,
 		// The same two kinds NewAgent chooses between, named so a run
 		// can ask for one, plus a third nothing chooses by default.
-		Agents: map[string]func() session.Agent[sight, action]{
-			"fast":  func() session.Agent[sight, action] { return &stepper{by: 2} },
-			"slow":  func() session.Agent[sight, action] { return &stepper{by: 1} },
-			"crawl": func() session.Agent[sight, action] { return &stepper{by: 1} },
+		Agents: map[string]func(uint64) session.Agent[sight, action]{
+			"fast":  func(uint64) session.Agent[sight, action] { return &stepper{by: 2} },
+			"slow":  func(uint64) session.Agent[sight, action] { return &stepper{by: 1} },
+			"crawl": func(uint64) session.Agent[sight, action] { return &stepper{by: 1} },
 		},
 		ProtocolVersion:   "countup-1",
 		EvaluationVersion: 1,

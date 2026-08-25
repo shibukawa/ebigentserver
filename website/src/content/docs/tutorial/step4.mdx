@@ -180,17 +180,48 @@ framework が承認を人間に通し、最後に `flow:automated-playtest` を�
 コードはビルドでき、エージェントは**コーパスに存在しない方策**を指す。このパイプラインで唯一、
 どこにも痕跡が残らない失敗だ。
 
-再生成はコマンドになった。step 2 で `ebigent init` が置いた `cmd/distill` に、step 4 が中身を
-入れる——それがこのステップで唯一、フレームワークの側から用意されていたファイルだ。
+このステップの成果物は、コマンド2つで最初から作り直せる。
+
+```bash
+cd tutorial/step4-distill && ebigent simulate
+```
 
 ```bash
 cd tutorial/step4-distill && ebigent distill
 ```
 
 ```
-800 games, 2632 decisions, 19 chips → distill/gen
+simulate: simulation, 800 matches into corpus
+2632 decisions from corpus, 19 chips → distill/gen
 100.0% of the recorded decisions are explained by an approved chip
 ```
+
+**前半がコーパスを埋め、後半がそれを Go にする。** 2つは `corpus/` で出会うだけで、互いを
+知らない。`simulate` は `kind = "simulation"` のターゲットをビルドして走らせ、局数・シード・
+記録先を渡す。`distill` は `behavior.distill` が指すエントリを走らせ、そこがコーパスを読む。
+
+どちらも遊ぶ処理も掘る処理も持たない。述語は視界を受け取る Go の関数であって値ではないので、
+ゲームをリンクしていないバイナリには受け取りようがない——`ebigent build` が `go build` を
+呼ぶのと同じ理由だ。
+
+局数とシードは `ebigent.toml` にある。引数なしの `ebigent simulate` がその2つで走るので、上の
+2コマンドが**コミット済みの `distill/gen` をそのまま再現する**。
+
+```toml
+[run.episode]
+root = "corpus"
+matches = 800
+seed = 0
+```
+
+<Aside type="note" title="誰がどの席に座るかは引数ではない">
+ボットが X なのは step 4 が掘るのがその判断だからで、コインが O なのは決定的な相手だと800局が
+「1局を800回書いたもの」になるからだ。どちらもゲームの事実なので `cmd/simulation` の中にある。
+
+`--agents` で配置を変えることはできる。変えれば別のコーパスになり、別の方策が出てくる——
+それは間違いではなく、**別の実験**だ。コミット済みのものがどの実験から来たかを言っているのが
+`[run.episode]` の2つの数字で、テストがそれを固定している。
+</Aside>
 
 書き出す側と比較する側は**同じ呼び出しを通る**。コマンドが `Compiled.Write` を呼び、テストは
 `Compiled.Sources` を committed と比べる。別々にコーパスを作れば、再生成してもテストが赤い
@@ -204,7 +235,8 @@ cd tutorial/step4-distill && go test ./distill
 
 <FileTree>
 - tutorial/step4-distill/
-  - cmd/distill/ ebigent distill が走らせるエントリ
+  - cmd/simulation/ ebigent simulate が走らせるエントリ。800局を corpus/ に
+  - cmd/distill/ ebigent distill が走らせるエントリ。corpus/ を掘る
   - main.go ウィンドウ。生成エージェントを席に着けるのはここ
   - game/ ルール。step 3 から1文字も変えていない
   - distill/

@@ -285,7 +285,7 @@ func (r *Roster[W, A, S]) Ready() bool {
 // An unknown name is an error rather than a fallback. A run asking for
 // an agent this game does not have would otherwise record a corpus under
 // a label nothing in it earned, and that is worse than not running.
-func (r *Roster[W, A, S]) FillNamed(agents map[string]func() session.Agent[S, A], want map[session.SlotID]string) error {
+func (r *Roster[W, A, S]) FillNamed(agents map[string]func(seed uint64) session.Agent[S, A], want map[session.SlotID]string, seed uint64) error {
 	if len(want) == 0 {
 		return nil
 	}
@@ -299,7 +299,7 @@ func (r *Roster[W, A, S]) FillNamed(agents map[string]func() session.Agent[S, A]
 		if !asked {
 			continue
 		}
-		make, ok := agents[name]
+		build, ok := agents[name]
 		if !ok {
 			return fmt.Errorf("run: slot %d asks for agent %q, which this game does not declare; Binding.Agents names %s",
 				slot, name, declared(agents))
@@ -310,7 +310,7 @@ func (r *Roster[W, A, S]) FillNamed(agents map[string]func() session.Agent[S, A]
 		if filled {
 			continue
 		}
-		if err := r.Sit(slot, Bot, true, name, make()); err != nil {
+		if err := r.Sit(slot, Bot, true, name, build(seed)); err != nil {
 			return err
 		}
 	}
@@ -319,7 +319,7 @@ func (r *Roster[W, A, S]) FillNamed(agents map[string]func() session.Agent[S, A]
 
 // declared lists what a binding offers, for the error that says a run
 // asked for something else.
-func declared[S, A any](agents map[string]func() session.Agent[S, A]) string {
+func declared[S, A any](agents map[string]func(seed uint64) session.Agent[S, A]) string {
 	if len(agents) == 0 {
 		return "none"
 	}
@@ -332,16 +332,20 @@ func declared[S, A any](agents map[string]func() session.Agent[S, A]) string {
 }
 
 func (r *Roster[W, A, S]) FillBots(newAgent func(slot session.SlotID) (id string, agent session.Agent[S, A])) error {
-	if newAgent == nil {
-		return fmt.Errorf("run: no Binding.NewAgent, so empty seats cannot be filled with bots; " +
-			"declare one, or leave the seats for people arriving over a link")
-	}
+	// The factory is only needed for a seat that is still empty. A run
+	// that named a controller for every seat has already answered the
+	// question NewAgent exists to answer, and demanding one anyway would
+	// make Binding.Agents unusable on its own.
 	for _, slot := range r.Slots() {
 		r.mu.Lock()
 		filled := r.seats[slot].Filled()
 		r.mu.Unlock()
 		if filled {
 			continue
+		}
+		if newAgent == nil {
+			return fmt.Errorf("run: slot %d is empty and there is no Binding.NewAgent to fill it; "+
+				"declare one, name an agent for it, or leave the seat for somebody arriving over a link", slot)
 		}
 		id, agent := newAgent(slot)
 		if err := r.Sit(slot, Bot, true, id, agent); err != nil {

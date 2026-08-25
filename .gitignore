@@ -1,5 +1,7 @@
-# Binaries
+# Binaries. Each tutorial step is its own project, so `ebigent build`
+# and `ebigent simulate` put artifacts under its own bin/.
 /bin/
+/tutorial/step*/bin/
 *.exe
 *.wasm
 

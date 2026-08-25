@@ -50,7 +50,15 @@ type Binding[W, A, S any] struct {
 	//
 	// The names are the ids NewAgent would return, so a seat filled by
 	// either route lands in data:episode-log under the same label.
-	Agents map[string]func() session.Agent[S, A]
+	//
+	// Each constructor is handed the match's seed, because a training
+	// run needs an opponent that varies and an agent has no other way
+	// to get randomness it is allowed to have: rule:shared-rng-seed
+	// puts the one seed a match may derive from in the session, and
+	// this is where a controller is built. A deterministic agent
+	// ignores it, and four hundred matches against one that does are
+	// one match written down four hundred times.
+	Agents map[string]func(seed uint64) session.Agent[S, A]
 	// ProtocolVersion and EvaluationVersion travel into every episode
 	// header so a corpus cannot silently mix incompatible runs.
 	ProtocolVersion   string
@@ -65,11 +73,11 @@ func (b Binding[W, A, S]) Validate() error {
 	if b.Config == nil {
 		return errors.New("run: Binding.Config is required")
 	}
-	for name, make := range b.Agents {
+	for name, build := range b.Agents {
 		if name == "" {
 			return errors.New("run: Binding.Agents has an unnamed entry; the name is what a run asks for and what labels the seat in an episode")
 		}
-		if make == nil {
+		if build == nil {
 			return fmt.Errorf("run: Binding.Agents[%q] is nil", name)
 		}
 	}
@@ -179,7 +187,7 @@ func serveOne[W, A, S any](ctx context.Context, opts Options, b Binding[W, A, S]
 	if err != nil {
 		return MatchResult{}, err
 	}
-	if err := roster.FillNamed(b.Agents, sp.Agents); err != nil {
+	if err := roster.FillNamed(b.Agents, sp.Agents, seed); err != nil {
 		return MatchResult{}, err
 	}
 	if err := roster.FillBots(b.NewAgent); err != nil {

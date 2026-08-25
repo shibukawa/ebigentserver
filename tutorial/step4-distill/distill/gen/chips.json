@@ -9,24 +9,24 @@
       "counterexamples": 0,
       "evidence": [
         {
-          "episode": "ttt-000",
-          "tick": 0
+          "episode": "tictactoe-0000",
+          "tick": 1
         },
         {
-          "episode": "ttt-001",
-          "tick": 0
+          "episode": "tictactoe-0001",
+          "tick": 1
         },
         {
-          "episode": "ttt-002",
-          "tick": 0
+          "episode": "tictactoe-0002",
+          "tick": 1
         },
         {
-          "episode": "ttt-003",
-          "tick": 0
+          "episode": "tictactoe-0003",
+          "tick": 1
         },
         {
-          "episode": "ttt-004",
-          "tick": 0
+          "episode": "tictactoe-0004",
+          "tick": 1
         }
       ],
       "rationale": "when preferred_cell_is_4 held, play_4 was taken 800/800 times at this list position",
@@ -43,24 +43,24 @@
       "counterexamples": 0,
       "evidence": [
         {
-          "episode": "ttt-000",
-          "tick": 2
+          "episode": "tictactoe-0000",
+          "tick": 3
         },
         {
-          "episode": "ttt-001",
-          "tick": 2
+          "episode": "tictactoe-0001",
+          "tick": 3
         },
         {
-          "episode": "ttt-002",
-          "tick": 2
+          "episode": "tictactoe-0002",
+          "tick": 3
         },
         {
-          "episode": "ttt-003",
-          "tick": 2
+          "episode": "tictactoe-0003",
+          "tick": 3
         },
         {
-          "episode": "ttt-004",
-          "tick": 2
+          "episode": "tictactoe-0004",
+          "tick": 3
         }
       ],
       "rationale": "when preferred_cell_is_0 held, play_0 was taken 706/706 times at this list position",
@@ -77,24 +77,24 @@
       "counterexamples": 0,
       "evidence": [
         {
-          "episode": "ttt-000",
-          "tick": 4
+          "episode": "tictactoe-0000",
+          "tick": 5
         },
         {
-          "episode": "ttt-001",
-          "tick": 4
+          "episode": "tictactoe-0001",
+          "tick": 5
         },
         {
-          "episode": "ttt-002",
-          "tick": 4
+          "episode": "tictactoe-0002",
+          "tick": 5
         },
         {
-          "episode": "ttt-003",
-          "tick": 4
+          "episode": "tictactoe-0003",
+          "tick": 5
         },
         {
-          "episode": "ttt-004",
-          "tick": 4
+          "episode": "tictactoe-0004",
+          "tick": 5
         }
       ],
       "rationale": "when winning_move_is_8 held, play_8 was taken 516/516 times at this list position",
@@ -111,24 +111,24 @@
       "counterexamples": 0,
       "evidence": [
         {
-          "episode": "ttt-008",
-          "tick": 4
+          "episode": "tictactoe-0008",
+          "tick": 5
         },
         {
-          "episode": "ttt-009",
-          "tick": 4
+          "episode": "tictactoe-0009",
+          "tick": 5
         },
         {
-          "episode": "ttt-020",
-          "tick": 4
+          "episode": "tictactoe-0020",
+          "tick": 5
         },
         {
-          "episode": "ttt-021",
-          "tick": 4
+          "episode": "tictactoe-0021",
+          "tick": 5
         },
         {
-          "episode": "ttt-038",
-          "tick": 4
+          "episode": "tictactoe-0038",
+          "tick": 5
         }
       ],
       "rationale": "when winning_move_is_6 held, play_6 was taken 122/122 times at this list position",
@@ -145,24 +145,24 @@
       "counterexamples": 0,
       "evidence": [
         {
-          "episode": "ttt-042",
-          "tick": 6
+          "episode": "tictactoe-0042",
+          "tick": 7
         },
         {
-          "episode": "ttt-043",
-          "tick": 6
+          "episode": "tictactoe-0043",
+          "tick": 7
         },
         {
-          "episode": "ttt-060",
-          "tick": 6
+          "episode": "tictactoe-0060",
+          "tick": 7
         },
         {
-          "episode": "ttt-061",
-          "tick": 6
+          "episode": "tictactoe-0061",
+          "tick": 7
         },
         {
-          "episode": "ttt-064",
-          "tick": 6
+          "episode": "tictactoe-0064",
+          "tick": 7
         }
       ],
       "rationale": "when winning_move_is_1 held, play_1 was taken 78/78 times at this list position",
@@ -179,24 +179,24 @@
       "counterexamples": 0,
       "evidence": [
         {
-          "episode": "ttt-074",
-          "tick": 6
+          "episode": "tictactoe-0074",
+          "tick": 7
         },
         {
-          "episode": "ttt-075",
-          "tick": 6
+          "episode": "tictactoe-0075",
+          "tick": 7
         },
         {
-          "episode": "ttt-102",
-          "tick": 6
+          "episode": "tictactoe-0102",
+          "tick": 7
         },
         {
-          "episode": "ttt-103",
-          "tick": 6
+          "episode": "tictactoe-0103",
+          "tick": 7
         },
         {
-          "episode": "ttt-110",
-          "tick": 6
+          "episode": "tictactoe-0110",
+          "tick": 7
         }
       ],
       "rationale": "when winning_move_is_3 held, play_3 was taken 46/46 times at this list position",
@@ -213,24 +213,24 @@
       "counterexamples": 0,
       "evidence": [
         {
-          "episode": "ttt-042",
-          "tick": 4
+          "episode": "tictactoe-0042",
+          "tick": 5
         },
         {
-          "episode": "ttt-043",
-          "tick": 4
+          "episode": "tictactoe-0043",
+          "tick": 5
         },
         {
-          "episode": "ttt-060",
-          "tick": 4
+          "episode": "tictactoe-0060",
+          "tick": 5
         },
         {
-          "episode": "ttt-061",
-          "tick": 4
+          "episode": "tictactoe-0061",
+          "tick": 5
         },
         {
-          "episode": "ttt-064",
-          "tick": 4
+          "episode": "tictactoe-0064",
+          "tick": 5
         }
       ],
       "rationale": "when blocking_move_is_2 held, play_2 was taken 38/38 times at this list position",
@@ -247,24 +247,24 @@
       "counterexamples": 0,
       "evidence": [
         {
-          "episode": "ttt-024",
-          "tick": 4
+          "episode": "tictactoe-0024",
+          "tick": 5
         },
         {
-          "episode": "ttt-025",
-          "tick": 4
+          "episode": "tictactoe-0025",
+          "tick": 5
         },
         {
-          "episode": "ttt-074",
-          "tick": 4
+          "episode": "tictactoe-0074",
+          "tick": 5
         },
         {
-          "episode": "ttt-075",
-          "tick": 4
+          "episode": "tictactoe-0075",
+          "tick": 5
         },
         {
-          "episode": "ttt-102",
-          "tick": 4
+          "episode": "tictactoe-0102",
+          "tick": 5
         }
       ],
       "rationale": "when blocking_move_is_5 held, play_5 was taken 30/30 times at this list position",
@@ -281,24 +281,24 @@
       "counterexamples": 0,
       "evidence": [
         {
-          "episode": "ttt-110",
-          "tick": 4
+          "episode": "tictactoe-0110",
+          "tick": 5
         },
         {
-          "episode": "ttt-111",
-          "tick": 4
+          "episode": "tictactoe-0111",
+          "tick": 5
         },
         {
-          "episode": "ttt-284",
-          "tick": 4
+          "episode": "tictactoe-0284",
+          "tick": 5
         },
         {
-          "episode": "ttt-285",
-          "tick": 4
+          "episode": "tictactoe-0285",
+          "tick": 5
         },
         {
-          "episode": "ttt-304",
-          "tick": 4
+          "episode": "tictactoe-0304",
+          "tick": 5
         }
       ],
       "rationale": "when blocking_move_is_6 held, play_6 was taken 20/20 times at this list position",
@@ -315,24 +315,24 @@
       "counterexamples": 0,
       "evidence": [
         {
-          "episode": "ttt-036",
-          "tick": 4
+          "episode": "tictactoe-0036",
+          "tick": 5
         },
         {
-          "episode": "ttt-037",
-          "tick": 4
+          "episode": "tictactoe-0037",
+          "tick": 5
         },
         {
-          "episode": "ttt-206",
-          "tick": 4
+          "episode": "tictactoe-0206",
+          "tick": 5
         },
         {
-          "episode": "ttt-207",
-          "tick": 4
+          "episode": "tictactoe-0207",
+          "tick": 5
         },
         {
-          "episode": "ttt-212",
-          "tick": 4
+          "episode": "tictactoe-0212",
+          "tick": 5
         }
       ],
       "rationale": "when blocking_move_is_3 held, play_3 was taken 16/16 times at this list position",
@@ -349,24 +349,24 @@
       "counterexamples": 0,
       "evidence": [
         {
-          "episode": "ttt-036",
-          "tick": 6
+          "episode": "tictactoe-0036",
+          "tick": 7
         },
         {
-          "episode": "ttt-037",
-          "tick": 6
+          "episode": "tictactoe-0037",
+          "tick": 7
         },
         {
-          "episode": "ttt-206",
-          "tick": 6
+          "episode": "tictactoe-0206",
+          "tick": 7
         },
         {
-          "episode": "ttt-207",
-          "tick": 6
+          "episode": "tictactoe-0207",
+          "tick": 7
         },
         {
-          "episode": "ttt-212",
-          "tick": 6
+          "episode": "tictactoe-0212",
+          "tick": 7
         }
       ],
       "rationale": "when winning_move_is_5 held, play_5 was taken 12/12 times at this list position",
@@ -383,24 +383,24 @@
       "counterexamples": 0,
       "evidence": [
         {
-          "episode": "ttt-068",
-          "tick": 6
+          "episode": "tictactoe-0068",
+          "tick": 7
         },
         {
-          "episode": "ttt-069",
-          "tick": 6
+          "episode": "tictactoe-0069",
+          "tick": 7
         },
         {
-          "episode": "ttt-156",
-          "tick": 4
+          "episode": "tictactoe-0156",
+          "tick": 5
         },
         {
-          "episode": "ttt-157",
-          "tick": 4
+          "episode": "tictactoe-0157",
+          "tick": 5
         },
         {
-          "episode": "ttt-190",
-          "tick": 6
+          "episode": "tictactoe-0190",
+          "tick": 7
         }
       ],
       "rationale": "when blocking_move_is_7 held, play_7 was taken 40/40 times at this list position",
@@ -417,24 +417,24 @@
       "counterexamples": 0,
       "evidence": [
         {
-          "episode": "ttt-008",
-          "tick": 2
+          "episode": "tictactoe-0008",
+          "tick": 3
         },
         {
-          "episode": "ttt-009",
-          "tick": 2
+          "episode": "tictactoe-0009",
+          "tick": 3
         },
         {
-          "episode": "ttt-020",
-          "tick": 2
+          "episode": "tictactoe-0020",
+          "tick": 3
         },
         {
-          "episode": "ttt-021",
-          "tick": 2
+          "episode": "tictactoe-0021",
+          "tick": 3
         },
         {
-          "episode": "ttt-036",
-          "tick": 2
+          "episode": "tictactoe-0036",
+          "tick": 3
         }
       ],
       "rationale": "when preferred_cell_is_2 held, play_2 was taken 174/174 times at this list position",
@@ -451,24 +451,24 @@
       "counterexamples": 0,
       "evidence": [
         {
-          "episode": "ttt-068",
-          "tick": 8
+          "episode": "tictactoe-0068",
+          "tick": 9
         },
         {
-          "episode": "ttt-069",
-          "tick": 8
+          "episode": "tictactoe-0069",
+          "tick": 9
         },
         {
-          "episode": "ttt-190",
-          "tick": 8
+          "episode": "tictactoe-0190",
+          "tick": 9
         },
         {
-          "episode": "ttt-191",
-          "tick": 8
+          "episode": "tictactoe-0191",
+          "tick": 9
         },
         {
-          "episode": "ttt-300",
-          "tick": 8
+          "episode": "tictactoe-0300",
+          "tick": 9
         }
       ],
       "rationale": "when preferred_cell_is_3 held, play_3 was taken 12/12 times at this list position",
@@ -485,24 +485,24 @@
       "counterexamples": 0,
       "evidence": [
         {
-          "episode": "ttt-256",
-          "tick": 8
+          "episode": "tictactoe-0256",
+          "tick": 9
         },
         {
-          "episode": "ttt-257",
-          "tick": 8
+          "episode": "tictactoe-0257",
+          "tick": 9
         },
         {
-          "episode": "ttt-428",
-          "tick": 8
+          "episode": "tictactoe-0428",
+          "tick": 9
         },
         {
-          "episode": "ttt-429",
-          "tick": 8
+          "episode": "tictactoe-0429",
+          "tick": 9
         },
         {
-          "episode": "ttt-542",
-          "tick": 8
+          "episode": "tictactoe-0542",
+          "tick": 9
         }
       ],
       "rationale": "when preferred_cell_is_5 held, play_5 was taken 6/6 times at this list position",
@@ -519,20 +519,20 @@
       "counterexamples": 0,
       "evidence": [
         {
-          "episode": "ttt-298",
-          "tick": 8
+          "episode": "tictactoe-0298",
+          "tick": 9
         },
         {
-          "episode": "ttt-299",
-          "tick": 8
+          "episode": "tictactoe-0299",
+          "tick": 9
         },
         {
-          "episode": "ttt-412",
-          "tick": 8
+          "episode": "tictactoe-0412",
+          "tick": 9
         },
         {
-          "episode": "ttt-413",
-          "tick": 8
+          "episode": "tictactoe-0413",
+          "tick": 9
         }
       ],
       "rationale": "when preferred_cell_is_1 held, play_1 was taken 4/4 times at this list position",
@@ -549,20 +549,20 @@
       "counterexamples": 0,
       "evidence": [
         {
-          "episode": "ttt-024",
-          "tick": 6
+          "episode": "tictactoe-0024",
+          "tick": 7
         },
         {
-          "episode": "ttt-025",
-          "tick": 6
+          "episode": "tictactoe-0025",
+          "tick": 7
         },
         {
-          "episode": "ttt-412",
-          "tick": 6
+          "episode": "tictactoe-0412",
+          "tick": 7
         },
         {
-          "episode": "ttt-413",
-          "tick": 6
+          "episode": "tictactoe-0413",
+          "tick": 7
         }
       ],
       "rationale": "when preferred_cell_is_6 held, play_6 was taken 4/4 times at this list position",
@@ -579,20 +579,20 @@
       "counterexamples": 0,
       "evidence": [
         {
-          "episode": "ttt-024",
-          "tick": 8
+          "episode": "tictactoe-0024",
+          "tick": 9
         },
         {
-          "episode": "ttt-025",
-          "tick": 8
+          "episode": "tictactoe-0025",
+          "tick": 9
         },
         {
-          "episode": "ttt-704",
-          "tick": 8
+          "episode": "tictactoe-0704",
+          "tick": 9
         },
         {
-          "episode": "ttt-705",
-          "tick": 8
+          "episode": "tictactoe-0705",
+          "tick": 9
         }
       ],
       "rationale": "when preferred_cell_is_7 held, play_7 was taken 4/4 times at this list position",
@@ -609,20 +609,20 @@
       "counterexamples": 0,
       "evidence": [
         {
-          "episode": "ttt-298",
-          "tick": 6
+          "episode": "tictactoe-0298",
+          "tick": 7
         },
         {
-          "episode": "ttt-299",
-          "tick": 6
+          "episode": "tictactoe-0299",
+          "tick": 7
         },
         {
-          "episode": "ttt-704",
-          "tick": 6
+          "episode": "tictactoe-0704",
+          "tick": 7
         },
         {
-          "episode": "ttt-705",
-          "tick": 6
+          "episode": "tictactoe-0705",
+          "tick": 7
         }
       ],
       "rationale": "when preferred_cell_is_8 held, play_8 was taken 4/4 times at this list position",

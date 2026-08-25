@@ -46,10 +46,10 @@ func Binding() run.Binding[State, Action, Sight] {
 		// can ask for one. Recording them separately is the point: a
 		// corpus mixing three pursuit styles distills into a policy
 		// none of them had.
-		Agents: map[string]func() session.Agent[Sight, Action]{
-			KindRunner:  func() session.Agent[Sight, Action] { return &Runner{} },
-			KindChaser:  func() session.Agent[Sight, Action] { return &Chaser{} },
-			KindFlanker: func() session.Agent[Sight, Action] { return &Flanker{} },
+		Agents: map[string]func(uint64) session.Agent[Sight, Action]{
+			KindRunner:  func(uint64) session.Agent[Sight, Action] { return &Runner{} },
+			KindChaser:  func(uint64) session.Agent[Sight, Action] { return &Chaser{} },
+			KindFlanker: func(uint64) session.Agent[Sight, Action] { return &Flanker{} },
 		},
 		ProtocolVersion:   Protocol,
 		EvaluationVersion: Evaluation,

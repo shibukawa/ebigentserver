@@ -56,8 +56,8 @@ func Binding() run.Binding[State, Action, Sight] {
 		// line rather than a decision: `ebigent simulate --agent bot`
 		// already works, and a game recording one enemy kind at a time
 		// needs exactly this.
-		Agents: map[string]func() session.Agent[Sight, Action]{
-			"bot": func() session.Agent[Sight, Action] { return &Bot{} },
+		Agents: map[string]func(uint64) session.Agent[Sight, Action]{
+			"bot": func(uint64) session.Agent[Sight, Action] { return &Bot{} },
 		},
 		// ProtocolVersion is the wire fingerprint two peers compare
 		// before they play. `ebigent generate` writes it as

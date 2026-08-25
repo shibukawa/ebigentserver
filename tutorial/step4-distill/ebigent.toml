@@ -76,6 +76,11 @@ name = "step4-distill"
 kind = "client"
 entry = "."
 
+[[build.target]]
+name = "simulation"
+kind = "simulation"
+entry = "./cmd/simulation"
+
 [dev]
 target = "step4-distill"
 console = "127.0.0.1:8930"
@@ -89,6 +94,16 @@ corpus = "corpus"
 distill = "./cmd/distill"
 
 # Read at startup, so the same artifact runs under either of these.
+# The corpus the committed sources under distill/gen came from, and the
+# only recipe that reproduces them. `ebigent simulate` with no arguments
+# writes exactly this, and distill/distill.go holds the same two numbers
+# so the test that checks those sources mines the same games.
+[run.episode]
+root = "corpus"
+mode = "replay_complete"
+matches = 800
+seed = 0
+
 [run]
 # A starting value, not a constraint: any seat count runs under either
 # host. Switch to "listen" and run the -tags listen build to have a player

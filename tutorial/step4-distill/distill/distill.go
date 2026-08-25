@@ -13,7 +13,6 @@
 package distill
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -50,6 +49,13 @@ import (
 // board. Until a corpus contains those, "no counterexamples" is a
 // statement about the corpus and not about the game.
 const CorpusMatches = 800
+
+// CorpusSeed is the first match's seed; each later match adds its index,
+// so the whole corpus reproduces from this one number
+// (rule:shared-rng-seed). ebigent.toml declares the same pair under
+// [run.episode], which is what makes `ebigent simulate` with no
+// arguments write the corpus these sources came from.
+const CorpusSeed = 0
 
 // sightShape is the part of a recorded sight the miner reads. It decodes
 // the JSON the log holds rather than reusing game.Sight, because the
@@ -229,48 +235,29 @@ func decodeSight(raw json.RawMessage) (sightShape, error) {
 // Only the bot's seat is kept. The random opponent's decisions are in the
 // same log under a different agent_kind, and distilling those would
 // produce a faithful reproduction of a coin.
-func Corpus(matches int, v *behavior.Vocabulary) ([]behavior.Record, error) {
+func Corpus(root string, v *behavior.Vocabulary) ([]behavior.Record, error) {
+	entries, err := os.ReadDir(root)
+	if err != nil {
+		return nil, err
+	}
 	var out []behavior.Record
-	for i := 0; i < matches; i++ {
-		var decisions bytes.Buffer
-		id := fmt.Sprintf("ttt-%03d", i)
-		w := episode.NewWriter[msg.TTTWorld, msg.Move, game.Sight](
-			episode.Streams{Decisions: &decisions},
-			episode.ReplayComplete,
-			episode.Meta{
-				EpisodeID:  id,
-				AgentKinds: map[session.SlotID]string{game.SlotX: "bot", game.SlotO: "random"},
-			})
-
-		cfg := game.Config(id, uint64(i))
-		cfg.Recorder = w
-		// The recorded latency is wall-clock, and a corpus that
-		// remembers how fast the machine was on the day is a corpus
-		// that cannot be regenerated.
-		cfg.Clock = func() int64 { return 0 }
-
-		s, err := session.New(cfg)
+	for _, e := range entries {
+		if !e.IsDir() {
+			continue
+		}
+		f, err := os.Open(filepath.Join(root, e.Name(), "decisions.jsonl"))
+		if os.IsNotExist(err) {
+			continue
+		}
 		if err != nil {
 			return nil, err
 		}
-		if err := s.OpenAdmission(); err != nil {
-			return nil, err
-		}
-		if err := s.Admit(game.SlotX, &game.Bot{}); err != nil {
-			return nil, err
-		}
-		if err := s.Admit(game.SlotO, newRandom(uint64(i))); err != nil {
-			return nil, err
-		}
-		if err := s.Run(context.Background()); err != nil {
-			return nil, err
-		}
-
-		recs, err := behavior.Segment(v, "", &decisions, func(slot uint16) bool {
+		recs, err := behavior.Segment(v, "", f, func(slot uint16) bool {
 			return slot == uint16(game.SlotX)
 		})
+		f.Close()
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("%s: %w", e.Name(), err)
 		}
 		out = append(out, recs...)
 	}
@@ -278,6 +265,53 @@ func Corpus(matches int, v *behavior.Vocabulary) ([]behavior.Record, error) {
 		return nil, behavior.ErrEmptyCorpus
 	}
 	return out, nil
+}
+
+// The two policies a recorded match seats, named so `ebigent simulate
+// --agents` can ask for them.
+const (
+	KindTactic = "tactic"
+	KindCoin   = "coin"
+)
+
+// Opponents is the catalogue those names index.
+//
+// The coin takes the match's seed, and that is the whole reason a corpus
+// of eight hundred games is worth more than one game written down eight
+// hundred times: the bot is deterministic, so every match would otherwise
+// be the same match.
+func Opponents() map[string]func(uint64) session.Agent[game.Sight, msg.Move] {
+	return map[string]func(uint64) session.Agent[game.Sight, msg.Move]{
+		KindTactic: func(uint64) session.Agent[game.Sight, msg.Move] { return &game.Bot{} },
+		KindCoin:   func(seed uint64) session.Agent[game.Sight, msg.Move] { return newCoin(seed) },
+	}
+}
+
+// Seating puts the bot on X and the coin on O, which is the assignment
+// `ebigent simulate` is given on the command line.
+func Seating() map[session.SlotID]string {
+	return map[session.SlotID]string{game.SlotX: KindTactic, game.SlotO: KindCoin}
+}
+
+// Record plays matches with nobody watching and writes them into root.
+//
+// This is what ./cmd/simulation runs, so it is what `ebigent simulate`
+// drives. The tests call it too, into a directory of their own, which is
+// how a sweep over corpus sizes stays one recipe rather than two.
+func Record(root string, matches int, seed uint64) error {
+	b := game.Binding()
+	b.Agents = Opponents()
+	return run.Serve(context.Background(), game.Options(), b, run.ServeOptions{
+		Agents:  Seating(),
+		Matches: matches,
+		Seed:    seed,
+		// Unlimited because nobody is watching, and a training run has
+		// no reason to wait for a clock.
+		Time: session.Unlimited,
+		// Complete rather than sampled: what is mined here is every
+		// decision, so nothing may be dropped on the way in.
+		Record: run.RecordOptions{Root: root, Mode: episode.ReplayComplete},
+	})
 }
 
 // Synthesize records a corpus, mines it, and approves what came back
@@ -291,16 +325,41 @@ func Corpus(matches int, v *behavior.Vocabulary) ([]behavior.Record, error) {
 // generated agent is put back on the board afterwards rather than
 // declared correct here.
 func Synthesize(matches int, v *behavior.Vocabulary) (*behavior.Library, []behavior.Record, error) {
-	records, err := Corpus(matches, v)
+	root, err := os.MkdirTemp("", "ttt-corpus-")
 	if err != nil {
 		return nil, nil, err
 	}
+	defer os.RemoveAll(root)
+	if err := Record(root, matches, CorpusSeed); err != nil {
+		return nil, nil, err
+	}
+	records, err := Corpus(root, v)
+	if err != nil {
+		return nil, nil, err
+	}
+	lib, err := Mine(v, records)
+	if err != nil {
+		return nil, nil, err
+	}
+	return lib, records, nil
+}
+
+// Mine turns recorded decisions into an approved chip library.
+//
+// Approving on "no counterexamples" is the whole of the automation, and
+// it is deliberately not a judgement about quality. A rule the corpus
+// contradicts even once stays out and waits for a person
+// (rule:generated-behavior-requires-approval); a rule the corpus never
+// contradicts is still only as good as the corpus, which is why the
+// generated agent is put back on the board afterwards rather than
+// declared correct here.
+func Mine(v *behavior.Vocabulary, records []behavior.Record) (*behavior.Library, error) {
 	cands, uncovered, err := behavior.SequentialCovering{}.Propose(v, records)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	if len(uncovered) > 0 {
-		return nil, nil, fmt.Errorf("distill: %d of %d decisions matched no rule at all",
+		return nil, fmt.Errorf("distill: %d of %d decisions matched no rule at all",
 			len(uncovered), len(records))
 	}
 	lib := &behavior.Library{Game: "tictactoe"}
@@ -311,7 +370,7 @@ func Synthesize(matches int, v *behavior.Vocabulary) (*behavior.Library, []behav
 			lib.Chips[i].Tags = []string{"style:tactic"}
 		}
 	}
-	return lib, records, nil
+	return lib, nil
 }
 
 // Covered reports how much of the corpus the approved chips actually
@@ -365,7 +424,7 @@ func Playtest(seed uint64, agent session.Agent[game.Sight, msg.Move]) (Outcome, 
 	if err := s.Admit(game.SlotX, agent); err != nil {
 		return Outcome{}, err
 	}
-	if err := s.Admit(game.SlotO, newRandom(seed)); err != nil {
+	if err := s.Admit(game.SlotO, newCoin(seed)); err != nil {
 		return Outcome{}, err
 	}
 	if err := s.Run(context.Background()); err != nil {
@@ -416,7 +475,7 @@ type randomBot struct {
 	last game.Sight
 }
 
-func newRandom(seed uint64) *randomBot { return &randomBot{rng: fixmath.NewRand(seed | 1)} }
+func newCoin(seed uint64) *randomBot { return &randomBot{rng: fixmath.NewRand(seed | 1)} }
 
 func (*randomBot) Joined(session.SlotID)  {}
 func (r *randomBot) Observe(o game.Sight) { r.last = o }
@@ -443,9 +502,31 @@ type Compiled struct {
 }
 
 // Compile runs the canonical recipe: the corpus these committed sources
-// came from, and the only one that reproduces them.
+// came from, and the only one that reproduces them. It records into a
+// directory of its own, so a test can check the sources are current
+// without depending on what is in the project's corpus at the time.
 func Compile() (*Compiled, error) {
 	lib, records, err := Synthesize(CorpusMatches, Judgement())
+	if err != nil {
+		return nil, err
+	}
+	return &Compiled{Library: lib, Records: records}, nil
+}
+
+// CompileFrom mines a corpus that already exists, which is what
+// ./cmd/distill does with what `ebigent simulate` wrote.
+//
+// It gives the same answer as Compile when the corpus came from the
+// declared recipe, and a different one when it did not — which is the
+// honest behaviour: a policy mined from fifty games is a policy mined
+// from fifty games, and the staleness test is what says the committed
+// sources came from eight hundred.
+func CompileFrom(root string) (*Compiled, error) {
+	records, err := Corpus(root, Judgement())
+	if err != nil {
+		return nil, err
+	}
+	lib, err := Mine(Judgement(), records)
 	if err != nil {
 		return nil, err
 	}

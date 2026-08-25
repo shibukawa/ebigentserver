@@ -187,35 +187,65 @@ framework が承認を人間に通し、最後に `flow:automated-playtest` を�
 ライブラリは検証を通り、コードはビルドでき、エージェントは**コーパスに存在しない方策**を
 指します。このパイプラインで唯一、どこにも痕跡が残らない失敗です。
 
-## 再生成
+## 一周させる
+
+このステップの成果物は、コマンド2つで最初から作り直せます。
+
+```bash
+cd tutorial/step4-distill && ebigent simulate
+```
 
 ```bash
 cd tutorial/step4-distill && ebigent distill
 ```
 
-step 2 で `ebigent init` が置いた `cmd/distill` に、中身が入りました。`ebigent.toml` の
-`behavior.distill` がそこを指しているので、`ebigent distill` は `go run ./cmd/distill` を
-するだけです。掘る処理をツールが持たないのは、述語が視界を受け取る Go の関数であって値では
-ないからで、ゲームをリンクしていないバイナリには受け取りようがありません。
-
 ```
-800 games, 2632 decisions, 19 chips → distill/gen
+simulate: simulation, 800 matches into corpus
+2632 decisions from corpus, 19 chips → distill/gen
 100.0% of the recorded decisions are explained by an approved chip
 ```
 
-**書き出す側と比較する側は同じ呼び出しを通ります。** コマンドは `Compiled.Write` を呼び、
-テストは `Compiled.Sources` を committed と比べる。別々にコーパスを作っていたら、再生成しても
-テストが赤いままで、どちらを走らせても閉じない——という状態が起こりえます。
+**前半がコーパスを埋め、後半がそれを Go にします。** 2つは `corpus/` で出会うだけで、互いを
+知りません。`simulate` は `kind = "simulation"` のターゲットをビルドして走らせ、局数・シード・
+記録先を渡します。`distill` は `behavior.distill` が指すエントリを走らせ、そこがコーパスを読みます。
+
+どちらも掘る処理や遊ぶ処理そのものは持ちません。述語は視界を受け取る Go の関数であって値では
+ないので、ゲームをリンクしていないバイナリには受け取りようがない——`ebigent build` が
+`go build` を呼ぶのと同じ理由です。
+
+**局数とシードは `ebigent.toml` にあります。**
+
+```toml
+[run.episode]
+root = "corpus"
+matches = 800
+seed = 0
+```
+
+引数なしの `ebigent simulate` がこの2つの数字で走るので、上の2コマンドが
+**コミット済みの `distill/gen` をそのまま再現します**。`RUN_EPISODE_MATCHES=200 ./bin/simulation`
+と `ebigent simulate --matches 200` は同じ実行で、渡す道は設定の環境変数層です。
+
+**誰がどの席に座るかは、コマンドの引数ではありません。** ボットが X なのは、step 4 が掘るのが
+その判断だからで、コインが O なのは、決定的な相手だと800局が「1局を800回書いたもの」に
+なるからです。どちらもゲームの事実なので `cmd/simulation` の中にあります。
+
+古びていないかを見るのはテストの側です。
 
 ```bash
-cd tutorial/step4-distill && go test ./distill   # コミット済みが古びていないか
+cd tutorial/step4-distill && go test ./distill
 ```
+
+書き出す側と比較する側は**同じ呼び出しを通ります**。コマンドが `Compiled.Write` を呼び、
+テストが `Compiled.Sources` を committed と比べる。別々にコーパスを作っていたら、再生成しても
+テストが赤いままで、どちらを走らせても閉じない——という状態が起こりえます。
 
 ## 構成
 
 ```
 step4-distill/
-├── cmd/distill/     ebigent distill が走らせるエントリ
+├── cmd/simulation/  ebigent simulate が走らせるエントリ。800局を corpus/ に
+├── cmd/distill/     ebigent distill が走らせるエントリ。corpus/ を掘る
 ├── main.go            ウィンドウ。生成エージェントを席に着けるのはここ
 ├── game/              ルール。step 3 から1文字も変えていない
 ├── msg/               ワイヤ型と生成物（step 2 と同一）
