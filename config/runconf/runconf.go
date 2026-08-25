@@ -75,6 +75,15 @@ type Episode struct {
 	// so a whole run reproduces from this one number
 	// (rule:shared-rng-seed).
 	Seed int `default:"1" help:"seed of the first match; each later match adds its index"`
+	// Agents seeds api:roster with named controllers, for a game that
+	// declares more than one kind. A corpus mixing three pursuit styles
+	// distills into a policy none of them had, so which kind is
+	// recording is a property of the run.
+	//
+	// One value rather than a table because an array of tables has the
+	// file as its only source, and this has to reach a child process.
+	// The names are Binding.Agents keys; an unknown one is an error.
+	Agents string `default:"" help:"named controller per seat: a name for every bot seat, or slot=name pairs separated by commas"`
 }
 
 // Transport declares the listeners this deployment may open. Selection

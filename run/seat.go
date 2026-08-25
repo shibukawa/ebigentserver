@@ -73,4 +73,19 @@ func (s Seat) LocalBot() bool { return s.Kind == Bot && s.Local }
 // AgentKind is the data:episode-log agent_kind label for this seat. The
 // log distinguishes who decided, not where they sat, because that is the
 // axis analysis and distillation filter on.
-func (s Seat) AgentKind() string { return s.Kind.String() }
+//
+// For a bot that is the policy it runs, which is what ID carries: a game
+// with three kinds of pursuer records three labels, and a corpus mixing
+// them can be split back apart. Without it every enemy reads as "bot"
+// and the only way to tell them apart is the seat number, which stops
+// working the moment a kind moves seats.
+//
+// A person is "human" and never their name. Which player it was is
+// identity rather than a kind, it is not what analysis filters on, and a
+// corpus is not the place to keep it.
+func (s Seat) AgentKind() string {
+	if s.Kind == Bot && s.ID != "" {
+		return s.ID
+	}
+	return s.Kind.String()
+}

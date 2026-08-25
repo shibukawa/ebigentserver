@@ -151,9 +151,11 @@ func TestYourOwnPlayIsWhatGetsRecorded(t *testing.T) {
 
 	// Both seats were recorded the same way. Nothing but the label
 	// separates the person's rows from the bot's, which is what makes
-	// one corpus out of two kinds of controller.
-	if kinds := labels(rows); !slices.Equal(kinds, []string{"bot", "human"}) {
-		t.Fatalf("agent kinds in the log = %v, want both human and bot", kinds)
+	// one corpus out of two kinds of controller — and the bot's label
+	// is the policy it ran rather than the word "bot", so a second kind
+	// of bot would be a third label rather than an ambiguity.
+	if kinds := labels(rows); !slices.Equal(kinds, []string{"human", "tactic"}) {
+		t.Fatalf("agent kinds in the log = %v, want the person and the policy that played", kinds)
 	}
 	t.Logf("%d rows, %d of them moves the person made", len(rows), mine)
 }

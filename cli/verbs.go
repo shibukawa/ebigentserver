@@ -20,6 +20,7 @@ import (
 	"github.com/shibukawa/ebigentserver/codegen"
 	"github.com/shibukawa/ebigentserver/config/buildconf"
 	"github.com/shibukawa/ebigentserver/config/confload"
+	"github.com/shibukawa/ebigentserver/run"
 	"github.com/shibukawa/ebigentserver/scaffold"
 	"github.com/shibukawa/tinybind-go/configbind"
 )
@@ -408,16 +409,30 @@ func runSimulate(c *context, opts *SimulateOptions) error {
 	if opts.Seed != 0 {
 		env = append(env, "RUN_EPISODE_SEED="+strconv.Itoa(opts.Seed))
 	}
+	// The assignment is checked here rather than left to the child,
+	// because a run that names a seat wrongly should not first play four
+	// hundred matches to find out.
+	agents := either(opts.Agents, c.run.Episode.Agents)
+	if agents != "" {
+		if _, err := run.ParseAgents(agents); err != nil {
+			return err
+		}
+		env = append(env, "RUN_EPISODE_AGENTS="+agents)
+	}
 
 	cmd := exec.Command(bin)
 	cmd.Dir = c.res.ProjectRoot
 	cmd.Env = env
 	cmd.Stdout = c.stdout
 	cmd.Stderr = c.stdout
+	seating := ""
+	if agents != "" {
+		seating = ", seating " + agents
+	}
 	if matches == 0 {
-		fmt.Fprintf(c.stdout, "simulate: %s, recording into %s until interrupted\n", target.Name, corpus)
+		fmt.Fprintf(c.stdout, "simulate: %s%s, recording into %s until interrupted\n", target.Name, seating, corpus)
 	} else {
-		fmt.Fprintf(c.stdout, "simulate: %s, %s into %s\n", target.Name, plural(matches, "match", "matches"), corpus)
+		fmt.Fprintf(c.stdout, "simulate: %s, %s%s into %s\n", target.Name, plural(matches, "match", "matches"), seating, corpus)
 	}
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("simulate %s: %w", target.Name, err)

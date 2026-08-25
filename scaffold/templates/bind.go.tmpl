@@ -51,6 +51,14 @@ func Binding() run.Binding[State, Action, Sight] {
 		NewAgent: func(session.SlotID) (string, session.Agent[Sight, Action]) {
 			return "bot", &Bot{}
 		},
+		// Agents names the controllers a run may ask for. One kind
+		// needs no catalogue, and this one is here so the second is a
+		// line rather than a decision: `ebigent simulate --agent bot`
+		// already works, and a game recording one enemy kind at a time
+		// needs exactly this.
+		Agents: map[string]func() session.Agent[Sight, Action]{
+			"bot": func() session.Agent[Sight, Action] { return &Bot{} },
+		},
 		// ProtocolVersion is the wire fingerprint two peers compare
 		// before they play. `ebigent generate` writes it as
 		// SchemaVersion beside the types it encodes; until these rules

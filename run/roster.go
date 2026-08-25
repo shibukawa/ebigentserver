@@ -3,6 +3,9 @@ package run
 import (
 	"fmt"
 	"slices"
+	"sort"
+	"strconv"
+	"strings"
 	"sync"
 
 	"github.com/shibukawa/ebigentserver/session"
@@ -272,6 +275,62 @@ func (r *Roster[W, A, S]) Ready() bool {
 // ready. It is what a solo game does after the player takes their seat,
 // and what a headless training run does for every seat including the
 // player's, so the same rules produce a corpus with nobody watching.
+// FillNamed seats the controllers a run asked for by name.
+//
+// It runs before FillBots and fills only the slots the assignment
+// mentions, which is what keeps "record the chaser" from meaning "make
+// every seat a chaser". A seat somebody already took is left alone: an
+// assignment seeds a roster (api:roster) rather than overruling it.
+//
+// An unknown name is an error rather than a fallback. A run asking for
+// an agent this game does not have would otherwise record a corpus under
+// a label nothing in it earned, and that is worse than not running.
+func (r *Roster[W, A, S]) FillNamed(agents map[string]func() session.Agent[S, A], want map[session.SlotID]string) error {
+	if len(want) == 0 {
+		return nil
+	}
+	for _, slot := range r.Slots() {
+		name, asked := want[slot]
+		if !asked {
+			// A run that named no seat in particular named all of
+			// them, which is what recording one kind at a time means.
+			name, asked = want[AnySlot]
+		}
+		if !asked {
+			continue
+		}
+		make, ok := agents[name]
+		if !ok {
+			return fmt.Errorf("run: slot %d asks for agent %q, which this game does not declare; Binding.Agents names %s",
+				slot, name, declared(agents))
+		}
+		r.mu.Lock()
+		filled := r.seats[slot].Filled()
+		r.mu.Unlock()
+		if filled {
+			continue
+		}
+		if err := r.Sit(slot, Bot, true, name, make()); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// declared lists what a binding offers, for the error that says a run
+// asked for something else.
+func declared[S, A any](agents map[string]func() session.Agent[S, A]) string {
+	if len(agents) == 0 {
+		return "none"
+	}
+	names := make([]string, 0, len(agents))
+	for name := range agents {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	return strings.Join(names, ", ")
+}
+
 func (r *Roster[W, A, S]) FillBots(newAgent func(slot session.SlotID) (id string, agent session.Agent[S, A])) error {
 	if newAgent == nil {
 		return fmt.Errorf("run: no Binding.NewAgent, so empty seats cannot be filled with bots; " +
@@ -293,4 +352,51 @@ func (r *Roster[W, A, S]) FillBots(newAgent func(slot session.SlotID) (id string
 		r.SetReady(slot, true)
 	}
 	return nil
+}
+
+// AnySlot is the assignment key that stands for every bot seat.
+//
+// Slot 0 belongs to the session and is never a player slot
+// (decision:owner-namespaced-entity-ids), so it is free to mean "any" —
+// and a run recording one enemy kind wants exactly that: this
+// controller wherever a bot would otherwise be chosen.
+const AnySlot session.SlotID = 0
+
+// ParseAgents reads a seat assignment as one value.
+//
+// It is one value rather than a table because that is what can travel:
+// an array of tables in data:run-config has the file as its only source,
+// so a tool passing an assignment down to a child process has nowhere to
+// put one. The slot table of api:roster is the larger thing — seat
+// identity, human or bot, teams — and this is not it.
+//
+//	chaser              every bot seat plays the chaser
+//	2=chaser,3=flanker  those two seats do, the rest are the game's choice
+//	chaser,1=runner     a default with one seat named against it
+func ParseAgents(spec string) (map[session.SlotID]string, error) {
+	spec = strings.TrimSpace(spec)
+	if spec == "" {
+		return nil, nil
+	}
+	out := map[session.SlotID]string{}
+	for _, field := range strings.Split(spec, ",") {
+		field = strings.TrimSpace(field)
+		if field == "" {
+			continue
+		}
+		slot, name, keyed := strings.Cut(field, "=")
+		slot, name = strings.TrimSpace(slot), strings.TrimSpace(name)
+		if !keyed {
+			slot, name = "0", slot
+		}
+		n, err := strconv.Atoi(slot)
+		if err != nil || n < 0 {
+			return nil, fmt.Errorf("run: %q is not a seat assignment; write a name, or slot=name", field)
+		}
+		if name == "" {
+			return nil, fmt.Errorf("run: seat %s names no agent", slot)
+		}
+		out[session.SlotID(n)] = name
+	}
+	return out, nil
 }

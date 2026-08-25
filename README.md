@@ -276,6 +276,18 @@ ebigent simulate --matches 400 && ebigent distill
 成果物が起動時に読む `data:run-config` の一部で、`RUN_EPISODE_MATCHES=400 ./bin/sim` と
 `ebigent simulate --matches 400` は同じ実行になる。
 
+エージェントが数種類あるゲームでは、**どれを座らせるか**も run の値になる。`Binding.Agents`
+が名前付きのカタログで、`--agents` がそれを席に割り当てる。
+
+```bash
+ebigent simulate --matches 400 --agents chaser        # ボット席は全部 chaser
+ebigent simulate --matches 400 --agents 2=chaser,3=flanker
+```
+
+3種類の追跡を混ぜたコーパスは、どれでもない方策に蒸留される。だから**1種類ずつ記録する**のが
+コーパスの使えるかどうかを分ける。宣言にない名前は実行前に落とす——400局回してから気づくのは
+遅い。記録の `agent_kind` 列はその名前になるので、混ざったコーパスも後から分けられる。
+
 **繰り返しはコマンドではなくエントリの中で回る。** 対局番号がシードを担っているので
 (`rule:shared-rng-seed`)、400局が1つの数から再現できるのは1プロセスが数えている間だけだ。
 プロセスを400回起動しても得るものはなく、起動コストだけ払うことになる。だから `run.Serve`

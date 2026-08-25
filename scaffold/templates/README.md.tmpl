@@ -96,6 +96,17 @@ made, with the sight it was made from:
     ebigent simulate --matches 400   # writes 400 episodes into corpus/
     ebigent distill                  # mines them into behavior/chips.json
 
+A game with several kinds of bot names them in `Binding.Agents`, and a
+run asks for one:
+
+    ebigent simulate --matches 400 --agents chaser
+    ebigent simulate --matches 400 --agents 2=chaser,3=flanker
+
+Recording one kind at a time is the difference between a usable corpus
+and a wasted one — three pursuit styles mixed together distill into a
+policy none of them had. The name lands in the `agent_kind` column, so a
+corpus that did mix them can still be split back apart.
+
 `simulate` builds the headless entry and hands it the match count, the
 seed, and where the corpus goes. Those are `[run.episode]` settings, so
 the same binary run by hand does the same thing —

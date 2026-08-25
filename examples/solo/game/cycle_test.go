@@ -71,10 +71,16 @@ func TestSoloProducesATrainableCorpus(t *testing.T) {
 		if decided[uint16(game.Player)] == 0 {
 			t.Errorf("%s: the quarry made no recorded decision", ep.Dir)
 		}
+		// Each seat records under the kind it ran, which is what lets
+		// one corpus be split into a chaser's decisions and a
+		// flanker's. Labelling all three "bot" would leave the seat
+		// number as the only way to tell them apart, and a kind that
+		// moved seats would take its corpus with it.
 		for _, row := range ep.Decisions {
-			if row.AgentKind != "bot" {
-				t.Errorf("%s: slot %d recorded as %q; an unattended run seats bots",
-					ep.Dir, row.Slot, row.AgentKind)
+			want, _ := game.NewAgent(session.SlotID(row.Slot))
+			if row.AgentKind != want {
+				t.Errorf("%s: slot %d recorded as %q, want the kind it played (%q)",
+					ep.Dir, row.Slot, row.AgentKind, want)
 				break
 			}
 		}

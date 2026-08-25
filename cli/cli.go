@@ -142,6 +142,7 @@ type (
 		Matches int    `default:"0" help:"matches to play; 0 uses run.episode.matches"`
 		Seed    int    `default:"0" help:"seed of the first match; 0 uses run.episode.seed"`
 		Corpus  string `default:"" help:"corpus root; defaults to the behavior.corpus setting"`
+		Agents  string `default:"" help:"named controller per seat: a name for every bot seat, or slot=name pairs; empty uses run.episode.agents"`
 		Build   bool   `default:"true" help:"compile before running; --build=false runs the binary already in bin/"`
 	}
 	// ReplayOptions plays an episode back through actor:replay-agent.

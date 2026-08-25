@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -106,9 +107,16 @@ func options() run.Options {
 
 func binding() run.Binding[state, action, sight] {
 	return run.Binding[state, action, sight]{
-		Slots:             []session.SlotID{1, 2},
-		Config:            config,
-		NewAgent:          newAgent,
+		Slots:    []session.SlotID{1, 2},
+		Config:   config,
+		NewAgent: newAgent,
+		// The same two kinds NewAgent chooses between, named so a run
+		// can ask for one, plus a third nothing chooses by default.
+		Agents: map[string]func() session.Agent[sight, action]{
+			"fast":  func() session.Agent[sight, action] { return &stepper{by: 2} },
+			"slow":  func() session.Agent[sight, action] { return &stepper{by: 1} },
+			"crawl": func() session.Agent[sight, action] { return &stepper{by: 1} },
+		},
 		ProtocolVersion:   "countup-1",
 		EvaluationVersion: 1,
 	}
@@ -155,8 +163,10 @@ func TestSeatingRules(t *testing.T) {
 		t.Fatalf("after FillBots: complete=%v ready=%v", r.Complete(), r.Ready())
 	}
 
+	// A person is "human" and never their name; a bot is the policy it
+	// runs, because that is the axis a corpus is filtered on.
 	kinds := r.AgentKinds()
-	if kinds[1] != "human" || kinds[2] != "bot" {
+	if kinds[1] != "human" || kinds[2] != "slow" {
 		t.Errorf("episode labels wrong: %v", kinds)
 	}
 }
@@ -325,8 +335,11 @@ func TestServeWritesACorpus(t *testing.T) {
 		t.Fatal(err)
 	}
 	body := string(decisions)
-	if !strings.Contains(body, `"agent_kind":"bot"`) {
-		t.Error("decisions carry no agent kind, so a corpus cannot be filtered by who decided")
+	// The label is the policy the seat ran, not the fact that it was a
+	// bot: a corpus is filtered by who decided, and "bot" answers that
+	// for a game with one kind and for no other.
+	if !strings.Contains(body, `"agent_kind":"fast"`) || !strings.Contains(body, `"agent_kind":"slow"`) {
+		t.Errorf("decisions do not carry the policy each seat ran:\n%s", body)
 	}
 	if lines := strings.Count(strings.TrimSpace(body), "\n") + 1; lines < 4 {
 		t.Errorf("decisions stream holds %d lines; an episode of several ticks should hold more", lines)
@@ -434,4 +447,142 @@ func TestRecordingsAccumulateAcrossRuns(t *testing.T) {
 	if len(entries) != 3 {
 		t.Fatalf("three launches left %d episodes, want 3", len(entries))
 	}
+}
+
+// A game with several kinds of bot has to be able to record one of them
+// at a time. Mixing three pursuit styles into one corpus distills into a
+// policy none of them had, so which kind is playing is a property of the
+// run rather than of the rules.
+func TestServeSeatsTheAgentTheRunAsksFor(t *testing.T) {
+	root := t.TempDir()
+	agents, err := run.ParseAgents("crawl")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := run.Serve(t.Context(), options(), binding(), run.ServeOptions{
+		Agents:  agents,
+		Matches: 1,
+		Seed:    1,
+		Time:    session.Unlimited,
+		Record:  run.RecordOptions{Root: root, Mode: episode.ReplayComplete},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	// The name is what labels the seat in the log, which is the whole
+	// reason a corpus can be split by kind later.
+	kinds := recordedKinds(t, filepath.Join(root, "countup-0000", "decisions.jsonl"))
+	for _, slot := range []string{"1", "2"} {
+		if kinds[slot] != "crawl" {
+			t.Errorf("slot %s recorded as %q, want crawl; kinds = %v", slot, kinds[slot], kinds)
+		}
+	}
+}
+
+// Naming one seat names one seat. Every other bot seat is still the
+// game's own choice, because an assignment seeds a roster rather than
+// replacing what fills it.
+func TestNamingOneSeatLeavesTheRestToTheGame(t *testing.T) {
+	root := t.TempDir()
+	agents, err := run.ParseAgents("2=crawl")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := run.Serve(t.Context(), options(), binding(), run.ServeOptions{
+		Agents:  agents,
+		Matches: 1,
+		Seed:    1,
+		Time:    session.Unlimited,
+		Record:  run.RecordOptions{Root: root, Mode: episode.ReplayComplete},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	kinds := recordedKinds(t, filepath.Join(root, "countup-0000", "decisions.jsonl"))
+	if kinds["1"] != "fast" {
+		t.Errorf("slot 1 = %q, want the game's own choice of fast", kinds["1"])
+	}
+	if kinds["2"] != "crawl" {
+		t.Errorf("slot 2 = %q, want the crawl the run asked for", kinds["2"])
+	}
+}
+
+// A run asking for an agent the game does not have would record a corpus
+// under a label nothing in it earned, so it fails instead — naming what
+// there was to ask for.
+func TestAnUnknownAgentIsRefusedWithWhatIsDeclared(t *testing.T) {
+	err := run.Serve(t.Context(), options(), binding(), run.ServeOptions{
+		Agents:  map[session.SlotID]string{1: "sprint"},
+		Matches: 1,
+		Seed:    1,
+		Time:    session.Unlimited,
+	})
+	if err == nil {
+		t.Fatal("want an error for an agent the binding does not name")
+	}
+	for _, want := range []string{"sprint", "crawl, fast, slow"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("err = %v, want it to mention %q", err, want)
+		}
+	}
+}
+
+// The assignment travels as one value because an array of tables in
+// data:run-config has the file as its only source, so these are the
+// forms that have to survive a trip through an environment variable.
+func TestParseAgentsReadsBothForms(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		in   string
+		want map[session.SlotID]string
+		fail bool
+	}{
+		{name: "empty", in: "  "},
+		{name: "one name is every bot seat", in: "chaser", want: map[session.SlotID]string{run.AnySlot: "chaser"}},
+		{name: "per seat", in: "2=chaser, 3=flanker", want: map[session.SlotID]string{2: "chaser", 3: "flanker"}},
+		{name: "a default with one seat against it", in: "chaser,1=runner", want: map[session.SlotID]string{run.AnySlot: "chaser", 1: "runner"}},
+		{name: "no name", in: "2=", fail: true},
+		{name: "no slot", in: "x=chaser", fail: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := run.ParseAgents(tc.in)
+			if tc.fail {
+				if err == nil {
+					t.Fatalf("ParseAgents(%q) = %v, want an error", tc.in, got)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(got) != len(tc.want) {
+				t.Fatalf("ParseAgents(%q) = %v, want %v", tc.in, got, tc.want)
+			}
+			for slot, name := range tc.want {
+				if got[slot] != name {
+					t.Errorf("slot %d = %q, want %q", slot, got[slot], name)
+				}
+			}
+		})
+	}
+}
+
+// recordedKinds reads the agent_kind column back out of a decisions
+// stream, keyed by slot.
+func recordedKinds(t *testing.T, path string) map[string]string {
+	t.Helper()
+	body, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	out := map[string]string{}
+	for _, line := range strings.Split(strings.TrimSpace(string(body)), "\n") {
+		var row struct {
+			Slot      int    `json:"slot"`
+			AgentKind string `json:"agent_kind"`
+		}
+		if err := json.Unmarshal([]byte(line), &row); err != nil || row.AgentKind == "" {
+			continue
+		}
+		out[strconv.Itoa(row.Slot)] = row.AgentKind
+	}
+	return out
 }

@@ -47,8 +47,16 @@ func main() {
 		mode = episode.ReplayComplete
 	}
 
+	// Which controller sits where, for a game that declares more than
+	// one. Empty leaves every seat to Binding.NewAgent.
+	agents, err := run.ParseAgents(ep.Agents)
+	if err != nil {
+		fatal(err)
+	}
+
 	played, ticks := 0, session.Tick(0)
-	err := run.Serve(ctx, game.Options(), game.Binding(), run.ServeOptions{
+	err = run.Serve(ctx, game.Options(), game.Binding(), run.ServeOptions{
+		Agents:  agents,
 		Matches: ep.Matches,
 		// The seed is the whole recipe: each match adds its index, so a
 		// run reproduces from this one number (rule:shared-rng-seed).

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sort"
 
 	"github.com/shibukawa/ebigentserver/episode"
 	"github.com/shibukawa/ebigentserver/session"
@@ -35,6 +36,21 @@ type Binding[W, A, S any] struct {
 	// only waits for people therefore has no factory to name, and
 	// FillBots — the one caller — reports its absence where it matters.
 	NewAgent func(slot session.SlotID) (id string, agent session.Agent[S, A])
+	// Agents names the controllers a run may ask for by name, which
+	// NewAgent alone cannot express: it answers "who sits in this seat
+	// if nobody said", and that is a different question from "seat the
+	// chaser here".
+	//
+	// Optional, and a game with one kind of bot needs none of it. It
+	// earns its place as soon as a game has several: a corpus mixing
+	// three pursuit styles distills into a policy none of them had, so
+	// recording one kind at a time is the difference between a usable
+	// corpus and a wasted one — and which kind is a property of the run
+	// rather than of the rules.
+	//
+	// The names are the ids NewAgent would return, so a seat filled by
+	// either route lands in data:episode-log under the same label.
+	Agents map[string]func() session.Agent[S, A]
 	// ProtocolVersion and EvaluationVersion travel into every episode
 	// header so a corpus cannot silently mix incompatible runs.
 	ProtocolVersion   string
@@ -49,12 +65,36 @@ func (b Binding[W, A, S]) Validate() error {
 	if b.Config == nil {
 		return errors.New("run: Binding.Config is required")
 	}
+	for name, make := range b.Agents {
+		if name == "" {
+			return errors.New("run: Binding.Agents has an unnamed entry; the name is what a run asks for and what labels the seat in an episode")
+		}
+		if make == nil {
+			return fmt.Errorf("run: Binding.Agents[%q] is nil", name)
+		}
+	}
 	return nil
+}
+
+// AgentKinds are the names this binding can be asked for, sorted so a
+// report and an error message list them the same way twice.
+func (b Binding[W, A, S]) AgentKinds() []string {
+	names := make([]string, 0, len(b.Agents))
+	for name := range b.Agents {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	return names
 }
 
 // ServeOptions declares one headless run: what to play, how many times,
 // and where the log goes.
 type ServeOptions struct {
+	// Agents assigns a named controller to a seat, seeding api:roster
+	// the way the slot table of data:run-config does. A slot named here
+	// is filled from Binding.Agents; every other bot seat still comes
+	// from NewAgent, so naming one seat does not mean naming them all.
+	Agents map[session.SlotID]string
 	// Matches is how many matches to play. 0 plays until ctx is
 	// cancelled, which is what a dedicated server does.
 	Matches int
@@ -137,6 +177,9 @@ func serveOne[W, A, S any](ctx context.Context, opts Options, b Binding[W, A, S]
 
 	roster, err := NewRoster[W, A, S](opts, b.Slots)
 	if err != nil {
+		return MatchResult{}, err
+	}
+	if err := roster.FillNamed(b.Agents, sp.Agents); err != nil {
 		return MatchResult{}, err
 	}
 	if err := roster.FillBots(b.NewAgent); err != nil {

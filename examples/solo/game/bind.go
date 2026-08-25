@@ -1,6 +1,9 @@
 package game
 
-import "github.com/shibukawa/ebigentserver/run"
+import (
+	"github.com/shibukawa/ebigentserver/run"
+	"github.com/shibukawa/ebigentserver/session"
+)
 
 // This file is everything the wrapper needs to know about these rules. It
 // lives with the rules rather than in an entry point so both builds —
@@ -36,9 +39,18 @@ func Options() run.Options {
 // Binding hands the rules to the wrapper.
 func Binding() run.Binding[State, Action, Sight] {
 	return run.Binding[State, Action, Sight]{
-		Slots:             Slots(),
-		Config:            Config,
-		NewAgent:          NewAgent,
+		Slots:    Slots(),
+		Config:   Config,
+		NewAgent: NewAgent,
+		// The same three kinds NewAgent chooses between, named so a run
+		// can ask for one. Recording them separately is the point: a
+		// corpus mixing three pursuit styles distills into a policy
+		// none of them had.
+		Agents: map[string]func() session.Agent[Sight, Action]{
+			KindRunner:  func() session.Agent[Sight, Action] { return &Runner{} },
+			KindChaser:  func() session.Agent[Sight, Action] { return &Chaser{} },
+			KindFlanker: func() session.Agent[Sight, Action] { return &Flanker{} },
+		},
 		ProtocolVersion:   Protocol,
 		EvaluationVersion: Evaluation,
 	}
