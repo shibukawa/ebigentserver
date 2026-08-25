@@ -44,6 +44,37 @@ type Run struct {
 	// Debug is api:dev-debug-endpoint, honored only by a development
 	// build.
 	Debug Debug `help:"Debug is api:dev-debug-endpoint, honored only by a development build"`
+	// Episode is what this process records and how much of it it plays.
+	Episode Episode `help:"Episode is what this process records and how much of it it plays"`
+}
+
+// Episode is the data:episode-log this process writes: where it goes,
+// how much of it is kept, and how many matches are played before the
+// process exits.
+//
+// It is a run setting rather than a build one because two launches of
+// one artifact legitimately differ on all of it: the same headless
+// binary is a training run of four hundred matches on a workstation and
+// a dedicated server that records nothing.
+//
+// This is also the channel `ebigent simulate` uses. The tool holds the
+// project's corpus root and the match count a person asked for, and it
+// reaches the child through the environment layer of this same binding
+// rather than through a convention invented for the occasion.
+type Episode struct {
+	// Root is the corpus directory. Empty records nothing at zero cost,
+	// which is what a server wants.
+	Root string `default:"" help:"corpus root; empty records nothing"`
+	// Mode is concept:episode-recording-mode. A corpus is the common
+	// case; a bit-exact replay log is the deliberate one.
+	Mode string `default:"analysis_sampled" enum:"analysis_sampled,replay_complete" help:"how much of each episode is kept"`
+	// Matches is how many to play before exiting. 0 plays until the
+	// process is interrupted, which is what a server does.
+	Matches int `default:"1" help:"matches to play before exiting; 0 plays until interrupted"`
+	// Seed is the first match's seed; each later match adds its index,
+	// so a whole run reproduces from this one number
+	// (rule:shared-rng-seed).
+	Seed int `default:"1" help:"seed of the first match; each later match adds its index"`
 }
 
 // Transport declares the listeners this deployment may open. Selection

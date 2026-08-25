@@ -135,7 +135,15 @@ type (
 	// RunOptions starts a built target with a data:run-config.
 	RunOptions struct{}
 	// SimulateOptions runs concept:training-farm workloads.
-	SimulateOptions struct{}
+	// SimulateOptions runs the project's own simulation entry to fill a
+	// corpus (concept:training-farm).
+	SimulateOptions struct {
+		Target  string `arg:"optional" help:"target name from ebigent.toml; defaults to the only simulation target"`
+		Matches int    `default:"0" help:"matches to play; 0 uses run.episode.matches"`
+		Seed    int    `default:"0" help:"seed of the first match; 0 uses run.episode.seed"`
+		Corpus  string `default:"" help:"corpus root; defaults to the behavior.corpus setting"`
+		Build   bool   `default:"true" help:"compile before running; --build=false runs the binary already in bin/"`
+	}
 	// ReplayOptions plays an episode back through actor:replay-agent.
 	ReplayOptions struct{}
 	// EditOptions opens the authoring tabs of ui:dev-console.
@@ -158,7 +166,7 @@ func Run(stdout, stderr io.Writer) int {
 
 	devOpts := configbind.SubCommand[DevOptions]("dev", "build, run, and restart on change, with the dev console")
 	runOpts := configbind.SubCommand[RunOptions]("run", "start a built target")
-	simulateOpts := configbind.SubCommand[SimulateOptions]("simulate", "run headless simulation workloads")
+	simulateOpts := configbind.SubCommand[SimulateOptions]("simulate", "play matches headless and record them into the corpus")
 	replayOpts := configbind.SubCommand[ReplayOptions]("replay", "play back a recorded episode")
 	editOpts := configbind.SubCommand[EditOptions]("edit", "open the behavior authoring tabs")
 
@@ -224,7 +232,7 @@ func Run(stdout, stderr io.Writer) int {
 	case runOpts != nil:
 		return ctx.report(pending("run", "launching a built artifact"))
 	case simulateOpts != nil:
-		return ctx.report(pending("simulate", "concept:training-farm workloads"))
+		return ctx.report(runSimulate(ctx, simulateOpts))
 	case replayOpts != nil:
 		return ctx.report(pending("replay", "actor:replay-agent playback"))
 	case editOpts != nil:

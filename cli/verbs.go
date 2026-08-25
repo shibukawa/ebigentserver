@@ -18,6 +18,7 @@ import (
 	"github.com/shibukawa/ebigentserver/analysis"
 	"github.com/shibukawa/ebigentserver/behavior"
 	"github.com/shibukawa/ebigentserver/codegen"
+	"github.com/shibukawa/ebigentserver/config/buildconf"
 	"github.com/shibukawa/ebigentserver/config/confload"
 	"github.com/shibukawa/ebigentserver/scaffold"
 	"github.com/shibukawa/tinybind-go/configbind"
@@ -346,6 +347,127 @@ func either(value, fallback string) string {
 		return fallback
 	}
 	return value
+}
+
+// runSimulate fills a corpus by playing the game against itself.
+//
+// It is the first half of an AI development cycle and the half that
+// takes the time: run headless until there are episodes, mine them,
+// regenerate, run again against what came out. `go test -run
+// TestSomething -update` does the same work in a project that has one
+// test doing all of it, and it says nothing about which part is which.
+//
+// The division here is the same one `build` and `distill` already draw.
+// The verb owns what the project declared — which entry is the
+// simulation, where the corpus goes, how many matches a person asked
+// for — and the entry owns what happens inside a match, because who
+// plays whom is a fact about the game (concept:continuous-match-loop
+// lists four pairings and the framework picks none of them).
+//
+// The loop itself belongs to the entry rather than to this verb, and
+// that is not a detail. A match index carries the seed
+// (rule:shared-rng-seed), so a run of four hundred reproduces from one
+// number only while one process counts them; four hundred launches
+// would also pay four hundred process starts to save nothing.
+//
+// Settings reach the child through the environment layer of the same
+// binding it reads at startup, so nothing here is a convention invented
+// for the occasion: `ebigent simulate --matches 400` and
+// `RUN_EPISODE_MATCHES=400 ./bin/sim` are the same run.
+func runSimulate(c *context, opts *SimulateOptions) error {
+	if err := c.requireProject(); err != nil {
+		return err
+	}
+	target, err := simulationTarget(c, opts.Target)
+	if err != nil {
+		return err
+	}
+	if opts.Build {
+		if err := runBuild(c, &BuildOptions{Target: target.Name}); err != nil {
+			return err
+		}
+	}
+	bin := filepath.Join(c.res.ProjectRoot, "bin", target.Name)
+	if runtime.GOOS == "windows" {
+		bin += ".exe"
+	}
+	if _, err := os.Stat(bin); err != nil {
+		return fmt.Errorf("simulate: %s is not built; run without --build=false", filepath.Join("bin", target.Name))
+	}
+
+	// The child runs with the project root as its working directory, so
+	// the corpus reaches it as the same relative path the configuration
+	// declares and its own report reads the way a person typed it.
+	corpus := either(opts.Corpus, c.build.Behavior.Corpus)
+	env := append(os.Environ(), "RUN_EPISODE_ROOT="+corpus)
+	matches := opts.Matches
+	if matches == 0 {
+		matches = c.run.Episode.Matches
+	}
+	env = append(env, "RUN_EPISODE_MATCHES="+strconv.Itoa(matches))
+	if opts.Seed != 0 {
+		env = append(env, "RUN_EPISODE_SEED="+strconv.Itoa(opts.Seed))
+	}
+
+	cmd := exec.Command(bin)
+	cmd.Dir = c.res.ProjectRoot
+	cmd.Env = env
+	cmd.Stdout = c.stdout
+	cmd.Stderr = c.stdout
+	if matches == 0 {
+		fmt.Fprintf(c.stdout, "simulate: %s, recording into %s until interrupted\n", target.Name, corpus)
+	} else {
+		fmt.Fprintf(c.stdout, "simulate: %s, %s into %s\n", target.Name, plural(matches, "match", "matches"), corpus)
+	}
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("simulate %s: %w", target.Name, err)
+	}
+	fmt.Fprintf(c.stdout, "\nMine what it recorded with:\n\n    ebigent distill\n")
+	return nil
+}
+
+// plural renders a count with the right noun, since "1 matches" in the
+// line a person reads most often is worth three lines of code.
+func plural(n int, one, many string) string {
+	if n == 1 {
+		return "1 " + one
+	}
+	return strconv.Itoa(n) + " " + many
+}
+
+// simulationTarget picks the entry to run.
+//
+// The kind decides it rather than the name: concept:build-target already
+// separates the headless entry from the playing one, so a project that
+// declared its targets has already answered this. Several is a real
+// question and gets asked as one.
+func simulationTarget(c *context, name string) (buildconf.Target, error) {
+	var sims []buildconf.Target
+	for _, t := range c.build.Build.Target {
+		if name != "" {
+			if t.Name == name {
+				return t, nil
+			}
+			continue
+		}
+		if t.Kind == "simulation" {
+			sims = append(sims, t)
+		}
+	}
+	if name != "" {
+		return buildconf.Target{}, fmt.Errorf("simulate: no target named %q in %s", name, c.res.Load.ConfigPath)
+	}
+	switch len(sims) {
+	case 0:
+		return buildconf.Target{}, errors.New("simulate: no target of kind simulation is declared; a headless entry is what fills a corpus, and `ebigent init` writes one")
+	case 1:
+		return sims[0], nil
+	}
+	var names []string
+	for _, t := range sims {
+		names = append(names, t.Name)
+	}
+	return buildconf.Target{}, fmt.Errorf("simulate: %d simulation targets are declared; name one: %s", len(sims), strings.Join(names, ", "))
 }
 
 // runDistill hands the mining step to the project's own entry point.

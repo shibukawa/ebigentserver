@@ -1,123 +1,80 @@
 // Command {{.Target.Name}} runs {{.Name}} headless: concept:training-mode,
 // session and local state only, no transport and no engine.
 //
-// It is what automated playtests and AI training run through
-// (requirement:offline-simulation), and it is the proof that the rules
-// need neither a human nor a window to advance. Unlimited pacing means it
-// runs as fast as the machine allows rather than at the tick rate.
+// It is what `ebigent simulate` builds and runs, and it is the proof
+// that the rules need neither a human nor a window to advance. Every
+// seat is filled from Binding.NewAgent, so the same rules that carry a
+// person at a keyboard produce a corpus with nobody watching.
+//
+// Recording is why this is worth running at all beyond a smoke test:
+// every decision every seat made lands in data:episode-log with the
+// sight it was made from, which is the input flow:behavior-tree-synthesis
+// needs and the one thing a hand-written enemy loop never produces.
 package main
 
 import (
 	"context"
-	"flag"
 	"fmt"
 	"os"
+	"os/signal"
 
 	"{{.Module}}/game"
 	"github.com/shibukawa/ebigentserver/config/confload"
 	"github.com/shibukawa/ebigentserver/config/runconf"
+	"github.com/shibukawa/ebigentserver/episode"
 	"github.com/shibukawa/ebigentserver/run"
 	"github.com/shibukawa/ebigentserver/session"
 )
 
 func main() {
-	// Where the episodes go. It is a flag rather than a run setting
-	// because data:run-config has no episode section yet; the default is
-	// the behavior.corpus of ebigent.toml, which is what ./cmd/distill
-	// reads back.
-	corpus := flag.String("corpus", env("EBIGENT_CORPUS", "corpus"), "corpus root; empty records nothing")
-	flag.Parse()
-
-	cfgRun := runconf.Bind()
+	cfg := runconf.Bind()
 	if _, err := confload.Load(confload.Options{
 		Owned:    runconf.Prefixes(),
-		Validate: []func() error{func() error { return cfgRun.Validate() }},
+		Validate: []func() error{func() error { return cfg.Validate() }},
 	}); err != nil {
 		fatal(err)
 	}
 
-	// Holding the seed fixed is what makes a run reproducible; vary it
-	// to sweep, never to add entropy (rule:shared-rng-seed).
-	const seed = 1
-	const id = "{{.Name}}-sim-0001"
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer stop()
 
-	bots := make([]*game.Bot, 0, len(game.Slots()))
-	var drivers []*game.Driver
-
-	cfg := game.Config(id, seed, func(_ session.Tick, world *game.State) {
-		for _, d := range drivers {
-			d.OnWorld(world)
-		}
-	})
-	// Recording is why running headless is worth anything beyond a smoke
-	// test: every decision every seat made lands in data:episode-log with
-	// the sight it was made from, which is the input ./cmd/distill needs
-	// and the one thing a hand-written enemy loop never produces.
-	kinds := map[session.SlotID]string{}
-	for _, slot := range game.Slots() {
-		kinds[slot] = "bot"
+	// Everything this run differs on is a [run.episode] value, which is
+	// also how `ebigent simulate` passes down what it was asked for. The
+	// same binary is a four-hundred-match training run and a smoke test.
+	ep := cfg.Episode
+	mode := episode.AnalysisSampled
+	if ep.Mode == "replay_complete" {
+		mode = episode.ReplayComplete
 	}
-	rec, err := run.OpenRecording[game.State, game.Action, game.Sight](run.RecordOptions{
-		Root:       *corpus,
-		EpisodeID:  id,
-		AgentKinds: kinds,
+
+	played, ticks := 0, session.Tick(0)
+	err := run.Serve(ctx, game.Options(), game.Binding(), run.ServeOptions{
+		Matches: ep.Matches,
+		// The seed is the whole recipe: each match adds its index, so a
+		// run reproduces from this one number (rule:shared-rng-seed).
+		Seed: uint64(ep.Seed),
+		// Unlimited rather than the tick rate, because a training run
+		// has nobody watching and no reason to wait for a clock.
+		Time:   session.Unlimited,
+		Record: run.RecordOptions{Root: ep.Root, Mode: mode},
+		OnMatch: func(res run.MatchResult) {
+			played++
+			ticks += res.Ticks
+			fmt.Printf("match %d  seed %d  %d ticks", res.Index, res.Seed, res.Ticks)
+			for _, out := range res.Outcomes {
+				fmt.Printf("  slot %d %s (%d)", out.Slot, out.Signal.Terminal, out.Signal.Score)
+			}
+			fmt.Println()
+		},
 	})
 	if err != nil {
 		fatal(err)
 	}
-	defer rec.Close()
-	cfg.Recorder = rec.Recorder()
-
-	s, err := session.New(cfg)
-	if err != nil {
-		fatal(err)
-	}
-	if err := s.OpenAdmission(); err != nil {
-		fatal(err)
-	}
-	// A local bot is admitted directly rather than as session.Detached:
-	// the session delivers the final sight and Ended to whatever
-	// sits in the seat, and a local controller wants both. Detached is
-	// for a seat whose real controller is across a link, where local
-	// delivery would duplicate the stream it already receives.
-	for _, slot := range game.Slots() {
-		bot := &game.Bot{}
-		bots = append(bots, bot)
-		if err := s.Admit(slot, bot); err != nil {
-			fatal(err)
-		}
-		inbox, err := s.Inbox(slot)
-		if err != nil {
-			fatal(err)
-		}
-		drivers = append(drivers, &game.Driver{Slot: slot, Agent: bot, Inbox: inbox})
-	}
-	if err := s.RunRealtime(context.Background(), session.Unlimited); err != nil {
-		fatal(err)
-	}
-
-	fmt.Printf("{{.Name}} simulation: seed %d, %d ticks", seed, s.Tick())
-	for i, b := range bots {
-		fmt.Printf(", slot %d %s (%d pipes)", i+1, b.Result.Signal.Terminal, b.Result.Signal.Score)
+	fmt.Printf("\n{{.Name}}: %d matches, %d ticks", played, ticks)
+	if ep.Root != "" {
+		fmt.Printf(", recorded into %s", ep.Root)
 	}
 	fmt.Println()
-	if err := rec.Close(); err != nil {
-		fatal(err)
-	}
-	// A nil recording is what an empty root produces, so wiring it
-	// unconditionally is safe and only the report has to ask.
-	if rec != nil {
-		fmt.Printf("recorded %s; ebigent distill reads it from %s\n", rec.Dir, *corpus)
-	}
-}
-
-// env reads a variable the toolchain sets, falling back to the same
-// default the configuration has.
-func env(name, def string) string {
-	if v := os.Getenv(name); v != "" {
-		return v
-	}
-	return def
 }
 
 func fatal(err error) {

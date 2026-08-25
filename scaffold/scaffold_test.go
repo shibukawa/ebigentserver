@@ -87,15 +87,58 @@ func TestGeneratedSimulationRunsToCompletion(t *testing.T) {
 	s := spec(t, "duo", 0, true)
 	generateAndTidy(t, s)
 	out := goRun(t, s.Dir, "run", "./cmd/simulation")
-	if !strings.Contains(out, "mygame simulation:") {
+	if !strings.Contains(out, "mygame: 1 matches") {
 		t.Errorf("simulation output = %q", out)
+	}
+	// The seed is reported because it is the recipe: a run reproduces
+	// from the first match's seed and nothing else.
+	if !strings.Contains(out, "seed 1") {
+		t.Errorf("simulation output = %q, want the seed it ran with", out)
 	}
 	// Two identical bots flying the same seeded pipe field tie, and both
 	// reach the target. Anything else means either the physics stopped
 	// being deterministic or the placeholder bot stopped being able to
 	// fly — both worth failing over.
-	if !strings.Contains(out, "slot 1 draw (10 pipes)") || !strings.Contains(out, "slot 2 draw (10 pipes)") {
+	if !strings.Contains(out, "slot 1 draw (10)") || !strings.Contains(out, "slot 2 draw (10)") {
 		t.Errorf("simulation output = %q, want both bots to clear 10 pipes and tie", out)
+	}
+}
+
+// The headless entry runs the match loop rather than one session, which
+// is what makes `ebigent simulate --matches N` a corpus rather than a
+// smoke test. The count and the seed are run settings, so the same
+// binary does both.
+func TestGeneratedSimulationPlaysTheMatchesItIsAsked(t *testing.T) {
+	if testing.Short() {
+		t.Skip("shells out to the go toolchain")
+	}
+	s := spec(t, "solo", 0, false)
+	generateAndTidy(t, s)
+	corpus := filepath.Join(s.Dir, "corpus")
+	out := goRunEnv(t, s.Dir, []string{"RUN_EPISODE_MATCHES=3", "RUN_EPISODE_SEED=7", "RUN_EPISODE_ROOT=corpus"},
+		"run", "./cmd/simulation")
+	if !strings.Contains(out, "3 matches") {
+		t.Errorf("simulation output = %q, want three matches", out)
+	}
+	// Each later match adds its index to the first seed, so the whole
+	// run reproduces from one number (rule:shared-rng-seed).
+	for _, want := range []string{"seed 7", "seed 8", "seed 9"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("simulation output = %q, want %s", out, want)
+		}
+	}
+	entries, err := os.ReadDir(corpus)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var episodes int
+	for _, e := range entries {
+		if e.IsDir() {
+			episodes++
+		}
+	}
+	if episodes != 3 {
+		t.Errorf("recorded %d episodes, want one per match", episodes)
 	}
 }
 
@@ -325,8 +368,18 @@ func generateAndTidy(t *testing.T, s *scaffold.Spec) {
 
 func goRun(t *testing.T, dir string, args ...string) string {
 	t.Helper()
+	return goRunEnv(t, dir, nil, args...)
+}
+
+// goRunEnv is goRun with settings the child reads at startup, which is
+// the channel the toolchain itself uses to pass a run down.
+func goRunEnv(t *testing.T, dir string, env []string, args ...string) string {
+	t.Helper()
 	cmd := exec.Command("go", args...)
 	cmd.Dir = dir
+	if len(env) > 0 {
+		cmd.Env = append(os.Environ(), env...)
+	}
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		t.Fatalf("go %s in %s: %v\n%s", strings.Join(args, " "), dir, err, out)

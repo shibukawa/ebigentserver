@@ -481,6 +481,7 @@ func render(spec *Spec) (map[string][]byte, error) {
 		fixed[".gitignore"] = "gitignore.tmpl"
 		fixed["README.md"] = "README.md.tmpl"
 		fixed["game/game.go"] = "game.go.tmpl"
+		fixed["game/bind.go"] = "bind.go.tmpl"
 		fixed["game/game_test.go"] = "game_test.go.tmpl"
 	}
 	for name, tmpl := range fixed {

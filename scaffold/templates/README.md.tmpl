@@ -89,11 +89,20 @@ desynchronize. Set it per deployment, not per machine.
 ## Recording, and what it is for
 
 A corpus cannot be collected retroactively, so the pipeline is wired
-before there is any data to put through it. `cmd/simulation` records
-every decision every seat made, with the sight it was made from:
+before there is any data to put through it. `cmd/simulation` fills every
+seat from `Binding.NewAgent` and records every decision each of them
+made, with the sight it was made from:
 
-    go run ./cmd/simulation      # writes corpus/{{.Name}}-sim-0001/
-    ebigent distill              # mines it into behavior/chips.json
+    ebigent simulate --matches 400   # writes 400 episodes into corpus/
+    ebigent distill                  # mines them into behavior/chips.json
+
+`simulate` builds the headless entry and hands it the match count, the
+seed, and where the corpus goes. Those are `[run.episode]` settings, so
+the same binary run by hand does the same thing —
+`RUN_EPISODE_MATCHES=400 ./bin/simulation` is the same run. The loop is
+inside the entry rather than in the command, because a match index
+carries its seed: four hundred matches reproduce from one number only
+while one process is counting them.
 
 `ebigent distill` spawns `{{.DistillEntry}}`, which is a program in this
 project rather than something inside the toolchain. It has to be: a rule

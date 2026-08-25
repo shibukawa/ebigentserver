@@ -593,6 +593,72 @@ func TestAddAgentAnswersEveryQuestionOnItsOwn(t *testing.T) {
 	}
 }
 
+// The cycle a game developer actually runs is fill a corpus, mine it,
+// regenerate. This is the first half, and it has to work on what init
+// wrote before anything is hand edited.
+func TestSimulateFillsTheCorpusFromWhatInitWrote(t *testing.T) {
+	if testing.Short() {
+		t.Skip("shells out to the go toolchain")
+	}
+	dir := t.TempDir()
+	code, out, errOut := run(t, "", "init", dir,
+		"--yes", "--module", "example.com/probe", "--name", "probe",
+		"--style", "solo", "--framework_path", frameworkRoot(t))
+	if code != 0 {
+		t.Fatalf("init: exit %d\nstdout:\n%s\nstderr:\n%s", code, out, errOut)
+	}
+
+	code, out, errOut = run(t, dir, "simulate", "--matches", "3", "--seed", "7")
+	if code != 0 {
+		t.Fatalf("simulate: exit %d\nstdout:\n%s\nstderr:\n%s", code, out, errOut)
+	}
+	// One episode per match, and the seeds are the recipe: the run
+	// reproduces from the first one because each later match adds its
+	// index (rule:shared-rng-seed).
+	entries, err := os.ReadDir(filepath.Join(dir, "corpus"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var episodes int
+	for _, e := range entries {
+		if e.IsDir() {
+			episodes++
+		}
+	}
+	if episodes != 3 {
+		t.Errorf("simulate recorded %d episodes, want 3:\n%s", episodes, out)
+	}
+	for _, want := range []string{"seed 7", "seed 8", "seed 9"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("the run does not report %s:\n%s", want, out)
+		}
+	}
+
+	// And what it recorded has to be what the mining half reads, which
+	// is the whole reason the two verbs share a corpus setting.
+	code, out, errOut = run(t, dir, "distill")
+	if code != 0 {
+		t.Fatalf("distill: exit %d\nstdout:\n%s\nstderr:\n%s", code, out, errOut)
+	}
+	if strings.Contains(out, "no decisions under") {
+		t.Errorf("distill found nothing simulate had just written:\n%s", out)
+	}
+}
+
+// The kind decides which entry runs, because concept:build-target
+// already separated the headless one from the playing one.
+func TestSimulateRefusesAProjectWithNoHeadlessEntry(t *testing.T) {
+	dir := t.TempDir()
+	writeProject(t, dir)
+	code, _, errOut := run(t, dir, "simulate", "--build=false")
+	if code == 0 {
+		t.Fatal("simulate should refuse a project with no simulation target")
+	}
+	if !strings.Contains(errOut, "no target of kind simulation") {
+		t.Errorf("stderr = %q", errOut)
+	}
+}
+
 // A stage is where a game's three types are first named, so nothing can
 // be read and everything is declared. What it writes has to compile, and
 // its declaration has to be the one `ebigent generate` reads.

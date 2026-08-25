@@ -207,10 +207,9 @@ func TestStrayKeyInsideTableArrayElementIsRejected(t *testing.T) {
 	}
 }
 
-// The enum struct tag is documentation in tinybind-go v0.5.17: it reaches
-// neither the generated code nor the loader, so an unlisted value binds
-// happily. Validate is the only thing standing between a typo and a
-// silently wrong topology, which is why Load runs it.
+// A value outside the allowlist is refused, and Load runs Validate so
+// that a project whose enum tags predate the generator's enforcement is
+// caught by the same call.
 func TestValueOutsideTheAllowlistIsRejectedByValidate(t *testing.T) {
 	reset(t)
 	dir := writeProject(t, "[run]\ntopology = \"peer2peer\"\n")
@@ -229,20 +228,32 @@ func TestValueOutsideTheAllowlistIsRejectedByValidate(t *testing.T) {
 	}
 }
 
-func TestLoadItselfDoesNotEnforceTheEnumTag(t *testing.T) {
+// The enum tag used to be documentation: it reached neither the
+// generated code nor the loader, so an unlisted value bound happily and
+// Validate was the only thing between a typo and a silently wrong
+// topology. The generator now emits the check, so the tag holds without
+// a hook — and the message names the key and lists what was allowed,
+// which is what a person needs to fix it.
+//
+// Validate still runs from Load. The two are not redundant: a binding
+// generated before this and committed as it was still relies on it, and
+// Validate also carries the checks no tag can express.
+func TestTheEnumTagHoldsWithoutAValidateHook(t *testing.T) {
 	reset(t)
 	dir := writeProject(t, "[run]\ntopology = \"peer2peer\"\n")
-	run := runconf.Bind()
+	_ = runconf.Bind()
 
-	// No Validate hook: this documents the gap the hook exists to close.
-	if _, err := confload.Load(confload.Options{
+	_, err := confload.Load(confload.Options{
 		Owned: runconf.Prefixes(), StartDir: dir,
 		Args: []string{}, Environ: []string{},
-	}); err != nil {
-		t.Fatalf("load: %v", err)
+	})
+	if err == nil {
+		t.Fatal("want an error for a value outside the allowlist")
 	}
-	if run.Topology != "peer2peer" {
-		t.Errorf("topology = %q; the enum tag was expected to be inert at load", run.Topology)
+	for _, want := range []string{"run.topology", "peer2peer", "standalone, listen, dedicated, p2p"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("err = %v, want it to name %q", err, want)
+		}
 	}
 }
 

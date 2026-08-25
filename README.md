@@ -229,6 +229,7 @@ ebigent generate        # 設定が確定させたものを Go にする
 ebigent build [target]  # generate してから build target をビルド
 ebigent add stage NAME  # StageRuleSet の宣言と World / Action / Sight の雛形を書く
 ebigent add agent NAME  # ルールセットの宣言を読んで session.Agent の骨組みを書く
+ebigent simulate        # ヘッドレスで対局を回し、コーパスに記録する
 ebigent distill         # コーパスを掘って behavior チップと生成エージェントを更新
 ebigent config show     # 実効値と、それを設定した層
 ebigent doctor          # 動かない理由
@@ -262,6 +263,27 @@ kind より後ろはウィザードで、オプションはその初期値にな
 ファイル名は型から)ので、`ebigent add agent` だけで起動しても2問目から先は enter で通る。
 `--yes` で全部既定を取る。ルールセットが複数ある場合だけは既定を取らず、`--package` を要求
 する——別のゲーム向けに書かれたエージェントはコンパイルが通ってしまうからだ。
+
+`simulate` と `distill` が AI 開発の一周になる。前半がコーパスを埋め、後半がそれを Go に
+する。
+
+```bash
+ebigent simulate --matches 400 && ebigent distill
+```
+
+`simulate` は `kind = "simulation"` のターゲットをビルドして走らせ、局数・シード・コーパスの
+行き先を**子プロセスの環境変数**として渡す。渡し方に新しい約束事はない: `[run.episode]` は
+成果物が起動時に読む `data:run-config` の一部で、`RUN_EPISODE_MATCHES=400 ./bin/sim` と
+`ebigent simulate --matches 400` は同じ実行になる。
+
+**繰り返しはコマンドではなくエントリの中で回る。** 対局番号がシードを担っているので
+(`rule:shared-rng-seed`)、400局が1つの数から再現できるのは1プロセスが数えている間だけだ。
+プロセスを400回起動しても得るものはなく、起動コストだけ払うことになる。だから `run.Serve`
+がループを持ち、コマンドはビルドと受け渡しだけを持つ。
+
+**誰と誰が当たるかはコマンドの管轄外**でもある。`concept:continuous-match-loop` は
+組み合わせ方を4つ挙げるが、フレームワークはどれも選ばない——それはゲームの事実だからで、
+エントリの中に書くことになる。
 
 `distill` は掘る処理そのものを持たず、`behavior.distill` が指すパッケージを `go run`
 する。述語は sight を受け取る Go の関数であって値ではないので、ゲームのコードを

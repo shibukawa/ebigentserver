@@ -1,0 +1,61 @@
+package game
+
+import (
+	"github.com/shibukawa/ebigentserver/run"
+	"github.com/shibukawa/ebigentserver/session"
+)
+
+// This file is everything the wrapper needs to know about these rules,
+// and it lives beside them so every entry point starts from the same
+// declaration and cannot drift.
+//
+// Importing run here is not a boundary violation: it links no engine.
+// The engine half is run/eb, and only a rendering entry point imports
+// that (rule:engine-import-confined-to-client-entry).
+//
+// What is deliberately absent is the network. Which transport reaches
+// another player is a property of where a build runs, not of the rules.
+
+// Options is what this game declares about itself: its name, what it
+// accepts input from, and how many seats may sit at one machine.
+func Options() run.Options {
+	return run.Options{
+		Name:    "{{.Name}}",
+		Devices: run.Keyboard,
+{{- if .SharedScreen}}
+		SharedScreen:  true,
+		MaxLocalSeats: {{.Seats}},
+{{- end}}
+	}
+}
+
+// Binding hands the rules to the wrapper.
+//
+// The same declaration serves a window and a headless run. `ebigent
+// simulate` fills every seat from NewAgent and records what they did;
+// a lobby fills only the seats nobody took. Neither knows which it is
+// doing, because putting an agent in a slot is one act
+// (decision:no-ai-game-mode).
+func Binding() run.Binding[State, Action, Sight] {
+	return run.Binding[State, Action, Sight]{
+		Slots: Slots(),
+		// The wrapper drives the loop, so nothing is broadcast to a
+		// renderer here. A window passes its own callback instead.
+		Config: func(id string, seed uint64) session.Config[State, Action, Sight] {
+			return Config(id, seed, nil)
+		},
+		// NewAgent supplies the controller for a seat nobody took. The
+		// id names the policy rather than the seat: it labels the row in
+		// a recorded episode, which is what lets a corpus be split by
+		// kind later.
+		NewAgent: func(session.SlotID) (string, session.Agent[Sight, Action]) {
+			return "bot", &Bot{}
+		},
+		// ProtocolVersion is the wire fingerprint two peers compare
+		// before they play. `ebigent generate` writes it as
+		// SchemaVersion beside the types it encodes; until these rules
+		// have travelled anywhere there is nothing to compare, so it
+		// stays empty here.
+		EvaluationVersion: 1,
+	}
+}
