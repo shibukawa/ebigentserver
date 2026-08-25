@@ -146,14 +146,18 @@ alpha-beta で枝刈りした上での数字です。枝刈りしない探索と
 語彙や採掘器を改良して8割を超えたら、このテストが赤くなって教えてくれます。
 
 ```bash
-go test ./tutorial/step5-simulate/distill -update   # 再生成
-go test -short ./tutorial/step5-simulate/...        # 重い測定を飛ばす
+cd tutorial/step5-simulate && ebigent distill        # 再生成
+```
+
+```bash
+cd tutorial/step5-simulate && go test -short ./...   # 重い測定を飛ばす
 ```
 
 ## 構成
 
 ```
 step5-simulate/
+├── cmd/distill/         ebigent distill が走らせるエントリ
 ├── main.go              ウィンドウ。step 4 から変わらない
 ├── game/                ルール。step 3 から1文字も変えていない
 ├── msg/                 ワイヤ型と生成物
@@ -170,6 +174,15 @@ step5-simulate/
 **`ebigent simulate` は pending のままです。** ここで書いた `Pairing` はチュートリアルの中に
 あり、CLI の verb にはなっていません。`matchloop` が汎用なのに対し、誰と当たるかはゲームごとの
 話なので、そのまま verb にできるものではありません。
+
+**このステップは `ebigent simulate` を使っていません。** verb 自体はあります——ヘッドレスの
+エントリをビルドして局数とシードを渡し、コーパスに記録します。使わないのは、ここで作っている
+ものが訓練用のコーパスではなく**測定**だからです。step 5 の結論は 2語彙 × 2組み合わせ × 3局数の
+12通りを並べた表で、1つの配置を回すコマンドからは出てきません。
+
+だから `Pairing` はチュートリアルの中に残ります。`matchloop` はシードと集計だけを持ち、誰と誰が
+当たるかは呼び出し側に委ねます。`--agents` で1回の run の配置は指定できますが、run をまたいで
+相手を回すのは今もコードです。
 
 **リーグがありません。** `SelfPlay` は定義してありますが、過去バージョンを相手に残す
 リーグ運用は入れていません。三目並べでは意味のある差が出ないためで、それを示すのに

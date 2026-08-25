@@ -17,6 +17,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
+	"path/filepath"
 
 	"github.com/shibukawa/ebigentserver/behavior"
 	"github.com/shibukawa/ebigentserver/episode"
@@ -493,4 +495,67 @@ func (r *randomBot) Decide(context.Context) (msg.Move, bool) {
 		return msg.Move{}, false
 	}
 	return msg.Move{Cell: uint8(r.last.Legal[r.rng.Int64n(int64(len(r.last.Legal)))])}, true
+}
+
+// Compiled is one distillation's output: the chips it approved and the
+// records they were mined from.
+//
+// It exists so that the command that writes the generated sources and
+// the test that checks they are current go through one call. When those
+// two each built their own corpus, they could disagree about the recipe
+// — and a regeneration loop whose two halves disagree cannot be closed
+// by running either of them.
+type Compiled struct {
+	Library *behavior.Library
+	Records []behavior.Record
+}
+
+// Compile runs the canonical recipe: the corpus these committed sources
+// came from, and the only one that reproduces them.
+func Compile() (*Compiled, error) {
+	lib, records, err := Canonical()
+	if err != nil {
+		return nil, err
+	}
+	return &Compiled{Library: lib, Records: records}, nil
+}
+
+// Sources renders every generated file, keyed by its name under the
+// output directory.
+func (c *Compiled) Sources() (map[string][]byte, error) {
+	agent, err := behavior.GenerateAgent(Spec(), Judgement(), c.Library)
+	if err != nil {
+		return nil, err
+	}
+	tests, err := behavior.GenerateTests(TestSpec(), c.Records, 24)
+	if err != nil {
+		return nil, err
+	}
+	chips, err := json.MarshalIndent(c.Library, "", "  ")
+	if err != nil {
+		return nil, err
+	}
+	return map[string][]byte{
+		"agent_gen.go":      agent,
+		"agent_gen_test.go": tests,
+		"chips.json":        append(chips, '\n'),
+	}, nil
+}
+
+// Write puts them on disk. This is what `ebigent distill` reaches
+// through ./cmd/distill.
+func (c *Compiled) Write(dir string) error {
+	files, err := c.Sources()
+	if err != nil {
+		return err
+	}
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return err
+	}
+	for name, body := range files {
+		if err := os.WriteFile(filepath.Join(dir, name), body, 0o644); err != nil {
+			return err
+		}
+	}
+	return nil
 }

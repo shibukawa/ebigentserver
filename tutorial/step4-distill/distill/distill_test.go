@@ -387,59 +387,34 @@ var update = flag.Bool("update", false, "rewrite the committed generated sources
 // TestGeneratedSourcesAreCurrent keeps the committed agent honest: it is
 // what this corpus produces today, not what it produced once.
 func TestGeneratedSourcesAreCurrent(t *testing.T) {
-	lib, records, err := distill.Synthesize(distill.CorpusMatches, distill.Judgement())
+	c, err := distill.Compile()
 	if err != nil {
 		t.Fatal(err)
 	}
-	agent, err := behavior.GenerateAgent(distill.Spec(), distill.Judgement(), lib)
+	files, err := c.Sources()
 	if err != nil {
 		t.Fatal(err)
 	}
-	current(t, "gen/agent_gen.go", agent)
-
-	tests, err := behavior.GenerateTests(distill.TestSpec(), records, 24)
-	if err != nil {
-		t.Fatal(err)
-	}
-	current(t, "gen/agent_gen_test.go", tests)
-
+	// The command writes these and this compares them, and both ask the
+	// same call for the bytes. That is the whole of why the loop closes:
+	// when the two built their own corpora, a regeneration could leave
+	// this red and neither running it again nor rerunning the command
+	// would fix it.
 	if *update {
-		if err := lib.Save("gen/chips.json"); err != nil {
+		if err := c.Write("gen"); err != nil {
 			t.Fatal(err)
 		}
+		t.Logf("wrote %d files under gen/", len(files))
 		return
 	}
-	committed, err := behavior.LoadLibrary("gen/chips.json")
-	if err != nil {
-		t.Fatal(err)
-	}
-	a, _ := json.Marshal(lib)
-	b, _ := json.Marshal(committed)
-	if string(a) != string(b) {
-		t.Fatal("gen/chips.json is stale; rerun: go test ./tutorial/step4-distill/distill -update")
-	}
-}
-
-// current compares one generated file against its committed copy, and
-// rewrites it under -update.
-func current(t *testing.T, path string, generated []byte) {
-	t.Helper()
-	if *update {
-		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+	for name, generated := range files {
+		committed, err := os.ReadFile(filepath.Join("gen", name))
+		if err != nil {
 			t.Fatal(err)
 		}
-		if err := os.WriteFile(path, generated, 0o644); err != nil {
-			t.Fatal(err)
+		if string(generated) != string(committed) {
+			t.Fatalf("gen/%s is stale; regenerate it with: ebigent distill", name)
 		}
-		t.Logf("wrote %s", path)
-		return
-	}
-	committed, err := os.ReadFile(path)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if string(generated) != string(committed) {
-		t.Fatalf("%s is stale; rerun: go test ./tutorial/step4-distill/distill -update", path)
 	}
 }
 

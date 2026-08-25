@@ -180,16 +180,31 @@ framework が承認を人間に通し、最後に `flow:automated-playtest` を�
 コードはビルドでき、エージェントは**コーパスに存在しない方策**を指す。このパイプラインで唯一、
 どこにも痕跡が残らない失敗だ。
 
-再生成は書き出す呼び出しと比較する呼び出しを同じ場所に置いてある。
+再生成はコマンドになった。step 2 で `ebigent init` が置いた `cmd/distill` に、step 4 が中身を
+入れる——それがこのステップで唯一、フレームワークの側から用意されていたファイルだ。
 
 ```bash
-go test ./tutorial/step4-distill/distill -update
+cd tutorial/step4-distill && ebigent distill
+```
+
+```
+800 games, 2632 decisions, 19 chips → distill/gen
+100.0% of the recorded decisions are explained by an approved chip
+```
+
+書き出す側と比較する側は**同じ呼び出しを通る**。コマンドが `Compiled.Write` を呼び、テストは
+`Compiled.Sources` を committed と比べる。別々にコーパスを作れば、再生成してもテストが赤い
+ままで、どちらを走らせても閉じない状態が起こりうる。
+
+```bash
+cd tutorial/step4-distill && go test ./distill
 ```
 
 ## ルールは1文字も変わっていない
 
 <FileTree>
 - tutorial/step4-distill/
+  - cmd/distill/ ebigent distill が走らせるエントリ
   - main.go ウィンドウ。生成エージェントを席に着けるのはここ
   - game/ ルール。step 3 から1文字も変えていない
   - distill/

@@ -190,16 +190,32 @@ framework が承認を人間に通し、最後に `flow:automated-playtest` を�
 ## 再生成
 
 ```bash
-go test ./tutorial/step4-distill/distill -update
+cd tutorial/step4-distill && ebigent distill
 ```
 
-書き出す呼び出しと比較する呼び出しが同じ場所にあります。別のコマンドにすると、
-それ自体が同期を取る対象になります。
+step 2 で `ebigent init` が置いた `cmd/distill` に、中身が入りました。`ebigent.toml` の
+`behavior.distill` がそこを指しているので、`ebigent distill` は `go run ./cmd/distill` を
+するだけです。掘る処理をツールが持たないのは、述語が視界を受け取る Go の関数であって値では
+ないからで、ゲームをリンクしていないバイナリには受け取りようがありません。
+
+```
+800 games, 2632 decisions, 19 chips → distill/gen
+100.0% of the recorded decisions are explained by an approved chip
+```
+
+**書き出す側と比較する側は同じ呼び出しを通ります。** コマンドは `Compiled.Write` を呼び、
+テストは `Compiled.Sources` を committed と比べる。別々にコーパスを作っていたら、再生成しても
+テストが赤いままで、どちらを走らせても閉じない——という状態が起こりえます。
+
+```bash
+cd tutorial/step4-distill && go test ./distill   # コミット済みが古びていないか
+```
 
 ## 構成
 
 ```
 step4-distill/
+├── cmd/distill/     ebigent distill が走らせるエントリ
 ├── main.go            ウィンドウ。生成エージェントを席に着けるのはここ
 ├── game/              ルール。step 3 から1文字も変えていない
 ├── msg/               ワイヤ型と生成物（step 2 と同一）
