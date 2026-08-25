@@ -87,17 +87,23 @@ type AnalyzeOptions struct {
 // same act: read what the project already declares, and write the
 // boilerplate that declaration implies.
 type AddOptions struct {
-	Kind string `arg:"required" help:"what to add; agent is the only kind so far"`
+	Kind string `arg:"required" help:"what to add: stage writes a rule set, agent writes a controller for one"`
 	// Everything after the kind is a wizard question, and every option
 	// is that question's starting value rather than a way to skip it.
 	// The answers narrow each other — the type and the file are derived
 	// from the name — so seeing them filled in is most of what makes
 	// them easy to accept.
-	Name    string `arg:"optional" help:"the policy name, which is the id the factory returns"`
-	Type    string `default:"" help:"Go type name; defaults to the name in upper camel case"`
-	File    string `default:"" help:"file name; defaults to agent_<name>.go"`
-	Package string `default:"" help:"directory of the rule set to write against; asked when a project declares several"`
-	Yes     bool   `default:"false" help:"take the default for every question instead of prompting"`
+	Name string `arg:"optional" help:"agent: the policy name, which is the id the factory returns. stage: the name of the rules"`
+	// Package means the same thing to both kinds — which package — and
+	// differs only in whether it already exists.
+	Package string `default:"" help:"agent: directory of the rule set to write against. stage: directory the new package goes in"`
+	Type    string `default:"" help:"agent: Go type name; defaults to the name in upper camel case"`
+	File    string `default:"" help:"agent: file name; defaults to agent_<name>.go"`
+	Seats   int    `default:"0" help:"stage: declared seats; defaults to protocol.seats.count"`
+	// A string rather than a bool: a wizard has to tell "said no" apart
+	// from "did not say", and a bool cannot.
+	Realtime string `default:"" help:"stage: does the world move on its own every step: yes or no; empty follows protocol.realtime"`
+	Yes      bool   `default:"false" help:"take the default for every question instead of prompting"`
 }
 
 type DistillOptions struct {
@@ -144,7 +150,7 @@ func Run(stdout, stderr io.Writer) int {
 	configOpts := configbind.SubCommand[ConfigOptions]("config", "render or explain the configuration")
 	generateOpts := configbind.SubCommand[GenerateOptions]("generate", "emit the code the configuration settles")
 	analyzeOpts := configbind.SubCommand[AnalyzeOptions]("analyze", "aggregate a recorded episode corpus")
-	addOpts := configbind.SubCommand[AddOptions]("add", "write the boilerplate a declaration implies, such as an agent")
+	addOpts := configbind.SubCommand[AddOptions]("add", "write a stage's rule set, or an agent for one")
 	distillOpts := configbind.SubCommand[DistillOptions]("distill", "mine the corpus into behavior candidates and regenerate the agent")
 	mergeOpts := configbind.SubCommand[MergeOptions]("merge", "fold analyzer proposals into a chip library")
 	doctorOpts := configbind.SubCommand[DoctorOptions]("doctor", "report environment problems")

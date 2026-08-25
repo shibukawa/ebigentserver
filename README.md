@@ -227,6 +227,7 @@ go build -o bin/ebigent ./cmd/ebigent
 ebigent init            # ウィザードでプロジェクト雛形を生成
 ebigent generate        # 設定が確定させたものを Go にする
 ebigent build [target]  # generate してから build target をビルド
+ebigent add stage NAME  # StageRuleSet の宣言と World / Action / Sight の雛形を書く
 ebigent add agent NAME  # ルールセットの宣言を読んで session.Agent の骨組みを書く
 ebigent distill         # コーパスを掘って behavior チップと生成エージェントを更新
 ebigent config show     # 実効値と、それを設定した層
@@ -241,11 +242,21 @@ ebigent --help          # 全 verb
 足し、既存のソースには触れない。エントリポイントの種別は import グラフから読む:
 Ebitengine に到達するものが client で、しないものが simulation。
 
-`add` は `var _ session.StageRuleSet[World, Action, Sight]` を構文として読む。ゲームを
+`add agent` は `var _ session.StageRuleSet[World, Action, Sight]` を構文として読む。ゲームを
 リンクせずにゲームの型を知れる場所はそこしかなく(`requirement:stage-declares-its-wire`)、
 そこには `session.Agent` の実装に要る2つがすでに書いてある。書き出すのは型・表明・
 ファクトリ・4メソッドで、`Decide` だけが TODO として残る——決めることがあるのはそこだけ
 だからだ。座らせる1行(`NewAgent: NewXxx,`)は印刷して終わる。手で書いたコードは書き換えない。
+
+`add stage` はその逆で、読むものがない。型が最初に名付けられる場所だからだ。パッケージを1つ
+作り、World / Action / Sight と `RuleSet` の5メソッド(realtime なら `Advance` を足して6)、
+`Validator`、`Config`、そして**表明**を書く。表明こそが `ebigent generate` の入力なので、
+`add stage` → `generate` でコーデックまで揃う。World と Action が素の型だけなのは制約で、
+名前付き型を他パッケージから持つとコーデックが取り下げられる(`session.Tick` も `fixmath.F64`
+もこれに当たる)——生成物がそう言うより先に、雛形がそう書いてある。
+
+既存モジュールに `ebigent init` した直後はルールセットが1つもないので、`add stage` →
+`add agent` がその順で入口になる。
 
 kind より後ろはウィザードで、オプションはその初期値になる。答えは互いを狭める(型は名前から、
 ファイル名は型から)ので、`ebigent add agent` だけで起動しても2問目から先は enter で通る。

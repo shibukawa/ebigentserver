@@ -417,7 +417,7 @@ func hasGoFiles(dir string) bool {
 }
 
 // AddKinds are the pieces `ebigent add` knows how to write.
-var AddKinds = []string{"agent"}
+var AddKinds = []string{"agent", "stage"}
 
 // runAdd writes the boilerplate a declaration already implies.
 //
@@ -446,6 +446,9 @@ func runAdd(c *context, opts *AddOptions) error {
 		return fmt.Errorf("add: %q is not something to add; the kinds are %s", opts.Kind, strings.Join(AddKinds, ", "))
 	}
 	w := newWizard(c.stdout, opts.Yes)
+	if opts.Kind == "stage" {
+		return addStage(c, w, opts)
+	}
 
 	// Which game comes first, because it decides the two types every
 	// later answer is written against.
@@ -492,6 +495,84 @@ func runAdd(c *context, opts *AddOptions) error {
 	return nil
 }
 
+// addStage writes a rule set, which is the declaration everything else
+// reads.
+//
+// It is the mirror of the agent case. An agent is written against types
+// that already exist somewhere, so the wizard reads them; a stage is
+// where those types are first named, so nothing can be read and the
+// questions are about the game rather than about Go.
+//
+// What it writes compiles and its declaration generates, which is not
+// the same as playable: Apply, Advance, and Evaluate are the game and
+// none of them can be guessed. Saying so is part of the report.
+func addStage(c *context, w *wizard, opts *AddOptions) error {
+	name := w.textValid("Stage name", either(opts.Name, "stage"), stageName)
+	spec := &scaffold.StageSpec{
+		Package: scaffold.StagePackage(name),
+		Title:   either(c.build.Protocol.Title, name),
+		Root:    c.res.ProjectRoot,
+	}
+	dir := w.text("Where the rules go", either(opts.Package, spec.Package))
+	spec.Dir = c.path(filepath.FromSlash(dir))
+
+	// Both of these are already declared, so the questions start at what
+	// the project said about itself rather than at a framework default.
+	seats := opts.Seats
+	if seats == 0 {
+		seats = c.build.Protocol.Seats.Count
+	}
+	spec.Seats = w.number("How many seats does it declare?", max(seats, 1), 1, 64)
+
+	const (
+		moves = "every step, on its own"
+		waits = "only when somebody acts"
+	)
+	def := 0
+	if c.build.Protocol.Realtime == "turn_based" {
+		def = 1
+	}
+	switch opts.Realtime {
+	case "yes":
+		spec.Tick = true
+	case "no":
+	case "":
+		spec.Tick = w.choose("Does the world move?", []string{moves, waits}, def,
+			map[string]string{
+				moves: "session.TickStageRuleSet — Advance runs every tick whether or not anybody acted",
+				waits: "session.StageRuleSet — nothing happens between decisions",
+			}) == moves
+	default:
+		return fmt.Errorf("add stage: realtime is %q; use yes or no", opts.Realtime)
+	}
+
+	if _, err := scaffold.WriteStage(spec); err != nil {
+		return err
+	}
+	fmt.Fprintf(c.stdout, "\nwrote %s\n", spec.Rel())
+
+	// The codecs are the next step and they are not optional: the world
+	// and the action cross a link, and until they are generated nothing
+	// can send either.
+	fmt.Fprintf(c.stdout, "\nThe declaration is what `ebigent generate` reads. Run it to get the codecs:\n\n    ebigent generate\n")
+	fmt.Fprintf(c.stdout, "\nThen fill in World, Action, and Sight, and the three methods that are the game:\n")
+	fmt.Fprintf(c.stdout, "    Apply     what one action does\n")
+	if spec.Tick {
+		fmt.Fprintf(c.stdout, "    Advance   what happens anyway\n")
+	}
+	fmt.Fprintf(c.stdout, "    Evaluate  when a seat has won, lost, or is still playing\n")
+	fmt.Fprintf(c.stdout, "\nUntil Evaluate returns a terminal, a session over these rules never ends.\n")
+	return nil
+}
+
+// stageName refuses a name that could not be a package.
+func stageName(s string) error {
+	if !token.IsIdentifier(scaffold.StagePackage(s)) {
+		return fmt.Errorf("%q does not give a package name; try bonus or bossfight", s)
+	}
+	return nil
+}
+
 // agentName refuses a policy name the type name is derived from and
 // could not be. It reports what was typed rather than what it derived,
 // since the derivation is not what the question asked for.
@@ -522,7 +603,7 @@ func askRuleSet(w *wizard, root string, opts *AddOptions) (codegen.RuleSet, erro
 		return codegen.RuleSet{}, err
 	}
 	if len(sets) == 0 {
-		return codegen.RuleSet{}, errors.New("add: no rule set declared in this project; a game states `var _ session.StageRuleSet[World, Action, Sight] = RuleSet{}` beside its rules")
+		return codegen.RuleSet{}, errors.New("add: no rule set declared in this project, so there is nothing to write an agent against; `ebigent add stage` writes one")
 	}
 	labels := make([]string, len(sets))
 	help := map[string]string{}

@@ -530,11 +530,11 @@ func TestAddAgentWritesAgainstTheDeclaredTypes(t *testing.T) {
 func TestAddRefusesAKindItCannotWrite(t *testing.T) {
 	dir := t.TempDir()
 	writeProject(t, dir)
-	code, _, errOut := run(t, dir, "add", "stage", "bonus")
+	code, _, errOut := run(t, dir, "add", "seat", "left")
 	if code == 0 {
-		t.Fatal("add stage should fail while agent is the only kind")
+		t.Fatal("add seat should fail while it is not a kind")
 	}
-	if !strings.Contains(errOut, "the kinds are agent") {
+	if !strings.Contains(errOut, "the kinds are agent, stage") {
 		t.Errorf("stderr = %q", errOut)
 	}
 }
@@ -590,6 +590,128 @@ func TestAddAgentAnswersEveryQuestionOnItsOwn(t *testing.T) {
 	// caught before the file exists rather than after.
 	if !strings.Contains(out, "sight Sight, action Action") {
 		t.Errorf("the wizard did not report the types it read:\n%s", out)
+	}
+}
+
+// A stage is where a game's three types are first named, so nothing can
+// be read and everything is declared. What it writes has to compile, and
+// its declaration has to be the one `ebigent generate` reads.
+func TestAddStageWritesADeclarationGenerateCanRead(t *testing.T) {
+	if testing.Short() {
+		t.Skip("shells out to the go toolchain")
+	}
+	dir := t.TempDir()
+	code, out, errOut := run(t, "", "init", dir,
+		"--yes", "--module", "example.com/probe", "--name", "probe",
+		"--style", "solo", "--framework_path", frameworkRoot(t))
+	if code != 0 {
+		t.Fatalf("init: exit %d\nstdout:\n%s\nstderr:\n%s", code, out, errOut)
+	}
+
+	code, out, errOut = run(t, dir, "add", "stage", "bonus", "--seats", "2", "--yes")
+	if code != 0 {
+		t.Fatalf("add stage: exit %d\nstdout:\n%s\nstderr:\n%s", code, out, errOut)
+	}
+	body, err := os.ReadFile(filepath.Join(dir, "bonus", "rules.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{
+		"package bonus",
+		"const Seats = 2",
+		"var _ session.TickStageRuleSet[World, Action, Sight] = RuleSet{}",
+		"func (RuleSet) Advance(w *World)",
+		"func Config(id string, seed uint64) session.Config[World, Action, Sight]",
+	} {
+		if !strings.Contains(string(body), want) {
+			t.Errorf("the generated stage does not carry %q:\n%s", want, body)
+		}
+	}
+	if err := goRunIn(dir, "build", "./..."); err != nil {
+		t.Fatalf("the generated stage does not compile: %v", err)
+	}
+
+	// The point of the declaration is that the toolchain reads it. A
+	// world or an action the codec generator withdraws would leave the
+	// stage unable to cross a link, which is the failure this catches.
+	code, out, errOut = run(t, dir, "generate")
+	if code != 0 {
+		t.Fatalf("generate: exit %d\nstdout:\n%s\nstderr:\n%s", code, out, errOut)
+	}
+	if strings.Contains(out, "no codec for") {
+		t.Errorf("generate withdrew a codec the stage needs:\n%s", out)
+	}
+	for _, want := range []string{"wire_gen.go", "delta_gen.go", "schema_gen.go"} {
+		if _, err := os.Stat(filepath.Join(dir, "bonus", want)); err != nil {
+			t.Errorf("generate did not write bonus/%s", want)
+		}
+	}
+}
+
+// The two kinds compose in one direction: a stage names the types, and
+// only then is there something for an agent to be written against.
+func TestAddStageThenAgentClosesTheLoop(t *testing.T) {
+	if testing.Short() {
+		t.Skip("shells out to the go toolchain")
+	}
+	dir := t.TempDir()
+	writeProject(t, dir)
+	if err := os.WriteFile(filepath.Join(dir, "go.mod"),
+		[]byte("module example.com/probe\n\ngo 1.25\n\nrequire github.com/shibukawa/ebigentserver v0.0.0\n\nreplace github.com/shibukawa/ebigentserver => "+frameworkRoot(t)+"\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	// Nothing to read yet, and the refusal has to name the way out.
+	code, _, errOut := run(t, dir, "add", "agent", "tactic", "--yes")
+	if code == 0 {
+		t.Fatal("add agent should refuse a project with no rule set")
+	}
+	if !strings.Contains(errOut, "add stage") {
+		t.Errorf("the refusal does not name what writes one: %q", errOut)
+	}
+
+	code, out, errOut := run(t, dir, "add", "stage", "duel", "--realtime", "no", "--yes")
+	if code != 0 {
+		t.Fatalf("add stage: exit %d\nstdout:\n%s\nstderr:\n%s", code, out, errOut)
+	}
+	// Turn based, so there is no Advance to write.
+	body, err := os.ReadFile(filepath.Join(dir, "duel", "rules.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(body), "Advance") {
+		t.Errorf("a turn-based stage should not declare Advance:\n%s", body)
+	}
+
+	code, out, errOut = run(t, dir, "add", "agent", "tactic", "--yes")
+	if code != 0 {
+		t.Fatalf("add agent: exit %d\nstdout:\n%s\nstderr:\n%s", code, out, errOut)
+	}
+	if !strings.Contains(out, "sight Sight, action Action") {
+		t.Errorf("add agent did not read the stage it was just given:\n%s", out)
+	}
+	// Neither verb resolves modules; both write source into a project
+	// that already has a go.mod, so the sum catches up here.
+	if err := goRunIn(dir, "mod", "tidy"); err != nil {
+		t.Fatal(err)
+	}
+	if err := goRunIn(dir, "build", "./..."); err != nil {
+		t.Fatalf("stage plus agent does not compile: %v", err)
+	}
+}
+
+// A stage is a package of its own, so writing one into a directory that
+// already has rules would be two games sharing a name.
+func TestAddStageRefusesAPackageThatIsTaken(t *testing.T) {
+	dir := t.TempDir()
+	writeProject(t, dir)
+	writeRuleSet(t, filepath.Join(dir, "rules"))
+	code, _, errOut := run(t, dir, "add", "stage", "rules", "--yes")
+	if code == 0 {
+		t.Fatal("add stage should refuse a package that already holds Go source")
+	}
+	if !strings.Contains(errOut, "already holds Go source") {
+		t.Errorf("stderr = %q", errOut)
 	}
 }
 

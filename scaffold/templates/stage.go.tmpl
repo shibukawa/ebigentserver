@@ -1,0 +1,179 @@
+// Package {{.Package}} is one stage of {{.Title}}: a rule set, the world
+// it commits, and the two types that travel with it.
+//
+// A stage is the unit a session runs. A match holds the seats and the
+// link; a stage holds the rules being played with them. That is why a
+// game adding a bonus round after the main one adds a package like this
+// one rather than a branch inside the rules it already has — the seats
+// and the link stay, and everything else may differ.
+//
+// Nothing here imports an engine, and nothing here asks who occupies a
+// seat (decision:no-ai-game-mode). A person at a keyboard and a
+// generated policy reach these rules through the same session.Agent.
+package {{.Package}}
+
+import "github.com/shibukawa/ebigentserver/session"
+
+// Seats is how many concept:player-slot entries these rules declare. It
+// is a rule rather than a setting: changing it changes the game.
+const Seats = {{.Seats}}
+
+// Slots is the game-defined slot set. Slot 0 belongs to the session, so
+// player slots count from one.
+func Slots() []session.SlotID {
+	out := make([]session.SlotID, 0, Seats)
+	for i := range Seats {
+		out = append(out, session.SlotID(i+1))
+	}
+	return out
+}
+
+// World is concept:world-state: everything the session commits, and what
+// a second machine receives as a delta.
+//
+// Every member here is a plain type, and that is a constraint rather
+// than a style. The codec generator carries no named type from another
+// package — session.Tick and fixmath.F64 both hit it — and it withdraws
+// a codec it could build only half of rather than dropping a field on
+// every send. So a tick counter is a uint64 and a fixed-point quantity
+// is stored as the raw int64 behind it.
+type World struct {
+	// Tick counts committed steps.
+	Tick uint64
+	// Over ends the stage; ActingSlots reads it.
+	Over bool
+	// TODO: the state this stage actually commits.
+}
+
+// Action is one concept:action: what a single seat submits in one step.
+// It is the only thing that travels upstream; the world never does.
+type Action struct {
+	// Choice stands in for the real decision, and it is here rather
+	// than left empty because a type carrying nothing gets no codec —
+	// the generator refuses the whole type, and this one has to cross a
+	// link.
+	//
+	// TODO: replace it with what one decision actually is.
+	Choice uint8
+}
+
+// Sight is what one slot may see (concept:sight).
+//
+// A separate type from World even where the two carry the same facts,
+// because narrowing what a seat may know later is a change to Project
+// alone, and no controller can read around it — none ever receives a
+// World (concept:visibility-scope).
+type Sight struct {
+	// You is the observing slot, so an agent needs no other way to
+	// learn which seat it holds.
+	You session.SlotID
+	// Tick and Over mirror the world's, because a controller deciding
+	// on stale facts is a bug the sight can prevent.
+	Tick uint64
+	Over bool
+	// Signal travels with the sight so every controller has a criterion
+	// without asking for one.
+	Signal session.EvaluationSignal
+}
+
+// RuleSet is the rules of this stage.
+type RuleSet struct{}
+
+// The assertion below is the one place these rules meet the framework,
+// and the one place the toolchain reads. `ebigent generate` takes the
+// world and action positions from it and writes their codecs
+// (requirement:stage-declares-its-wire), so there is nothing else to
+// declare and nothing to keep in step.
+var _ session.{{if .Tick}}Tick{{end}}StageRuleSet[World, Action, Sight] = RuleSet{}
+
+// Start returns the opening world, derived from the session's shared RNG
+// seed (rule:shared-rng-seed). Two runs with the same seed produce the
+// same stage, which is what makes an episode replayable — so randomness
+// comes from here and never from the clock.
+func (RuleSet) Start(seed uint64) World {
+	// TODO: build the opening position. Keep any generator inside the
+	// World so its stream advances only through simulation steps and
+	// travels with every checkpoint.
+	return World{}
+}
+
+{{if .Tick -}}
+// ActingSlots reports the slots still in play. Realtime pacing does not
+// consult it to decide whose turn it is — every seat may submit every
+// tick and a silent seat simply contributes nothing — so this mainly
+// answers whether anyone is left.
+{{- else -}}
+// ActingSlots reports the slots that must decide this step. Returning
+// none means the stage has no further decisions, which is only legal
+// once every slot's evaluation is terminal.
+{{- end}}
+func (RuleSet) ActingSlots(w *World) []session.SlotID {
+	if w.Over {
+		return nil
+	}
+	return Slots()
+}
+
+// Apply advances the world by one already-validated action. Legality was
+// settled by Validator, so this cannot fail and must not re-check.
+func (RuleSet) Apply(w *World, slot session.SlotID, a Action) {
+	// TODO: fold the action into the world.
+}
+{{if .Tick}}
+// Advance runs one simulation step after this tick's inputs were
+// applied. It is what separates a realtime stage from a turn-based one:
+// the world moves whether or not anybody acted.
+func (RuleSet) Advance(w *World) {
+	w.Tick++
+	// TODO: the physics, the timers, whatever moves on its own.
+}
+{{end}}
+// Project builds the sight a slot is allowed to see.
+//
+// Everything is visible here, which is where a stage starts. Hiding
+// something from a seat later is a change to this method and to nothing
+// else.
+func (g RuleSet) Project(w *World, slot session.SlotID) Sight {
+	return Sight{
+		You:    slot,
+		Tick:   w.Tick,
+		Over:   w.Over,
+		Signal: g.Evaluate(w, slot),
+	}
+}
+
+// Evaluate computes the slot's data:evaluation-signal. The session calls
+// it and an agent never scores itself
+// (rule:evaluation-computed-by-session), which is what makes the number
+// recorded in a corpus comparable across runs.
+func (RuleSet) Evaluate(w *World, slot session.SlotID) session.EvaluationSignal {
+	// TODO: score, progress, and a terminal once the stage ends. Until
+	// there is one, every seat reads as still playing — honest, and the
+	// reason a stage with no terminal never finishes.
+	return session.EvaluationSignal{}
+}
+
+// Validator is api:action-validator: what is possible under the rules.
+// It runs before Apply and must not mutate the world.
+type Validator struct{}
+
+// Legal reports whether the action can be applied in this world.
+func (Validator) Legal(w *World, slot session.SlotID, a Action) error {
+	// TODO: refuse what the rules do not allow. Anything accepted here
+	// reaches Apply, which cannot fail, so every refusal belongs in
+	// this method.
+	return nil
+}
+
+// Config assembles a session over these rules. Every entry point builds
+// its session through here, so a rule change reaches all of them — and
+// the signature is the one run.Binding.Config takes.
+func Config(id string, seed uint64) session.Config[World, Action, Sight] {
+	return session.Config[World, Action, Sight]{
+		ID:        id,
+		Slots:     Slots(),
+		RuleSet:   RuleSet{},
+		Validator: Validator{},
+		Seed:      seed,
+	}
+}
