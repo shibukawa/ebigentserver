@@ -24,6 +24,7 @@ import { fileURLToPath } from 'node:url';
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = process.env.EBIGENT_REPO_ROOT || join(HERE, '..', '..', '..');
 const DOCS = join(ROOT, 'website', 'src', 'content', 'docs');
+const PUBLIC = join(ROOT, 'website', 'public');
 const ASTRO_CONFIG = join(ROOT, 'website', 'astro.config.mjs');
 const KNOWLEDGE = join(ROOT, '.knowledge');
 const TUTORIAL_DIR = join(ROOT, 'tutorial');
@@ -276,6 +277,15 @@ if (wants('links')) {
       const [target, anchor] = raw.split('#');
       const route = target.endsWith('/') || target === '' ? target || '/' : `${target}/`;
 
+      // Starlight copies website/public to the site root. A screenshot such as
+      // /images/tutorial/step2.jpg is therefore a valid link even though no
+      // content page produces that route.
+      const publicFile = join(PUBLIC, target.replace(/^\/+/, ''));
+      const publicRel = relative(PUBLIC, publicFile);
+      if (publicRel && !publicRel.startsWith('..') && existsSync(publicFile) && statSync(publicFile).isFile()) {
+        continue;
+      }
+
       const dest = byRoute.get(route);
       if (!dest) {
         const hint = gone.has(route)
@@ -515,7 +525,7 @@ if (wants('shape')) {
     // keeps to the phrasings that rarely appear by accident. A bare 〜ではない
     // is deliberately absent: it is common enough that including it would
     // silence the check on pages that never state a limit at all.
-    const limits = /まだない|ここでは扱わない|向いて(い)?ない|使わない|適して(い)?ない|できない|限界|別の(ステップ|チュートリアル|ページ)|扱わない|残っている|とは限らない|ものでは(ない|ありません)|だけでは|しかない/;
+    const limits = /まだない|ここでは扱わ(?:ない|ません)|向いて(?:い)?(?:ない|ません)|使わ(?:ない|ません)|適して(?:い)?(?:ない|ません)|でき(?:ない|ません)|限界|別の(ステップ|チュートリアル|ページ)|扱わ(?:ない|ません)|残って(?:いる|います)|とは限ら(?:ない|ません)|ものでは(?:ない|ありません)|だけでは|しかない/;
     if (!limits.test(page.body)) {
       report('shape', 'info', page, 1, 'nothing here says where this page stops', 'every page states its own boundary — check whether one is present in wording this check missed');
     }

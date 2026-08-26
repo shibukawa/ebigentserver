@@ -5,9 +5,9 @@ description: tuning profile が宣言する tick と送信レート、3つの ba
 
 import { Aside, LinkCard } from '@astrojs/starlight/components';
 
-格闘ゲームと FPS と戦略ゲームは、tick レートでも送信レートでも保持深度でも合意しない。
-だから framework は**既定値を一つも持っていない**。リアルタイムセッションは自分の
-プロファイルを宣言しなければならず、宣言は起動前に整合検査を通される。
+格闘ゲーム、FPS、戦略ゲームでは、適切な tick レート、送信レート、履歴の保持数が異なります。
+そのため framework は、これらの**既定値を持ちません**。リアルタイムセッションごとに tuning profile を
+宣言し、起動前に値の整合性を検査します。
 
 ```go
 tuning := session.TuningProfile{
@@ -22,9 +22,10 @@ if err := tuning.Validate(); err != nil {
 }
 ```
 
-検査に落ちる条件は具体的だ。`SendRate` が `TickRate` を超える、`TickRate` が `SendRate` の
-倍数でない（送信間隔が整数 tick にならない）、`BaselineBounded` なのに `SpeculationDepth` が
-ない、`SpeculationDepth` が `HistoryDepth` 以上（確定 baseline が保持範囲から落ちてしまう）。
+検査で拒否する条件は具体的です。たとえば `SendRate` が `TickRate` を超える場合、`TickRate` が
+`SendRate` の倍数ではなく送信間隔が整数 tick にならない場合、`BaselineBounded` なのに
+`SpeculationDepth` がない場合、`SpeculationDepth` が `HistoryDepth` 以上で確定 baseline が
+保持範囲から外れる場合です。
 
 ## 主な宣言項目
 
@@ -43,8 +44,8 @@ if err := tuning.Validate(); err != nil {
 
 ## baseline の3モード
 
-差分は「何との差か」を決めないと作れない。選択肢は3つで、これはそのまま帯域と復帰しやすさの
-取引になる。
+delta を作るには、比較元となる baseline を決める必要があります。三つのモードには、帯域使用量と
+損失からの復帰しやすさのトレードオフがあります。
 
 | モード | 差分の相手 | 性質 |
 |---|---|---|
@@ -52,18 +53,18 @@ if err := tuning.Validate(); err != nil {
 | `BaselineConfirmedOnly` | 相手が**ack した**最新バージョン | 届いた delta は必ずデコードできる。RTT と損失の分だけ delta が太る |
 | `BaselineBounded` | 確定 baseline から `SpeculationDepth` まで先読み、超えたら確定側に戻る | 中間 |
 
-128ユニットの4人戦に ack 遅延と RTT スパイクを注入して3モードを計測したテストがある
+128ユニットの4人戦に ack 遅延と RTT スパイクを注入し、三つのモードを計測するテストがあります
 （[`samples/rtslite`](https://github.com/shibukawa/ebigentserver/tree/main/samples/rtslite)）。
-順序は毎回同じで、**speculative < bounded(16) < confirmed_only** になり、confirmed_only は
-speculative より4割ほど多く払う。テストが固定しているのはこの順序であって、絶対値は
-リンク次第で動く。
+測定結果の順序は毎回 **speculative < bounded(16) < confirmed_only** となり、confirmed_only は
+speculative より約4割多くの帯域を使います。テストが固定するのはこの順序です。絶対値は、
+リンクの状態によって変わります。
 
-損失のないローカルリンクなら speculative が素直に正しい。悪い回線でスパイクが乗るなら、
-confirmed_only が払う分は保険料として理解できる。
+損失のないローカルリンクでは、帯域の小さい speculative を選びます。損失や RTT スパイクがある
+回線では、confirmed_only の追加帯域を、再同期を避けるためのコストとして選べます。
 
 <Aside type="note" title="baseline は保持されていなければならない">
-`HistoryDepth` を超えて古い baseline を要求されたら、delta は作れない。そのときは
-snapshot に落ちる。落ちること自体は正常な動作で、頻度が高いなら宣言が合っていない。
+`HistoryDepth` より古い baseline を要求された場合は delta を作れないため、snapshot を送ります。
+snapshot への切り替え自体は正常です。ただし、頻繁に起きる場合は profile を見直す必要があります。
 </Aside>
 
 ## ack の運び方
@@ -74,22 +75,22 @@ snapshot に落ちる。落ちること自体は正常な動作で、頻度が�
 | dedicated | ack 専用の datagram を出す |
 | delayed_piggyback | 少し待って相乗りを狙い、来なければ出す |
 
-上りトラフィックがほとんどない役——たとえば入力を送らない観戦者——は、相乗りする相手が
-いないので dedicated になる。
+入力を送らない観戦者のように上りトラフィックがほとんどない役では、ack を相乗りさせる送信が
+ありません。そのため dedicated を使います。
 
 ## 入力の取り込み方
 
-1 tick に何件の入力を取り込むかは、同期モードが決める。
+1 tick に取り込む入力の件数は、同期モードで選びます。
 
 ```go
 session.IntakeNewest // 最新の1件だけ
 session.IntakeAll    // キューを到着順に全部
 ```
 
-パドルやスティックのような連続操作では、古い入力は新しい入力に上書きされている。
-だから `IntakeNewest` が正しい。一方 RTS の命令ストリームでは、1 tick に3つの命令が来たなら
-3つとも意味がある。`IntakeAll` は席ごとの FIFO を保つので、決定的コミットが要求する
-「席内の順序」がそのまま満たされる。
+パドルやスティックのような連続操作では、新しい入力が古い入力を置き換えるため、`IntakeNewest` を
+使います。一方、RTS の命令ストリームでは、1 tick に届いた三つの命令すべてに意味があります。
+この場合は `IntakeAll` を使います。席ごとの FIFO を保つため、決定的コミットに必要な席内の順序も
+維持できます。
 
 ## 1 tick の往復
 
@@ -103,19 +104,20 @@ session.IntakeAll    // キューを到着順に全部
 例外  : join したとき、あるいは同期が壊れたとき → data:snapshot
 ```
 
-上りが行動で、下りが**投影された状態の差分**。この非対称がハイブリッド同期の形で、
-RTS のような「1席が多数のユニットを操る」ゲームでもそのまま成立する。コマンドは13バイトの
-固定配列（wire プロファイル）で上り、view の snapshot は600バイト超の map（world プロファイル）で
-下る、といった具合に、2つの CBOR プロファイルが同じセッションの中で併存する。
+上りでは行動を送り、下りでは**席ごとに投影した状態の差分**を送ります。これがハイブリッド同期です。
+RTS のように一つの席が多数のユニットを操作するゲームでも、同じ形を使えます。たとえば、上りの
+コマンドを13バイトの固定配列、下りの view snapshot を600バイト超の map として、異なる二つの
+CBOR プロファイルを同じセッションで併用できます。
 
 ## 遅い agent、消えた agent
 
-リアルタイムペーシングでは、`Decide` が間に合わなかった agent はその tick に入力がない。
-待たない。これは事故ではなく宣言された挙動で、`InputIntake` と合わせて読むと意味が通る。
+リアルタイムペーシングでは、`Decide` が期限に間に合わなかった agent の入力を、その tick では
+受け取りません。セッションも待機しません。これは例外ではなく、`InputIntake` と組み合わせて
+宣言する通常の動作です。
 
-沈黙が `SilenceDeadline` を超えるか、トランスポートが閉じたら離脱とみなす。そこから先は
-ゲームの方針で、席を空けたまま続けることも、その席に新しい agent を着席させることもできる。
-後者が「AI 引き継ぎ」と呼ばれているものだが、実装としては
-[ただの新しい着席](/integration/agent/)でしかない。
+入力のない状態が `SilenceDeadline` を超えるか、トランスポートが閉じた場合は離脱とみなします。
+その後の扱いはゲーム側で決められます。席を空けたまま続けることも、新しい agent を着席させることも
+できます。後者は「AI 引き継ぎ」と呼べますが、実装上は
+[新しい Agent の着席](/integration/agent/)です。
 
-<LinkCard title="接点は4つしかない" href="/integration/" description="ここまでの機構に、ゲーム側が触る場所は驚くほど少ない。" />
+<LinkCard title="接点は4つしかない" href="/integration/" description="ここまでの機構にゲーム側が触れる接点は、四つだけです。" />

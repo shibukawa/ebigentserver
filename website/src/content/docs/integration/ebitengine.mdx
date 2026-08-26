@@ -1,22 +1,22 @@
 ---
 title: Ebitengine への統合
-description: Update は何も決めず、Draw は何も持たない。契約の名前が engine と衝突しない理由と、1つのディレクトリから描画クライアントとヘッドレスサーバの両方を出す配線。
+description: Update は何も決めず、Draw は何も持ちません。契約の名前が engine と衝突しない理由と、1つのディレクトリから描画クライアントとヘッドレスサーバの両方を出す配線。
 ---
 
 import { Aside, Steps, Tabs, TabItem, LinkCard } from '@astrojs/starlight/components';
 
-クライアントのエントリでは、世界を進める契約と画面を描く契約が同じファイルに並ぶ。
-Ebitengine 側は `Game`——`Update` / `Draw` / `Layout` の3つ。ebigentserver 側は
+クライアントのエントリには、世界を進める契約と、画面を描く契約が並びます。
+Ebitengine 側は `Game` の `Update` / `Draw` / `Layout` という三つです。ebigentserver 側は
 [`StageRuleSet`](/integration/stage-rule-set/)——`Start` / `ActingSlots` / `Apply` / `Project` /
-`Evaluate` の5つ。
+`Evaluate` の五つです。
 
-この framework の側が `Game` **ではない**のは、まさにこの並びのためだ。同じ名前の無関係な
-インターフェースが1ファイルに2つあると、どちらが世界を進めるのかが名前から消える。
-どちらに何を書くかを間違えると、あとからボットもリプレイもヘッドレスサーバも作れなくなる——
-しかも、間違えた直後は普通に動いてしまう。
+framework 側の契約を `Game` と呼ばないのは、二つの役割を名前から区別するためです。無関係な
+インターフェースが同じ名前では、どちらが世界を進めるのか分かりません。描画側へルールを書いても、
+最初は動く可能性があります。しかし、あとからボット、リプレイ、ヘッドレスサーバを追加できなくなります。
 
-線の引き方は一つしかない。**`Update` は何も決めない**。キーを行動に変えて inbox に入れるだけだ。
-**`Draw` は何も持たない**。渡された世界を描くだけ。シミュレーションは別の goroutine で回る。
+役割は明確に分けます。**`Update` はキー入力を行動へ変換し、inbox に入れるだけです**。
+**`Draw` は受け取った世界を描くだけです**。世界を進めるシミュレーションは、別の goroutine で
+実行します。
 
 ## 2つの goroutine
 
@@ -62,8 +62,8 @@ Ebitengine 側は `Game`——`Update` / `Draw` / `Layout` の3つ。ebigentserv
 </svg>
 </div>
 
-Ebitengine は main goroutine を明け渡せと言ってくる。だから session は別の goroutine に置き、
-main は `ebiten.RunGame` に渡す。
+Ebitengine は main goroutine で実行する必要があります。そのため、session を別の goroutine で動かし、
+main goroutine は `ebiten.RunGame` に渡します。
 
 ```go
 func serve(ctx context.Context, h *host) error {
@@ -80,7 +80,7 @@ func serve(ctx context.Context, h *host) error {
 
 ## キーボードが行動になる場所
 
-生のデバイス入力がゲームの行動に変わるのは、**このファイルの中だけ**だ。
+生のデバイス入力をゲームの行動へ変換するのは、**クライアントエントリの中だけ**です。
 
 ```go
 // 座席ごとに1キー。この規模ではこれが api:input-adapter の全部
@@ -102,19 +102,18 @@ func (a *app) Update() error {
 }
 ```
 
-`Update` がやっているのは変換と投函だけで、判断が1つもない。だから同じ `game.Action` を、
-ボットも、リプレイストリームも、ネットワークの向こうのピアも、engine なしで作れる。
+`Update` は入力を変換して送るだけで、世界を更新する判断を行いません。同じ `game.Action` を、
+ボット、リプレイストリーム、リモートピアも engine に依存せずに作れます。
 
 <Aside type="caution" title="Draw で入力を読まない">
 Ebitengine は `Update` を毎秒 TPS 回（既定60）呼び、`Draw` は画面のリフレッシュに合わせて
-呼ぶ——**回数が一致しない**。`Draw` で `IsKeyJustPressed` を読むと、入力が抜けたり二重に
-入ったりする。入力は `Update`、描画は `Draw`。
+呼びます。二つの**呼び出し回数は一致しません**。`Draw` で `IsKeyJustPressed` を読むと、入力を
+取りこぼしたり、二重に処理したりします。入力は `Update`、描画は `Draw` で扱います。
 </Aside>
 
 ## 人間の席は Detached
 
-ここは直感に反するかもしれない。**窓が担当している席は、session から見ると `Detached`** に
-なっている。
+ウィンドウが担当する人間の席には、実体のある Agent ではなく **`Detached` を着席させます**。
 
 ```go
 local := localSeats()
@@ -134,23 +133,22 @@ for i, slot := range game.Slots() {
 }
 ```
 
-理由は二重配送を避けることにある。窓は broadcast された世界をすでに持っているので、
-session が同じ視界をコールバックでも渡すと、**同じ情報が2経路で届いて競合する**。
+これは、同じ情報の二重配送を避けるためです。ウィンドウは broadcast された世界をすでに
+受け取っています。session がコールバックでも同じ視界を渡すと、**二つの経路が競合します**。
 
-そしてこの形は、そのままネットワーク越しのプレイヤーの形でもある。リモートのピアが着席する
-ときも席は `Detached` で、視界は下りの状態ストリームで届き、行動は `Inbox` に入る。
-だから `netplay` を前に置く作業は、この `cmd/` ディレクトリだけの話になり、`game/` の下は
-一行も動かない。
+リモートプレイヤーにも同じ形を使います。リモートピアの席にも `Detached` が座り、視界は下りの
+状態ストリームで届き、行動は `Inbox` へ入ります。そのため `netplay` の追加は `cmd/` 内で完結し、
+`game/` のコードは変更しません。
 
 <Aside type="note" title="ボットだけは直接 Admit">
-ローカルのボットは最終視界と `Ended` を受け取りたいので、`Detached` ではなく本体を着席させる。
-そのうえで `Driver` が broadcast された世界を投影して `Observe` / `Decide` に流す。
+ローカルボットには最終視界と `Ended` を渡すため、`Detached` ではなく Agent 本体を着席させます。
+`Driver` が broadcast された世界を投影し、`Observe` / `Decide` へ渡します。
 </Aside>
 
 ## 描画は世界を借りない
 
-`Broadcast` は session の goroutine で走り、`Draw` は Ebitengine の goroutine で走る。
-session は渡したあとも同じメモリを書き続けるので、ポインタを持ち回ると壊れる。
+`Broadcast` は session の goroutine、`Draw` は Ebitengine の goroutine で実行します。session は
+値を渡したあとも同じメモリを書き換えるため、`Draw` 側でポインタを保持してはいけません。
 
 ```go
 func (v *view) store(w *gameState) {
@@ -162,22 +160,22 @@ func (v *view) store(w *gameState) {
 }
 ```
 
-構造体の代入だけではスライスの背後の配列が共有されたままになる。`append` で切り離すのは
-そのためだ。
+構造体を代入するだけでは、スライスの背後にある配列を共有したままです。そこで `append` を使い、
+別の配列へコピーします。
 
-そして描画では浮動小数点を使ってよい。というより、使うしかない。
+描画処理では、浮動小数点を使えます。ピクセル座標への変換には浮動小数点が必要です。
 
 ```go
 // wire のスケールは 1/1024。表示の計算が float なのは、ここでだけ合法
 px := func(v msg.Fixed1024) float32 { return float32(v) / 1024 }
 ```
 
-固定小数点はシミュレーションの決定性のためにあるのであって、ピクセルを置くためではない。
-**float が出てきた値をシミュレーションに戻さない**限り、この一方通行は安全だ。
+固定小数点を使う目的は、シミュレーションの決定性を保つことです。描画で作った
+**float の値をシミュレーションへ戻さない**限り、固定小数点から float への一方向の変換は安全です。
 
 ## 1つのディレクトリ、2つのリンク形態
 
-同じ `cmd/` から、描画するビルドとヘッドレスのビルドが出る。切り替えはビルドタグ1つ。
+同じ `cmd/` から、描画するビルドとヘッドレスビルドを作れます。一つのビルドタグで切り替えます。
 
 <Tabs>
 <TabItem label="描画するビルド">
@@ -228,8 +226,8 @@ func serve(ctx context.Context, h *host) error {
 </TabItem>
 </Tabs>
 
-変種ファイルが供給するのは `localSeats()` と `serve()` の**2つだけ**だ。3つ目が必要になったら、
-それは分割線を引く場所を間違えている。
+ビルドタグで切り替えるファイルが提供するのは、`localSeats()` と `serve()` の**二つだけ**です。
+切り替える関数が増える場合は、描画とセッションの責任分担を見直します。
 
 ```bash
 go build ./cmd/flappy
@@ -239,12 +237,13 @@ go build ./cmd/flappy
 go build -tags dedicated ./cmd/flappy
 ```
 
-タグが**レンダラを外す**方向に効いていることに注目してほしい。足す方向ではない。開発者が
-一日中走らせるのは素のビルドで、出荷するサーバの方が意図的な変種になる。
+タグは、通常のビルドへレンダラを追加するのではなく、**dedicated ビルドからレンダラを外す**ために
+使います。開発中に頻繁に使う描画ビルドを既定とし、出荷用サーバを明示的な変種にします。
 
 <Aside type="tip" title="なぜここだけタグを使うのか">
-2つの形は1プロセスを共有できない——ヘッドレスサーバは engine を**リンクすらしてはいけない**。
-そしてタグをこのディレクトリの外に出さないので、付け忘れは遠くではなく入口で失敗する。
+二つの形を一つのプロセス内で共存させることはできません。ヘッドレスサーバは engine を
+**リンクしてはいけない**ためです。ビルドタグをこのディレクトリ内だけで使うことで、タグの指定漏れを
+入口で検出できます。
 </Aside>
 
 ## 境界はテストが守る
@@ -266,34 +265,33 @@ func TestModuleImportBoundary(t *testing.T) {
 var renderingEntries = []string{"cmd/flappy"}
 ```
 
-**両方を検査する**のが要点だ。タグなしのグラフは、タグ付きビルドについて何も言わない。
+**タグなしと dedicated タグ付きの両方を検査します**。タグなしの import グラフだけでは、
+タグ付きビルドの依存関係を検証できません。
 
-`game/` に描画呼び出しを1つ移してもコンパイルは通る。落ちるのはここで、しかも
-**どの import 連鎖でそうなったか**まで出る。
+`game/` に描画呼び出しを一つ移しても、描画ビルドのコンパイルは通る可能性があります。しかし、
+境界テストは失敗し、**どの import の連鎖で engine が入ったか**まで表示します。
 
 <Aside type="caution" title="キャッシュに注意">
-この検査は go ツールチェーンを呼び出すが、テストキャッシュはそれを追跡しない。import グラフを
-確かめたいときは `-count=1` を付ける。
+この検査は Go ツールチェーンを呼び出しますが、その結果をテストキャッシュは追跡しません。
+import グラフを変更したあとに確認するときは、`-count=1` を付けて実行します。
 </Aside>
 
 ## 動かしてみる
 
-pong の描画クライアントが実物だ。ウィンドウは、ボットたちが使っているのと同じループバック
-リンクのクライアントとして振る舞う——snapshot / delta のストリームから世界を再構成し、
-inbox に入力を出す。
+pong の描画クライアントで、この構成を確認できます。ウィンドウは、ボットと同じループバックリンクの
+クライアントとして動きます。snapshot / delta のストリームから世界を再構成し、inbox へ入力を送ります。
 
 ```bash
 go run ./samples/pong/cmd/pong-client
 ```
 
-W/S または ↑/↓ で左パドルを操作する。
+W/S または ↑/↓ キーで、左のパドルを操作します。
 
 ```bash
 go run ./samples/pong/cmd/pong-client -left=bot
 ```
 
-こちらはボット同士の対戦を観戦する。観戦のときウィンドウは受信専用の attach になり、
-inbox を持たない。
+こちらは、ボット同士の対戦を観戦します。観戦時のウィンドウは受信専用で接続し、inbox を持ちません。
 
 ## ゼロから作る
 
@@ -301,10 +299,10 @@ inbox を持たない。
 ebigent init
 ```
 
-ウィザードの[3問](/connection/#ウィザードが聞く3つのこと)に答えると、Ebitengine の
-Flappy Bird 風のプロジェクトが出てくる。2羽が同じパイプ列を飛び、操作は flap だけ。
-リアルタイム session、固定小数点物理、シード付き RNG、engine をクライアントエントリに
-閉じ込める構成が、最初から動く状態で入っている。
+ウィザードの[三つの質問](/connection/#ウィザードが聞く3つのこと)に答えると、Ebitengine で動く
+Flappy Bird 風のプロジェクトが生成されます。2羽が同じパイプ列を飛び、操作は flap だけです。
+リアルタイム session、固定小数点物理、シード付き RNG、engine をクライアントエントリだけに
+閉じ込める構成が、最初から動く状態で含まれます。
 
 <Steps>
 
@@ -316,14 +314,15 @@ Flappy Bird 風のプロジェクトが出てくる。2羽が同じパイプ列�
 
 </Steps>
 
-3問目の答えがそのまま `localSeats()` に出る。1台を共有するなら全席がローカルで、キーが
-1人1つ割り当てられる。共有しないなら `return 1` で、残りの席は別プロセスから来る。
+三問目の答えは、そのまま `localSeats()` へ反映されます。1台を共有する場合は全席がローカルになり、
+一人に一つずつキーを割り当てます。共有しない場合は `return 1` となり、残りの席は別プロセスから
+参加します。
 
 ## すでにゲームがある場合
 
-`go.mod` のあるディレクトリで呼ぶと、`init` は別の仕事をする。モジュールパスは決まって
-いるし、走らせるエントリポイントも書いてある。だからサンプルゲームは生成せず、
-フレームワーク側のファイルだけを足して、書いたコードには触れない。
+`go.mod` があるディレクトリで `init` を実行すると、既存のプロジェクトとして扱います。
+モジュールパスとエントリポイントがすでにあるため、サンプルゲームは生成しません。framework 用の
+ファイルだけを追加し、既存のコードには触れません。
 
 ```
 ebigent.toml           プロトコルと build target の宣言
@@ -333,13 +332,12 @@ cmd/distill/main.go    ebigent distill が go run するエントリ
 .claude/skills/        解析スキル(環境によっては .agents/skills/)
 ```
 
-エントリポイントの種別は import グラフから読む。Ebitengine に到達するものは描画する
-エントリなので client、しないものは simulation。[rule:engine-import-confined-to-client-entry]
-が引いているのと同じ線を、すでにあるリポジトリが実際に持っている唯一の証拠から引き直して
-いることになる。
+エントリポイントの種類は import グラフから判断します。Ebitengine に依存するものは描画用の client、
+依存しないものは simulation として扱います。これは
+[rule:engine-import-confined-to-client-entry] と同じ境界を、既存コードの依存関係から判定する方法です。
 
-`.gitignore` と `README.md` は書かない。リポジトリを始めた人のもので、`init` が決めて
-いいことではないからだ。コーパスを無視する2行だけは出力に出るので、自分で足すことになる。
+`.gitignore` と `README.md` は変更しません。これらはリポジトリ側の方針で管理するファイルだからです。
+コーパスを無視するための二行はコマンドの出力に表示されるので、必要に応じて自分で追加します。
 
 ## 踏み外しやすいところ
 
@@ -352,4 +350,4 @@ cmd/distill/main.go    ebigent distill が go run するエントリ
 | 描画で作った float をシミュレーションに戻す | 再生がビット一致しなくなる。[ログが証拠でなくなる](/integration/boundaries/) |
 | 人間の席に本体の agent を着席させる | broadcast とコールバックの二重配送になる。`Detached` を使う |
 
-<LinkCard title="ログが AI になるまで" href="/ai/" description="窓から遊んだ記録が、そのまま蒸留のコーパスになる。" />
+<LinkCard title="ログが AI になるまで" href="/ai/" description="窓から遊んだ記録が、そのまま蒸留のコーパスになります。" />

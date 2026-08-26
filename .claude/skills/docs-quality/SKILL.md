@@ -153,9 +153,10 @@ borrows HTTP's vocabulary for the opposite of what it is.
 
 ### Writing Japanese
 
-Load the `japanese-cognitive-rhythm-writing` skill. The register differs by
-surface and both are established: the website pages are だ/である, the repository
-READMEs are です/ます. Match the file you are in.
+Load the `japanese-cognitive-rhythm-writing` skill. Both the website pages and
+the repository READMEs use です/ます. Keep labels, table cells, headings, and
+other sentence fragments concise; use the polite register for complete prose
+sentences.
 
 ### Before you call it done
 
