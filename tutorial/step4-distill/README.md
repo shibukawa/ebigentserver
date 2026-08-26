@@ -1,4 +1,4 @@
-# step 4 — 記録からボットを作る
+# step 4 — 人の指し手からボットを作る
 
 step 3 で、遊んだ分だけ対局が記録として貯まるようになりました。このステップの終わりには、
 **その記録から作ったボット**が相手をしています——手で書いたのではなく、記録から掘り出して
@@ -9,6 +9,10 @@ go run ./tutorial/step4-distill
 ```
 
 step 3 と同じように遊べます。違うのは、相手をしているボットを**誰も書いていない**ことです。
+
+本命は、**あなた自身の指し手**です。このステップの最後には、同じ道具をあなたの記録に向けて、
+自分の写しと対戦します。先にボットの写しから始めるのは、ソースコードと突き合わせて
+答え合わせできる教師がボットだけだからです。
 
 [`distill/gen/agent_gen.go`](distill/gen/agent_gen.go) がその中身で、生成された Go です。
 
@@ -178,6 +182,10 @@ framework が承認を人間に通し、最後に `flow:automated-playtest` を�
 | 採掘時の述語と実行時の述語が食い違っていない | `TestMinerAndRuntimeAgree` |
 | 生成エージェントは実セッションで同じ試合をする | `TestTheDistilledAgentPlaysTheSameMatches` |
 | コミット済みの生成物が古びていない | `TestGeneratedSourcesAreCurrent` |
+| curate で減らしたコーパスの採掘を、holdout が数まで一致して裏付ける | `TestCurateThenMineMeasuresTheHoldout` |
+| コインは同じ局面で違う手を打ち、curate はそれを一覧にする | `TestTheCoinIsPolicyMixingMadeVisible` |
+| `agent_kind: human` の行が curate を通り、`genhuman.You` として生成される | `TestYourCopyMinesFromHumanRows` |
+| 写しが黙った局面は代打が指し、その回数が数えられる | `TestUnderstudyAnswersWhereTheCopyIsSilent` |
 
 3つ目が一番強い主張です。コーパスは到達可能局面の一部しか踏まないので、**全数で一致する**のは
 被覆率が言っている以上のことです。
@@ -240,6 +248,150 @@ cd tutorial/step4-distill && go test ./distill
 テストが `Compiled.Sources` を committed と比べる。別々にコーパスを作っていたら、再生成しても
 テストが赤いままで、どちらを走らせても閉じない——という状態が起こりえます。
 
+## 同じ局面の800回は、800票です
+
+被覆の先頭2行をもう一度見てください。`preferred_cell_is_4` が 800、`preferred_cell_is_0` が
+706。この数字の正体は何でしょうか。X は必ず中央から入るので、**初手の盤面は800局すべてに
+現れます**。`SequentialCovering` は1レコードを1票と数えるだけで、同じ局面かどうかは
+見ません。つまり先頭の800は「この判断が800回重要だった」ではなく、「この盤面が800回
+出てきた」です。被覆の順位は、重要度ではなく出現回数の順位でした。
+
+蒸留の前にコーパスを**整える**——対象を絞り、同じ局面をまとめ、答え合わせ用を取り分ける——
+のが `ebigent curate` です。
+
+```bash
+cd tutorial/step4-distill && ebigent curate --agent_kind tactic --cap 3 --holdout 20 --seed 1
+```
+
+```
+curate: 6064 decisions in 800 episodes from corpus
+filter: 2632 rows kept (1832 filtered out, 1600 sight-only)
+split: 637 train / 163 holdout episodes (holdout 0.20, seed 1)
+situations: 65 distinct among 2093 training rows
+most repeated situation: 637 rows, 3 kept
+cap 3: 185 of 2093 training rows kept (1908 dropped)
+conflicts: 0 situations answered with more than one action
+curated corpus written: corpus-curated
+```
+
+`--agent_kind tactic` はボットの行だけを残します（記録の各行には**誰が**決めたかを示す
+`agent_kind` 列があり、人の行なら `human` です）。`--holdout 20` は2割のエピソードを
+検証用に取り分け、`--cap 3` は同一の局面・同一の行動を3行までに制限します。残った学習用
+2093行の中身は**65局面**でした。最頻の局面は637回——ほぼ全局に現れた、あの初手です。
+
+整えた側を掘ると、こうなります。
+
+```bash
+cd tutorial/step4-distill && ebigent distill --corpus corpus-curated/train
+```
+
+```
+185 decisions from corpus-curated/train, 19 chips → distill/gen
+100.0% of the recorded decisions are explained by an approved chip
+holdout: 539 decisions answered as recorded, 0 answered differently, 0 silent
+silent situations written to corpus-curated/gaps.jsonl
+```
+
+2093行が185行になって、出てくるのは**同じ19本のチップ**です。1908行の重複は、規則を
+1本も足していませんでした。ただし、並びが変わります。
+
+```
+ 1  winning_move_is_8      coverage 45
+ 2  winning_move_is_6      coverage 24
+ 3  winning_move_is_1      coverage 23
+```
+
+`preferred_cell_is_4` は1位から**15位**に落ち、勝ち手が先頭に来ました。800票の正体が
+1局面だと分かった途端、「好みが勝ちより上」というあの並びは消えます。あの並びを
+決めていたのは、重複だったわけです。どちらの並びも正しい——それは次の数字が言います。
+
+出力の `holdout` 行が、その答え合わせです。採掘が一度も見ていない163局・539決定を
+生成された決定リストに指させて、記録と突き合わせる。一致539、違う手0、**沈黙0**。沈黙した
+局面があれば `gaps.jsonl` に並び、それが「次の対局で集めるべき局面」の一覧になります。
+「コーパスは自分の穴を見られません」の表は、到達可能な123局面を全数で指せるから書けました。
+全数走査が現実的でないゲームでは、この3つの数字が表の代わりになります。
+
+もうひとつ、この出力で0だったものがあります。conflicts——同じ局面に違う行動が記録されて
+いる数です。ボットは決定論なので0ですが、コインの側を整えると景色が変わります。
+
+```bash
+cd tutorial/step4-distill && ebigent curate --agent_kind coin --out corpus-coin
+```
+
+```
+situations: 19 distinct among 1832 training rows
+conflicts: 19 situations answered with more than one action
+```
+
+**19局面すべてで手が割れています。** 採掘器は決定論なので、この揺れを個性ではなく反例として
+数えます——コインの記録から蒸留すれば、局面ごとの多数派だけが規則になり、少数派は
+拒否の山になります。そして人の記録は、コインほどではないにせよ同じ形をしています。
+同じ局面で違う手を打つのは、人なら普通のことだからです。curate はこの混在を**解決しません**。
+一覧にして `report.json` に置くだけです。プレイヤーで絞るのか、多数派を受け入れるのかは
+判断であって、判断は承認と同じ場所——あなたの側にあります。
+
+試したあとは、正典から作り直しておいてください。
+
+```bash
+cd tutorial/step4-distill && ebigent distill
+```
+
+`--corpus` 付きの蒸留も `distill/gen` に書くので、コミット済みの生成物とはズレた状態に
+なっています。引数なしの1コマンドで戻ります——再生成がテストで守られているのは、
+こういうときのためです。
+
+## 自分を蒸留する
+
+ここまでの道具は、全部あなたの記録にも向きます。このアプリは人の対局も `corpus/` に
+記録していて（`agent_kind: human` の行として、シミュレーションの800局と同じ置き場です）、
+curate の `--agent_kind` はまさにその行を取り出すためにあります。
+
+まず、遊びます。何局でも——ただし step 3 の結論を思い出してください。数十局は「少ない」側です。
+
+```bash
+cd tutorial/step4-distill && go run .
+```
+
+次に、自分の行だけを整えます。出力先を分けるのは、ボット用の `corpus-curated` と
+混ざらないようにするためです。
+
+```bash
+cd tutorial/step4-distill && ebigent curate --agent_kind human --cap 3 --holdout 20 --seed 1 --out corpus-human
+```
+
+報告の読み方はもう知っています。conflicts に並ぶのは、あなたが同じ局面で違う手を打った
+回数です。ボットのときは0でしたが、ここでは0にならないはずです——それは記録の不備では
+なく、あなたが人だという事実です。
+
+そして蒸留します。`--target you` が、ボットの写し（`distill/gen`）とは別の置き場
+`distill/genhuman` に書きます。コミット済みの生成物には触れません。
+
+```bash
+cd tutorial/step4-distill && go run ./cmd/distill --corpus corpus-human/train --target you
+```
+
+`ebigent distill` を通らず entry を直接呼ぶのは、`--target` がこのゲームの事情
+（写しが2種類ある）であって、toolchain が知る話ではないからです。出力の holdout 行と
+`corpus-human/gaps.jsonl` の読み方も、前の節のままです。
+
+最後に、自分と打ちます。
+
+```bash
+cd tutorial/step4-distill && go run . -opponent you
+```
+
+席に着くのは [`distill/genhuman`](distill/genhuman/agent_gen.go) の `You` です。蒸留する前は
+**何も知らない placeholder** で、代打（コイン）が全部指します。蒸留したあとは、規則の条件が
+当たる局面ではあなたの手を、どの承認チップも当たらない局面では代打を指し、写しが黙った回数を
+対局の終わりに端末へ報告します。その回数が、`gaps.jsonl` の生きた姿です。記録の照合表では
+ないことに注意してください——写しは記録から掘った**規則**なので、一度も打っていない盤面でも
+述語が当たればあなたの手を返します。空の写しに戻すのは `git checkout` です。
+
+ここには、ボットの写しにあった答え合わせがありません。`TestGeneratedAgentPlaysExactlyLikeTheBot`
+は教師のソースと突き合わせましたが、**あなたのソースコードは存在しません**。写しの確からしさを
+言えるのは holdout の3つの数字だけで、その数字を良くする方法は記録を増やすことだけです。
+そして人が800局打つのは——現実的ではありません。それが次のステップです。
+
 ## 構成
 
 ```
@@ -253,10 +405,11 @@ step4-distill/
     ├── distill.go     語彙2つ、コーパス、採掘、playtest
     ├── pred/pred.go   判断語。人が書き、人がレビューする
     ├── distill_test.go
-    └── gen/           生成物（コミット済み）
-        ├── agent_gen.go      決定リスト
-        ├── agent_gen_test.go 記録された局面からの fixture
-        └── chips.json        承認済みライブラリ
+    ├── gen/           生成物（コミット済み）
+    │   ├── agent_gen.go      決定リスト
+    │   ├── agent_gen_test.go 記録された局面からの fixture
+    │   └── chips.json        承認済みライブラリ
+    └── genhuman/      あなたの写しの置き場。蒸留するまでは空の placeholder
 ```
 
 `game` が `distill/gen` を import していないことに注意してください。生成エージェントは
@@ -266,16 +419,14 @@ step4-distill/
 
 ## まだないもの
 
-**相手はランダムです。** [`distill.Corpus`](distill/distill.go) の対戦相手は合法手から一様に
-選ぶだけで、多様性としては最低限のものです。上の表が言っているとおり、必要な局面が現れるかどうかは
-運任せになっています。round-robin、自己対戦、リーグ——`concept:continuous-match-loop` が
-書いている組み合わせ方が step 5 です。
-
-**教師がボットです。** 蒸留できるのは教師の方策までで、それより強くはなりません。step 4 が
-手書きボットを対象にしたのは、**答え合わせができる**からです。生成されたものが正しいかどうかを、
-元のソースと突き合わせて確かめられる。より強い教師（探索、あるいは人の対局そのもの）に
-向けたときには、その答えがありません。
-
-**人の記録はまだ蒸留していません。** 同じパイプラインを `agent_kind: human` の行に向ければ、
-あなたの打ち方が決定リストになります。step 3 の結論どおり、数十局では足りません——
-それも [step 5](../step5-simulate/) の理由の一つです。
+**写しのレベルは、記録の相手で頭打ちになります。** あなたの記録は、勝ち・ブロック・好みの
+三手しか知らないボットの写し（と、その代打のコイン）との対局から来ています。相手が
+仕掛けてこなければ、追い詰められた局面のあなたの判断は**記録に現れようがなく**、
+`gaps.jsonl` はそれを不足として数えるだけです。学習データの質を上げるには、
+**もう一周**が要ります。蒸留した写しを相手に据えて（`-opponent you`）遊び直せば、次の
+記録は一段違う相手との対局になり、再 curate・再蒸留で写しが厚くなる。人が相手なら、
+このアプリは [step 2](../step2-lobby/) と同じ LAN マッチングを積んでいるので、もう一人に
+接続してもらえば**人対人の記録**が同じコーパスに貯まります。どの道も
+「相手を替えて、記録に現れる局面を変える」ことで——その一周を人手ではなく機械で回し、
+効果を測るのが [step 5](../step5-simulate/) です。`gaps.jsonl` は、そこへ持っていく
+買い物リストになります。

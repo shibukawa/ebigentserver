@@ -24,24 +24,38 @@ import (
 )
 
 func main() {
-	out := flag.String("out", "distill/gen", "where the generated package is written")
 	flag.Parse()
 
-	c, err := distill.Compile()
+	// Two bots, one command. The baseline is step 4's recipe rebuilt
+	// here, and it is regenerated alongside the rotated one so that the
+	// swap in main.go has two reproducible sides.
+	base, err := distill.CompileBaseline()
 	if err != nil {
 		fatal(err)
 	}
-	if err := c.Write(*out); err != nil {
+	if err := base.Write("distill/gen"); err != nil {
 		fatal(err)
 	}
+	report("gen.Distilled (random opponent)", distill.BaselineMatches, base, "distill/gen")
 
-	approved := c.Library.Approved()
-	fmt.Printf("%d games, %d decisions, %d chips → %s\n",
-		distill.CorpusMatches, len(c.Records), len(approved), *out)
-	// The coverage is the number worth printing, and it is not the one
-	// the miner reports: Propose calls every record covered while a
-	// third of them are explained by rules nobody approved.
-	fmt.Printf("%.1f%% of the recorded decisions are explained by an approved chip\n",
+	rot, err := distill.Compile()
+	if err != nil {
+		fatal(err)
+	}
+	if err := rot.WriteAs("distill/genrotated", distill.RotatedSpec(), distill.RotatedTestSpec()); err != nil {
+		fatal(err)
+	}
+	report("genrotated.Rotated (round_robin)", distill.CorpusMatches, rot, "distill/genrotated")
+}
+
+// report prints one bot's summary. The coverage is the number worth
+// printing, and it is not the one the miner reports: Propose calls
+// every record covered while a third of them are explained by rules
+// nobody approved.
+func report(name string, matches int, c *distill.Compiled, out string) {
+	fmt.Printf("%s: %d games, %d decisions, %d chips → %s\n",
+		name, matches, len(c.Records), len(c.Library.Approved()), out)
+	fmt.Printf("  %.1f%% of the recorded decisions are explained by an approved chip\n",
 		100*float64(distill.Covered(c.Library, c.Records))/float64(len(c.Records)))
 }
 

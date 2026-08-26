@@ -1,8 +1,9 @@
 // Command step4-distill is step 3's tic-tac-toe with the opponent
 // replaced by one nobody wrote.
 //
-//	go run ./tutorial/step4-distill             # records into ./corpus
-//	go run ./tutorial/step4-distill -corpus ""  # records nothing
+//	go run ./tutorial/step4-distill                # records into ./corpus
+//	go run ./tutorial/step4-distill -corpus ""     # records nothing
+//	go run ./tutorial/step4-distill -opponent you  # seats the copy of your own play
 //
 // The bot in the other seat is generated Go, mined out of the recordings
 // step 3 produced. Reading distill/gen/agent_gen.go is the point of the
@@ -34,7 +35,9 @@ import (
 	"github.com/shibukawa/ebigentserver/run/eb"
 	"github.com/shibukawa/ebigentserver/run/lan"
 	"github.com/shibukawa/ebigentserver/session"
+	"github.com/shibukawa/ebigentserver/tutorial/step4-distill/distill"
 	"github.com/shibukawa/ebigentserver/tutorial/step4-distill/distill/gen"
+	"github.com/shibukawa/ebigentserver/tutorial/step4-distill/distill/genhuman"
 	"github.com/shibukawa/ebigentserver/tutorial/step4-distill/game"
 	"github.com/shibukawa/ebigentserver/tutorial/step4-distill/msg"
 )
@@ -53,14 +56,23 @@ const noCell = -1
 
 func main() {
 	corpus := flag.String("corpus", "corpus", "directory to record episodes into; empty records nothing")
+	// "distilled" seats the bot's copy; "you" seats the copy of your own
+	// play, mined by `go run ./cmd/distill --target you`. Before you
+	// distill, that copy is empty and its understudy — a coin — does all
+	// the playing.
+	opponent := flag.String("opponent", "distilled", "who fills the empty seat: distilled or you")
 	flag.Parse()
+	if *opponent != "distilled" && *opponent != "you" {
+		fmt.Fprintln(os.Stderr, "step4-distill: -opponent must be distilled or you")
+		os.Exit(2)
+	}
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()
 
 	err := eb.Run(ctx, eb.Options[msg.TTTWorld, msg.Move, game.Sight]{
 		Options:     game.Options(),
-		Binding:     binding(),
+		Binding:     binding(*opponent),
 		Client:      &view{hover: noCell},
 		Matchmaking: matchmaking(),
 		Lobby: eb.LobbyOptions{
@@ -117,9 +129,20 @@ func report(res run.MatchResult) {
 // Swap gen.Distilled for game.HandWritten and the window plays the bot
 // the corpus came from. The two are indistinguishable from this file,
 // which is the claim the distillation makes.
-func binding() run.Binding[msg.TTTWorld, msg.Move, game.Sight] {
+//
+// -opponent you seats genhuman.You instead: the copy of your own play,
+// with a coin as understudy for the situations your corpus has not
+// covered. Until you run `go run ./cmd/distill --target you`, You is the
+// committed placeholder that knows nothing, so the coin plays alone.
+func binding(opponent string) run.Binding[msg.TTTWorld, msg.Move, game.Sight] {
 	b := game.Binding()
 	b.NewAgent = func(session.SlotID) (string, session.Agent[game.Sight, msg.Move]) {
+		if opponent == "you" {
+			return "you", &distill.Understudy{
+				Primary: &genhuman.You{},
+				Backup:  distill.Opponents()[distill.KindCoin](1),
+			}
+		}
 		return "distilled", &gen.Distilled{}
 	}
 	return b

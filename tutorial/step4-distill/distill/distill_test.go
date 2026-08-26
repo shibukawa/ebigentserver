@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/shibukawa/ebigentserver/behavior"
+	"github.com/shibukawa/ebigentserver/session"
 	"github.com/shibukawa/ebigentserver/tutorial/step4-distill/distill"
 	"github.com/shibukawa/ebigentserver/tutorial/step4-distill/distill/gen"
 	"github.com/shibukawa/ebigentserver/tutorial/step4-distill/distill/pred"
@@ -446,3 +447,160 @@ func TestTheDistilledAgentPlaysTheSameMatches(t *testing.T) {
 	}
 	t.Logf("%d matches, identical outcome and length in every one", matches)
 }
+
+// TestCurateThenMineMeasuresTheHoldout closes the curation loop over a
+// real recording: curate splits and caps the corpus, mining sees only
+// the train side, and the holdout answers with play the miner never saw.
+//
+// The counts have to reconcile — every holdout decision lands in exactly
+// one of covered, misplayed, or silent — because a bucket that quietly
+// dropped rows would make the honest number as unfounded as the
+// flattering one it exists to correct (requirement:corpus-curation).
+func TestCurateThenMineMeasuresTheHoldout(t *testing.T) {
+	root := t.TempDir()
+	if err := distill.Record(root, 60, distill.CorpusSeed); err != nil {
+		t.Fatal(err)
+	}
+	out := filepath.Join(t.TempDir(), "curated")
+	rep, err := behavior.Curate(root, out, behavior.CurateOptions{
+		Filter:  behavior.RowFilter{AgentKind: distill.KindTactic},
+		Cap:     3,
+		Holdout: 0.2,
+		Seed:    1,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if rep.TrainDropped == 0 {
+		t.Fatal("sixty deterministic openings and the cap dropped nothing; the aggregation is not aggregating")
+	}
+	if rep.HoldoutEpisodes == 0 || rep.TrainEpisodes == 0 {
+		t.Fatalf("split %d/%d put everything on one side", rep.TrainEpisodes, rep.HoldoutEpisodes)
+	}
+	if len(rep.Conflicts) != 0 {
+		t.Fatalf("the bot is deterministic, so %d conflicts can only be a keying bug", len(rep.Conflicts))
+	}
+
+	c, err := distill.CompileFrom(filepath.Join(out, "train"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	hold, ok, err := distill.EvaluateHoldout(filepath.Join(out, "train"), c, distill.Corpus)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !ok {
+		t.Fatal("EvaluateHoldout did not find the holdout beside the train side")
+	}
+	total := len(hold.Covered) + len(hold.Misplayed) + len(hold.Silent)
+	if total != rep.HoldoutRows {
+		t.Fatalf("evaluated %d holdout decisions, curate reported %d", total, rep.HoldoutRows)
+	}
+	if _, err := os.Stat(filepath.Join(out, "gaps.jsonl")); err != nil {
+		t.Fatalf("no gaps.jsonl beside the curated corpus: %v", err)
+	}
+	t.Logf("curate: %d tactic rows → %d train after cap 3, %d holdout; holdout: %d covered, %d misplayed, %d silent",
+		rep.TrainRows+rep.HoldoutRows, rep.TrainKept, rep.HoldoutRows,
+		len(hold.Covered), len(hold.Misplayed), len(hold.Silent))
+}
+
+// TestTheCoinIsPolicyMixingMadeVisible pins the reason curate lists
+// conflicts instead of resolving them. The coin answers one situation
+// several ways — which is exactly what a human corpus does — and the
+// deterministic miner would book every minority answer as a
+// counterexample. Curate's job is to put that mixture on the table
+// before mining turns it into rejections.
+func TestTheCoinIsPolicyMixingMadeVisible(t *testing.T) {
+	root := t.TempDir()
+	if err := distill.Record(root, 60, distill.CorpusSeed); err != nil {
+		t.Fatal(err)
+	}
+	out := filepath.Join(t.TempDir(), "curated")
+	rep, err := behavior.Curate(root, out, behavior.CurateOptions{
+		Filter: behavior.RowFilter{AgentKind: distill.KindCoin},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(rep.Conflicts) == 0 {
+		t.Fatal("a random opponent answered every situation one way across sixty games?")
+	}
+	t.Logf("coin: %d situations, %d answered more than one way", rep.Situations, len(rep.Conflicts))
+}
+
+// TestYourCopyMinesFromHumanRows drives the human path end to end on a
+// fixture corpus whose rows carry agent_kind human: curate keeps only
+// those, CompileYours mines every seat of what survived, and the sources
+// render as package genhuman with the You agent — the same generator,
+// under your name.
+func TestYourCopyMinesFromHumanRows(t *testing.T) {
+	root := t.TempDir()
+	dir := filepath.Join(root, "you-0000")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	body := `{"stream":"decisions","schema_version":1,"episode_id":"you-0000"}
+{"tick":1,"slot":1,"agent_kind":"human","sight":{"you":1,"mark":"X","turn":1,"cells":["-","-","-","-","-","-","-","-","-"],"legal":[0,1,2,3,4,5,6,7,8]},"action":{"cell":4}}
+{"tick":3,"slot":2,"agent_kind":"coin","sight":{"you":2,"mark":"O","turn":2,"cells":["-","-","-","-","X","-","-","-","-"],"legal":[0,1,2,3,5,6,7,8]},"action":{"cell":1}}
+{"tick":5,"slot":1,"agent_kind":"human","sight":{"you":1,"mark":"X","turn":1,"cells":["-","O","-","-","X","-","-","-","-"],"legal":[0,2,3,5,6,7,8]},"action":{"cell":0}}
+`
+	if err := os.WriteFile(filepath.Join(dir, "decisions.jsonl"), []byte(body), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	out := filepath.Join(t.TempDir(), "curated")
+	rep, err := behavior.Curate(root, out, behavior.CurateOptions{
+		Filter: behavior.RowFilter{AgentKind: "human"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if rep.TrainKept != 2 || rep.FilteredOut != 1 {
+		t.Fatalf("kept %d filtered %d; want the two human rows alone", rep.TrainKept, rep.FilteredOut)
+	}
+
+	c, err := distill.CompileYours(filepath.Join(out, "train"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	files, err := c.SourcesAs(distill.HumanSpec(), distill.HumanTestSpec())
+	if err != nil {
+		t.Fatal(err)
+	}
+	agent := string(files["agent_gen.go"])
+	if !strings.Contains(agent, "package genhuman") || !strings.Contains(agent, "type You struct") {
+		t.Fatalf("human sources did not render as genhuman.You:\n%s", agent)
+	}
+}
+
+// TestUnderstudyAnswersWhereTheCopyIsSilent pins the seat the -opponent
+// you flag fills: the primary answers when it can, the backup answers
+// when it cannot, and the gap count says how often the corpus fell
+// short.
+func TestUnderstudyAnswersWhereTheCopyIsSilent(t *testing.T) {
+	u := &distill.Understudy{
+		Primary: silentAgent{},
+		Backup:  distill.Opponents()[distill.KindCoin](1),
+	}
+	u.Joined(game.SlotX)
+	u.Observe(game.Sight{Legal: []int{3, 5}})
+	m, ok := u.Decide(context.Background())
+	if !ok {
+		t.Fatal("the understudy did not answer for a silent primary")
+	}
+	if m.Cell != 3 && m.Cell != 5 {
+		t.Fatalf("understudy played %d, outside the legal cells", m.Cell)
+	}
+	if u.Gaps != 1 {
+		t.Fatalf("gaps %d, want 1", u.Gaps)
+	}
+}
+
+// silentAgent is the committed genhuman placeholder in miniature: it
+// never answers.
+type silentAgent struct{}
+
+func (silentAgent) Joined(session.SlotID)                     {}
+func (silentAgent) Observe(game.Sight)                        {}
+func (silentAgent) Decide(context.Context) (msg.Move, bool)   { return msg.Move{}, false }
+func (silentAgent) Ended(session.Result)                      {}

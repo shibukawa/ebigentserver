@@ -5,99 +5,31 @@
       "condition": "preferred_cell_is_4",
       "action": "play_4",
       "priority": 0,
-      "coverage": 400,
+      "coverage": 800,
       "counterexamples": 0,
       "evidence": [
         {
-          "episode": "round_robin-random-0000",
+          "episode": "random-random-0000",
           "tick": 0
         },
         {
-          "episode": "round_robin-tactic-0001",
+          "episode": "random-random-0001",
           "tick": 0
         },
         {
-          "episode": "round_robin-perfect-0002",
+          "episode": "random-random-0002",
           "tick": 0
         },
         {
-          "episode": "round_robin-random-0003",
+          "episode": "random-random-0003",
           "tick": 0
         },
         {
-          "episode": "round_robin-tactic-0004",
+          "episode": "random-random-0004",
           "tick": 0
         }
       ],
-      "rationale": "when preferred_cell_is_4 held, play_4 was taken 400/400 times at this list position",
-      "approved": true,
-      "tags": [
-        "style:perfect"
-      ]
-    },
-    {
-      "condition": "blocking_move_is_3",
-      "action": "play_3",
-      "priority": 1,
-      "coverage": 271,
-      "counterexamples": 0,
-      "evidence": [
-        {
-          "episode": "round_robin-tactic-0001",
-          "tick": 4
-        },
-        {
-          "episode": "round_robin-perfect-0002",
-          "tick": 4
-        },
-        {
-          "episode": "round_robin-tactic-0004",
-          "tick": 4
-        },
-        {
-          "episode": "round_robin-perfect-0005",
-          "tick": 4
-        },
-        {
-          "episode": "round_robin-tactic-0007",
-          "tick": 4
-        }
-      ],
-      "rationale": "when blocking_move_is_3 held, play_3 was taken 271/271 times at this list position",
-      "approved": true,
-      "tags": [
-        "style:perfect"
-      ]
-    },
-    {
-      "condition": "preferred_cell_is_7",
-      "action": "play_7",
-      "priority": 2,
-      "coverage": 268,
-      "counterexamples": 0,
-      "evidence": [
-        {
-          "episode": "round_robin-tactic-0001",
-          "tick": 8
-        },
-        {
-          "episode": "round_robin-perfect-0002",
-          "tick": 8
-        },
-        {
-          "episode": "round_robin-tactic-0004",
-          "tick": 8
-        },
-        {
-          "episode": "round_robin-perfect-0005",
-          "tick": 8
-        },
-        {
-          "episode": "round_robin-random-0006",
-          "tick": 8
-        }
-      ],
-      "rationale": "when preferred_cell_is_7 held, play_7 was taken 268/268 times at this list position",
+      "rationale": "when preferred_cell_is_4 held, play_4 was taken 800/800 times at this list position",
       "approved": true,
       "tags": [
         "style:perfect"
@@ -106,32 +38,32 @@
     {
       "condition": "preferred_cell_is_0",
       "action": "play_0",
-      "priority": 3,
-      "coverage": 116,
+      "priority": 1,
+      "coverage": 697,
       "counterexamples": 0,
       "evidence": [
         {
-          "episode": "round_robin-random-0000",
+          "episode": "random-random-0000",
           "tick": 2
         },
         {
-          "episode": "round_robin-random-0003",
+          "episode": "random-random-0001",
           "tick": 2
         },
         {
-          "episode": "round_robin-random-0006",
+          "episode": "random-random-0002",
           "tick": 2
         },
         {
-          "episode": "round_robin-random-0009",
+          "episode": "random-random-0003",
           "tick": 2
         },
         {
-          "episode": "round_robin-random-0018",
+          "episode": "random-random-0004",
           "tick": 2
         }
       ],
-      "rationale": "when preferred_cell_is_0 held, play_0 was taken 116/116 times at this list position",
+      "rationale": "when preferred_cell_is_0 held, play_0 was taken 697/697 times at this list position",
       "approved": true,
       "tags": [
         "style:perfect"
@@ -140,32 +72,32 @@
     {
       "condition": "winning_move_is_8",
       "action": "play_8",
-      "priority": 4,
-      "coverage": 77,
+      "priority": 2,
+      "coverage": 490,
       "counterexamples": 0,
       "evidence": [
         {
-          "episode": "round_robin-random-0018",
+          "episode": "random-random-0001",
           "tick": 4
         },
         {
-          "episode": "round_robin-random-0021",
+          "episode": "random-random-0002",
           "tick": 4
         },
         {
-          "episode": "round_robin-random-0030",
+          "episode": "random-random-0005",
           "tick": 4
         },
         {
-          "episode": "round_robin-random-0033",
+          "episode": "random-random-0007",
           "tick": 4
         },
         {
-          "episode": "round_robin-random-0039",
+          "episode": "random-random-0011",
           "tick": 4
         }
       ],
-      "rationale": "when winning_move_is_8 held, play_8 was taken 77/77 times at this list position",
+      "rationale": "when winning_move_is_8 held, play_8 was taken 490/490 times at this list position",
       "approved": true,
       "tags": [
         "style:perfect"
@@ -174,32 +106,32 @@
     {
       "condition": "winning_move_is_6",
       "action": "play_6",
-      "priority": 5,
-      "coverage": 20,
+      "priority": 3,
+      "coverage": 125,
       "counterexamples": 0,
       "evidence": [
         {
-          "episode": "round_robin-random-0003",
+          "episode": "random-random-0003",
           "tick": 6
         },
         {
-          "episode": "round_robin-random-0012",
+          "episode": "random-random-0010",
           "tick": 4
         },
         {
-          "episode": "round_robin-random-0015",
+          "episode": "random-random-0012",
           "tick": 4
         },
         {
-          "episode": "round_robin-random-0057",
+          "episode": "random-random-0015",
           "tick": 4
         },
         {
-          "episode": "round_robin-random-0084",
+          "episode": "random-random-0025",
           "tick": 4
         }
       ],
-      "rationale": "when winning_move_is_6 held, play_6 was taken 20/20 times at this list position",
+      "rationale": "when winning_move_is_6 held, play_6 was taken 125/125 times at this list position",
       "approved": true,
       "tags": [
         "style:perfect"
@@ -208,32 +140,32 @@
     {
       "condition": "winning_move_is_1",
       "action": "play_1",
-      "priority": 6,
-      "coverage": 15,
+      "priority": 4,
+      "coverage": 78,
       "counterexamples": 0,
       "evidence": [
         {
-          "episode": "round_robin-random-0024",
+          "episode": "random-random-0004",
           "tick": 6
         },
         {
-          "episode": "round_robin-random-0027",
+          "episode": "random-random-0008",
           "tick": 6
         },
         {
-          "episode": "round_robin-random-0069",
+          "episode": "random-random-0024",
           "tick": 6
         },
         {
-          "episode": "round_robin-random-0072",
+          "episode": "random-random-0027",
           "tick": 6
         },
         {
-          "episode": "round_robin-random-0159",
+          "episode": "random-random-0029",
           "tick": 6
         }
       ],
-      "rationale": "when winning_move_is_1 held, play_1 was taken 15/15 times at this list position",
+      "rationale": "when winning_move_is_1 held, play_1 was taken 78/78 times at this list position",
       "approved": true,
       "tags": [
         "style:perfect"
@@ -242,66 +174,32 @@
     {
       "condition": "winning_move_is_3",
       "action": "play_3",
-      "priority": 7,
-      "coverage": 8,
+      "priority": 5,
+      "coverage": 54,
       "counterexamples": 0,
       "evidence": [
         {
-          "episode": "round_robin-random-0000",
+          "episode": "random-random-0000",
           "tick": 6
         },
         {
-          "episode": "round_robin-random-0066",
+          "episode": "random-random-0031",
           "tick": 6
         },
         {
-          "episode": "round_robin-random-0087",
+          "episode": "random-random-0038",
           "tick": 6
         },
         {
-          "episode": "round_robin-random-0105",
+          "episode": "random-random-0053",
           "tick": 6
         },
         {
-          "episode": "round_robin-random-0192",
+          "episode": "random-random-0066",
           "tick": 6
         }
       ],
-      "rationale": "when winning_move_is_3 held, play_3 was taken 8/8 times at this list position",
-      "approved": true,
-      "tags": [
-        "style:perfect"
-      ]
-    },
-    {
-      "condition": "blocking_move_is_2",
-      "action": "play_2",
-      "priority": 8,
-      "coverage": 8,
-      "counterexamples": 0,
-      "evidence": [
-        {
-          "episode": "round_robin-random-0027",
-          "tick": 4
-        },
-        {
-          "episode": "round_robin-random-0108",
-          "tick": 4
-        },
-        {
-          "episode": "round_robin-random-0165",
-          "tick": 4
-        },
-        {
-          "episode": "round_robin-random-0171",
-          "tick": 4
-        },
-        {
-          "episode": "round_robin-random-0249",
-          "tick": 4
-        }
-      ],
-      "rationale": "when blocking_move_is_2 held, play_2 was taken 8/8 times at this list position",
+      "rationale": "when winning_move_is_3 held, play_3 was taken 54/54 times at this list position",
       "approved": true,
       "tags": [
         "style:perfect"
@@ -310,32 +208,134 @@
     {
       "condition": "blocking_move_is_6",
       "action": "play_6",
-      "priority": 9,
-      "coverage": 8,
+      "priority": 6,
+      "coverage": 44,
       "counterexamples": 0,
       "evidence": [
         {
-          "episode": "round_robin-random-0000",
+          "episode": "random-random-0000",
           "tick": 4
         },
         {
-          "episode": "round_robin-random-0036",
+          "episode": "random-random-0031",
           "tick": 4
         },
         {
-          "episode": "round_robin-random-0066",
+          "episode": "random-random-0036",
           "tick": 4
         },
         {
-          "episode": "round_robin-random-0105",
+          "episode": "random-random-0038",
           "tick": 4
         },
         {
-          "episode": "round_robin-random-0138",
+          "episode": "random-random-0066",
           "tick": 4
         }
       ],
-      "rationale": "when blocking_move_is_6 held, play_6 was taken 8/8 times at this list position",
+      "rationale": "when blocking_move_is_6 held, play_6 was taken 44/44 times at this list position",
+      "approved": true,
+      "tags": [
+        "style:perfect"
+      ]
+    },
+    {
+      "condition": "blocking_move_is_2",
+      "action": "play_2",
+      "priority": 7,
+      "coverage": 40,
+      "counterexamples": 0,
+      "evidence": [
+        {
+          "episode": "random-random-0027",
+          "tick": 4
+        },
+        {
+          "episode": "random-random-0071",
+          "tick": 4
+        },
+        {
+          "episode": "random-random-0108",
+          "tick": 4
+        },
+        {
+          "episode": "random-random-0125",
+          "tick": 4
+        },
+        {
+          "episode": "random-random-0148",
+          "tick": 4
+        }
+      ],
+      "rationale": "when blocking_move_is_2 held, play_2 was taken 40/40 times at this list position",
+      "approved": true,
+      "tags": [
+        "style:perfect"
+      ]
+    },
+    {
+      "condition": "blocking_move_is_5",
+      "action": "play_5",
+      "priority": 8,
+      "coverage": 28,
+      "counterexamples": 0,
+      "evidence": [
+        {
+          "episode": "random-random-0006",
+          "tick": 4
+        },
+        {
+          "episode": "random-random-0053",
+          "tick": 4
+        },
+        {
+          "episode": "random-random-0087",
+          "tick": 4
+        },
+        {
+          "episode": "random-random-0089",
+          "tick": 4
+        },
+        {
+          "episode": "random-random-0106",
+          "tick": 4
+        }
+      ],
+      "rationale": "when blocking_move_is_5 held, play_5 was taken 28/28 times at this list position",
+      "approved": true,
+      "tags": [
+        "style:perfect"
+      ]
+    },
+    {
+      "condition": "blocking_move_is_3",
+      "action": "play_3",
+      "priority": 9,
+      "coverage": 21,
+      "counterexamples": 0,
+      "evidence": [
+        {
+          "episode": "random-random-0034",
+          "tick": 4
+        },
+        {
+          "episode": "random-random-0043",
+          "tick": 4
+        },
+        {
+          "episode": "random-random-0046",
+          "tick": 4
+        },
+        {
+          "episode": "random-random-0062",
+          "tick": 4
+        },
+        {
+          "episode": "random-random-0088",
+          "tick": 4
+        }
+      ],
+      "rationale": "when blocking_move_is_3 held, play_3 was taken 21/21 times at this list position",
       "approved": true,
       "tags": [
         "style:perfect"
@@ -345,61 +345,31 @@
       "condition": "winning_move_is_5",
       "action": "play_5",
       "priority": 10,
-      "coverage": 4,
+      "coverage": 15,
       "counterexamples": 0,
       "evidence": [
         {
-          "episode": "round_robin-random-0099",
+          "episode": "random-random-0043",
           "tick": 6
         },
         {
-          "episode": "round_robin-random-0195",
+          "episode": "random-random-0046",
           "tick": 6
         },
         {
-          "episode": "round_robin-random-0201",
+          "episode": "random-random-0062",
           "tick": 6
         },
         {
-          "episode": "round_robin-random-0366",
+          "episode": "random-random-0088",
+          "tick": 6
+        },
+        {
+          "episode": "random-random-0099",
           "tick": 6
         }
       ],
-      "rationale": "when winning_move_is_5 held, play_5 was taken 4/4 times at this list position",
-      "approved": true,
-      "tags": [
-        "style:perfect"
-      ]
-    },
-    {
-      "condition": "preferred_cell_is_8",
-      "action": "play_8",
-      "priority": 11,
-      "coverage": 267,
-      "counterexamples": 0,
-      "evidence": [
-        {
-          "episode": "round_robin-tactic-0001",
-          "tick": 6
-        },
-        {
-          "episode": "round_robin-perfect-0002",
-          "tick": 6
-        },
-        {
-          "episode": "round_robin-tactic-0004",
-          "tick": 6
-        },
-        {
-          "episode": "round_robin-perfect-0005",
-          "tick": 6
-        },
-        {
-          "episode": "round_robin-tactic-0007",
-          "tick": 6
-        }
-      ],
-      "rationale": "when preferred_cell_is_8 held, play_8 was taken 267/267 times at this list position",
+      "rationale": "when winning_move_is_5 held, play_5 was taken 15/15 times at this list position",
       "approved": true,
       "tags": [
         "style:perfect"
@@ -408,32 +378,32 @@
     {
       "condition": "blocking_move_is_7",
       "action": "play_7",
-      "priority": 12,
-      "coverage": 11,
+      "priority": 11,
+      "coverage": 41,
       "counterexamples": 0,
       "evidence": [
         {
-          "episode": "round_robin-random-0009",
+          "episode": "random-random-0004",
+          "tick": 4
+        },
+        {
+          "episode": "random-random-0009",
           "tick": 6
         },
         {
-          "episode": "round_robin-random-0024",
+          "episode": "random-random-0024",
           "tick": 4
         },
         {
-          "episode": "round_robin-random-0048",
+          "episode": "random-random-0029",
+          "tick": 4
+        },
+        {
+          "episode": "random-random-0048",
           "tick": 6
-        },
-        {
-          "episode": "round_robin-random-0072",
-          "tick": 4
-        },
-        {
-          "episode": "round_robin-random-0159",
-          "tick": 4
         }
       ],
-      "rationale": "when blocking_move_is_7 held, play_7 was taken 11/11 times at this list position",
+      "rationale": "when blocking_move_is_7 held, play_7 was taken 41/41 times at this list position",
       "approved": true,
       "tags": [
         "style:perfect"
@@ -442,62 +412,100 @@
     {
       "condition": "preferred_cell_is_2",
       "action": "play_2",
-      "priority": 13,
-      "coverage": 299,
+      "priority": 12,
+      "coverage": 180,
       "counterexamples": 0,
       "evidence": [
         {
-          "episode": "round_robin-tactic-0001",
-          "tick": 2
-        },
-        {
-          "episode": "round_robin-perfect-0002",
-          "tick": 2
-        },
-        {
-          "episode": "round_robin-random-0003",
+          "episode": "random-random-0003",
           "tick": 4
         },
         {
-          "episode": "round_robin-tactic-0004",
+          "episode": "random-random-0008",
+          "tick": 4
+        },
+        {
+          "episode": "random-random-0009",
+          "tick": 4
+        },
+        {
+          "episode": "random-random-0010",
           "tick": 2
         },
         {
-          "episode": "round_robin-perfect-0005",
+          "episode": "random-random-0012",
           "tick": 2
         }
       ],
-      "rationale": "when preferred_cell_is_2 held, play_2 was taken 299/299 times at this list position",
+      "rationale": "when preferred_cell_is_2 held, play_2 was taken 180/180 times at this list position",
       "approved": true,
       "tags": [
         "style:perfect"
       ]
     },
     {
-      "condition": "blocking_move_is_5",
-      "action": "play_5",
-      "priority": 14,
-      "coverage": 4,
+      "condition": "preferred_cell_is_7",
+      "action": "play_7",
+      "priority": 13,
+      "coverage": 10,
       "counterexamples": 0,
       "evidence": [
         {
-          "episode": "round_robin-random-0006",
-          "tick": 4
+          "episode": "random-random-0006",
+          "tick": 8
         },
         {
-          "episode": "round_robin-random-0087",
-          "tick": 4
+          "episode": "random-random-0089",
+          "tick": 8
         },
         {
-          "episode": "round_robin-random-0156",
-          "tick": 4
+          "episode": "random-random-0128",
+          "tick": 8
         },
         {
-          "episode": "round_robin-random-0306",
-          "tick": 4
+          "episode": "random-random-0135",
+          "tick": 8
+        },
+        {
+          "episode": "random-random-0400",
+          "tick": 8
         }
       ],
-      "rationale": "when blocking_move_is_5 held, play_5 was taken 4/4 times at this list position",
+      "rationale": "when preferred_cell_is_7 held, play_7 was taken 10/10 times at this list position",
+      "approved": true,
+      "tags": [
+        "style:perfect"
+      ]
+    },
+    {
+      "condition": "preferred_cell_is_6",
+      "action": "play_6",
+      "priority": 14,
+      "coverage": 9,
+      "counterexamples": 0,
+      "evidence": [
+        {
+          "episode": "random-random-0006",
+          "tick": 6
+        },
+        {
+          "episode": "random-random-0089",
+          "tick": 6
+        },
+        {
+          "episode": "random-random-0156",
+          "tick": 6
+        },
+        {
+          "episode": "random-random-0188",
+          "tick": 6
+        },
+        {
+          "episode": "random-random-0400",
+          "tick": 6
+        }
+      ],
+      "rationale": "when preferred_cell_is_6 held, play_6 was taken 9/9 times at this list position",
       "approved": true,
       "tags": [
         "style:perfect"
@@ -507,23 +515,31 @@
       "condition": "preferred_cell_is_3",
       "action": "play_3",
       "priority": 15,
-      "coverage": 3,
+      "coverage": 7,
       "counterexamples": 0,
       "evidence": [
         {
-          "episode": "round_robin-random-0048",
+          "episode": "random-random-0048",
           "tick": 8
         },
         {
-          "episode": "round_robin-random-0174",
+          "episode": "random-random-0076",
           "tick": 8
         },
         {
-          "episode": "round_robin-random-0387",
+          "episode": "random-random-0174",
+          "tick": 8
+        },
+        {
+          "episode": "random-random-0233",
+          "tick": 8
+        },
+        {
+          "episode": "random-random-0387",
           "tick": 8
         }
       ],
-      "rationale": "when preferred_cell_is_3 held, play_3 was taken 3/3 times at this list position",
+      "rationale": "when preferred_cell_is_3 held, play_3 was taken 7/7 times at this list position",
       "approved": true,
       "tags": [
         "style:perfect"
@@ -533,41 +549,65 @@
       "condition": "preferred_cell_is_5",
       "action": "play_5",
       "priority": 16,
-      "coverage": 2,
+      "coverage": 7,
       "counterexamples": 0,
       "evidence": [
         {
-          "episode": "round_robin-random-0009",
+          "episode": "random-random-0009",
           "tick": 8
         },
         {
-          "episode": "round_robin-random-0222",
+          "episode": "random-random-0222",
+          "tick": 8
+        },
+        {
+          "episode": "random-random-0302",
+          "tick": 8
+        },
+        {
+          "episode": "random-random-0337",
+          "tick": 8
+        },
+        {
+          "episode": "random-random-0389",
           "tick": 8
         }
       ],
-      "rationale": "when preferred_cell_is_5 held, play_5 was taken 2/2 times at this list position",
+      "rationale": "when preferred_cell_is_5 held, play_5 was taken 7/7 times at this list position",
       "approved": true,
       "tags": [
         "style:perfect"
       ]
     },
     {
-      "condition": "preferred_cell_is_6",
-      "action": "play_6",
+      "condition": "preferred_cell_is_8",
+      "action": "play_8",
       "priority": 17,
-      "coverage": 2,
+      "coverage": 6,
       "counterexamples": 0,
       "evidence": [
         {
-          "episode": "round_robin-random-0006",
+          "episode": "random-random-0034",
           "tick": 6
         },
         {
-          "episode": "round_robin-random-0156",
+          "episode": "random-random-0128",
+          "tick": 6
+        },
+        {
+          "episode": "random-random-0135",
+          "tick": 6
+        },
+        {
+          "episode": "random-random-0496",
+          "tick": 6
+        },
+        {
+          "episode": "random-random-0695",
           "tick": 6
         }
       ],
-      "rationale": "when preferred_cell_is_6 held, play_6 was taken 2/2 times at this list position",
+      "rationale": "when preferred_cell_is_8 held, play_8 was taken 6/6 times at this list position",
       "approved": true,
       "tags": [
         "style:perfect"
@@ -577,15 +617,31 @@
       "condition": "preferred_cell_is_1",
       "action": "play_1",
       "priority": 18,
-      "coverage": 1,
+      "coverage": 5,
       "counterexamples": 0,
       "evidence": [
         {
-          "episode": "round_robin-random-0156",
+          "episode": "random-random-0034",
+          "tick": 8
+        },
+        {
+          "episode": "random-random-0156",
+          "tick": 8
+        },
+        {
+          "episode": "random-random-0188",
+          "tick": 8
+        },
+        {
+          "episode": "random-random-0578",
+          "tick": 8
+        },
+        {
+          "episode": "random-random-0726",
           "tick": 8
         }
       ],
-      "rationale": "when preferred_cell_is_1 held, play_1 was taken 1/1 times at this list position",
+      "rationale": "when preferred_cell_is_1 held, play_1 was taken 5/5 times at this list position",
       "approved": true,
       "tags": [
         "style:perfect"

@@ -8,13 +8,19 @@ step 4 で、記録からボットを作れるようになりました。ただ�
 go run ./tutorial/step5-simulate
 ```
 
-step 4 と同じように遊べます。相手も同じく生成された Go です。違うのは**その裏側**で、
+step 4 と同じように遊べます。相手も同じく生成された Go です——ただし名前が変わっています。
+座っているのは `gen.Distilled` ではなく **`genrotated.Rotated`**、このステップで別のフォルダに
+蒸留し直し、main.go の1行を差し替えて座らせた写しです。残りの違いは**その裏側**で、
 このステップの成果物は半分がコードで、半分が測定結果です。
 
 宿題はこの2つでした。
 
 - 800局の並びが正しかったのは**運**だった。もっと良い相手を回せば直るのか
 - 教師より強くはならない。**もっと強い教師**を使えばどうなるのか
+
+番外がもう1つあります。step 4 の終わりに作った自分の写しは、`gaps.jsonl` の分だけ黙る——
+そして人が対局数で埋めるには高くつく。ここで測る「相手を回して局面を作る」は、まさに
+その穴の埋め方です。教師があなたではなくボットなのは、答え合わせのためだけです。
 
 順に測りました。
 
@@ -39,6 +45,32 @@ rotated 200 games: 77.3% explained; coin 800 games: 72.5%
 
 **回した200局が、コインの800局より説明できています。** だから step 5 の正式なコーパスは
 400局で、step 4 の半分です。
+
+## 作った写しを、1行で差し替える
+
+回した400局を蒸留したのが [`distill/genrotated`](distill/genrotated/agent_gen.go) の
+`Rotated` で、窓の相手はこれに差し替わっています。このステップの diff の本体は
+main.go の1行です。
+
+```go
+return "rotated", &genrotated.Rotated{}
+```
+
+step 4 製法のボット——同じ教師をコイン相手に800局——も [`distill/gen`](distill/gen/agent_gen.go) に
+`Distilled` として置いたままです。識別子を `gen.Distilled` に書き戻せば、窓は step 4 の
+製法に戻ります。どちらも次の1コマンドで**両方いっぺんに**再生成されるので、差し替えの両側は
+いつでも再現できます。
+
+```bash
+cd tutorial/step5-simulate && ebigent distill
+```
+
+正直に言うと、三目並べではこの差し替えで**指し手は変わりません**。どちらの写しも到達可能な
+123局面すべてで手書きボットと一致します——`TestGeneratedAgentPlaysExactlyLikeTheBot` は
+両方に同じ質問をします。変わったのは根拠のほうです。コインの800局の並びが正しかったのは
+頻度の偶然でした（step 4 の結び）。回した相手には、並びを試す局面を確実に作る打ち手が
+入っていて、上の測定がその差の数字です。同じ switch でも、「なぜその順か」に証拠があるか
+どうかが違う——後段の測定は全部その延長にあります。
 
 ## 後段 — 完璧な教師は蒸留できない
 
@@ -139,8 +171,8 @@ alpha-beta で枝刈りした上での数字です。枝刈りしない探索と
 | 完璧な教師は、12通りどれでも8割に届かない | `TestAPerfectTeacherCannotBeDistilled` |
 | fork 述語は沈黙を減らし、間違いを増やす | `TestForkWordsTradeSilenceForConfidence` |
 | 探索は決定リストの1万倍以上かかる（枝刈り後） | `TestTheSearchCostsWhatTheListDoesNot` |
-| 生成エージェントは到達可能な123局面すべてで手書きと一致する | `TestGeneratedAgentPlaysExactlyLikeTheBot` |
-| コミット済みの生成物が古びていない | `TestGeneratedSourcesAreCurrent` |
+| **両方の**生成エージェントが、到達可能な123局面すべてで手書きと一致する | `TestGeneratedAgentPlaysExactlyLikeTheBot` |
+| コミット済みの生成物2つが、どちらも古びていない | `TestGeneratedSourcesAreCurrent` |
 
 2つ目は**通る否定的結果**です。「閉じなかった」を主張として固定してあるので、誰かが
 語彙や採掘器を改良して8割を超えたら、このテストが赤くなって教えてくれます。
@@ -157,8 +189,8 @@ cd tutorial/step5-simulate && go test -short ./...   # 重い測定を飛ばす
 
 ```
 step5-simulate/
-├── cmd/distill/         ebigent distill が走らせるエントリ
-├── main.go              ウィンドウ。step 4 から変わらない
+├── cmd/distill/         ebigent distill が走らせるエントリ。写し2つを再生成
+├── main.go              ウィンドウ。step 4 との diff は、写しを差し替えた1行
 ├── game/                ルール。step 3 から1文字も変えていない
 ├── msg/                 ワイヤ型と生成物
 └── distill/
@@ -166,7 +198,8 @@ step5-simulate/
     ├── pairing.go       Pairing と matchloop 経由のコーパス生成
     ├── teacher.go       minimax。alpha-beta つき
     ├── pred/pred.go     判断語。fork 2語が増えた
-    └── gen/             生成物（コミット済み、round_robin 400局から）
+    ├── gen/             生成物（コミット済み、step 4 製法: コイン相手800局）
+    └── genrotated/      生成物（コミット済み、round_robin 400局。窓に座るのはこちら）
 ```
 
 ## まだないもの

@@ -14,7 +14,7 @@
 | [step1-hotseat](step1-hotseat/) | マウス1つで交互に指す。framework を一切使わない | 済 |
 | [step2-lobby](step2-lobby/) | ルールを `StageRuleSet` に。ロビーが相手を待ち、LAN 上の2インスタンスで対人戦 | 済 |
 | [step3-record](step3-record/) | `if` 4本の CPU を人間と同じ席に着ける。その判断が記録に残る | 済 |
-| [step4-distill](step4-distill/) | 記録から決定リストを蒸留し、生成されたエージェントを座らせる | 済 |
+| [step4-distill](step4-distill/) | 記録から決定リストを蒸留し、人の指し手から自分の写しを作って対戦する | 済 |
 | [step5-simulate](step5-simulate/) | 相手を回して corpus を広げる。そして完全な教師の限界を測る | 済 |
 
 ここで**ボードゲーム編は完結**する。

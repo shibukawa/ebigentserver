@@ -32,7 +32,7 @@ import (
 	"github.com/shibukawa/ebigentserver/run/eb"
 	"github.com/shibukawa/ebigentserver/run/lan"
 	"github.com/shibukawa/ebigentserver/session"
-	"github.com/shibukawa/ebigentserver/tutorial/step5-simulate/distill/gen"
+	"github.com/shibukawa/ebigentserver/tutorial/step5-simulate/distill/genrotated"
 	"github.com/shibukawa/ebigentserver/tutorial/step5-simulate/game"
 	"github.com/shibukawa/ebigentserver/tutorial/step5-simulate/msg"
 )
@@ -106,19 +106,21 @@ func report(res run.MatchResult) {
 
 // binding is the game's rules with the empty seat filled in.
 //
-// This is the whole of step 4's integration. game.Binding leaves
-// NewAgent nil — the rules cannot import an agent distilled from their
-// own recordings — so the entry point names one, exactly as it names a
-// transport, and for the same reason: both are properties of what was
-// built here rather than of the game.
+// The mechanism is step 4's. game.Binding leaves NewAgent nil — the
+// rules cannot import an agent distilled from their own recordings — so
+// the entry point names one, exactly as it names a transport, and for
+// the same reason: both are properties of what was built here rather
+// than of the game.
 //
-// Swap gen.Distilled for game.HandWritten and the window plays the bot
-// the corpus came from. The two are indistinguishable from this file,
-// which is the claim the distillation makes.
+// The line below IS this step's change: genrotated.Rotated replaced
+// gen.Distilled. Both are committed and both regenerate from `ebigent
+// distill`, so swap the identifier back and the window seats the
+// step-4 recipe again — same teacher, random opponent, twice the games,
+// and a corpus that never checked the ordering the rotation checks.
 func binding() run.Binding[msg.TTTWorld, msg.Move, game.Sight] {
 	b := game.Binding()
 	b.NewAgent = func(session.SlotID) (string, session.Agent[game.Sight, msg.Move]) {
-		return "distilled", &gen.Distilled{}
+		return "rotated", &genrotated.Rotated{}
 	}
 	return b
 }

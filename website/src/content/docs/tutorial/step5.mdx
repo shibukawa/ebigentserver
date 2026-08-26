@@ -20,10 +20,10 @@ step 4 では、用意された判断記録から規則を取り出し、手書�
 | 処理 | 入力 | 出力 |
 |---|---|---|
 | **simulate** | 教師、対戦相手、局数、シード | 対局の判断記録を集めた `corpus/` |
-| **distill** | `corpus/` と語彙 | 生成された決定リスト `distill/gen/` |
-| **実行** | `distill/gen/` の `Distilled` Agent | 人と対戦できるゲーム画面 |
+| **distill** | `corpus/` と語彙 | 生成された決定リスト `distill/genrotated/` |
+| **実行** | `distill/genrotated/` の `Rotated` Agent | 人と対戦できるゲーム画面 |
 
-`Distilled` は、記録した対局を手順どおりに再生する Agent ではありません。現在の盤面を受け取り、
+`Rotated` は、記録した対局を手順どおりに再生する Agent ではありません。現在の盤面を受け取り、
 記録から得た規則を上から評価して、その場で次の手を選びます。記録と違う順番で対局が進んでも、
 条件に合う規則があれば行動できます。
 
@@ -40,8 +40,9 @@ ebigent distill
 二つのコマンドは `corpus/` を介してつながり、互いを直接呼びません。
 
 Step 5 では、局ごとに対戦相手を切り替えます。一組だけを受け取る `ebigent simulate` では表せないため、
-`cmd/distill` が `matchloop` を使って自動対局を実行し、続けて蒸留します。Step 5 の生成物は、次の
-コマンドで作り直せます。
+`cmd/distill` が `matchloop` を使って自動対局を実行し、続けて蒸留します。生成物は**2つ**です。
+Step 4 と同じ製法（コイン相手800局）の `distill/gen/` の `Distilled` と、相手を回した400局から
+蒸留した `distill/genrotated/` の `Rotated`。どちらも次の1コマンドで作り直せます。
 
 ```bash
 cd tutorial/step5-simulate
@@ -55,10 +56,25 @@ cd ../..
 go run ./tutorial/step5-simulate
 ```
 
-画面では Step 4 と同じように一人で対戦できます。相手として着席するのは、相手を切り替えた
-シミュレーションの記録から生成した `gen.Distilled` です。
+画面では Step 4 と同じように一人で対戦できます。相手として着席するのは `genrotated.Rotated`——
+Step 4 の `Distilled` とは別のフォルダに、別の名前で蒸留し直した写しです。このステップの diff の
+本体は、それを座らせる main.go の1行に集約されています。
+
+```go
+return "rotated", &genrotated.Rotated{}
+```
+
+識別子を `gen.Distilled` に書き戻せば、窓は Step 4 製法のボットに戻ります。両方コミットして
+あるのは、この差し替えを両側とも再現できる diff として見せるためです。なお三目並べでは、
+差し替えても指し手は変わりません。どちらの写しも到達可能な123局面すべてで手書きボットと
+一致します（`TestGeneratedAgentPlaysExactlyLikeTheBot` が両方に同じ質問をします）。変わるのは
+並びを支える**根拠**で、それを測るのがこのページの残りです。
 
 ## 固定した相手だけでは、コーパスに穴が残る
+
+穴の存在は、Step 4 の終わりに二度見ています。curate の holdout 評価が書き出す `gaps.jsonl` と、
+自分の写しが黙って代打に譲った回数です。このステップが測るのは、その穴を**どう埋めるか**——
+局数を増やすのか、相手を替えるのか——で、教師を手書きボットに戻すのは答え合わせのためです。
 
 Step 4 と同じ「手書きボット対コイン」を、局数だけ変えて simulate した結果です。
 
@@ -208,7 +224,7 @@ Agent ごと、tick ごとに実行するため、生成器は上限のないス
 | 完璧な教師は、12通りどれでも8割に届かない | `TestAPerfectTeacherCannotBeDistilled` |
 | fork 述語は沈黙を減らし、間違いを増やす | `TestForkWordsTradeSilenceForConfidence` |
 | 探索は決定リストの1万倍以上かかる（枝刈り後） | `TestTheSearchCostsWhatTheListDoesNot` |
-| 生成エージェントは到達可能な123局面すべてで手書きと一致する | `TestGeneratedAgentPlaysExactlyLikeTheBot` |
+| **両方の**生成エージェントが、到達可能な123局面すべてで手書きと一致する | `TestGeneratedAgentPlaysExactlyLikeTheBot` |
 
 `TestAPerfectTeacherCannotBeDistilled` は、改善によって変わり得る否定的な結果を固定します。
 現状では8割に届かないことをテストにしているため、語彙や採掘器の改善によって8割を超えると、

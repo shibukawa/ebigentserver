@@ -17,20 +17,40 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/shibukawa/ebigentserver/tutorial/step4-distill/distill"
 )
 
 func main() {
 	corpus := flag.String("corpus", env("EBIGENT_CORPUS", "corpus"), "episode corpus root")
-	out := flag.String("out", "distill/gen", "where the generated package is written")
+	out := flag.String("out", "", "where the generated package is written; empty picks by target")
+	// Two targets, one pipeline. "bot" is the canonical recipe ebigent
+	// distill runs; "you" mines a curated human corpus into the
+	// genhuman package, so your copy and the bot's live side by side.
+	target := flag.String("target", "bot", "bot mines the X seat into distill/gen; you mines every seat into distill/genhuman")
 	flag.Parse()
 
-	c, err := distill.CompileFrom(*corpus)
+	compile, read, dir := distill.CompileFrom, distill.Corpus, "distill/gen"
+	if *target == "you" {
+		compile, read, dir = distill.CompileYours, distill.YourCorpus, "distill/genhuman"
+	} else if *target != "bot" {
+		fatal(fmt.Errorf("unknown --target %q; give bot or you", *target))
+	}
+	if *out == "" {
+		*out = dir
+	}
+
+	c, err := compile(*corpus)
 	if err != nil {
 		fatal(err)
 	}
-	if err := c.Write(*out); err != nil {
+	if *target == "you" {
+		err = c.WriteAs(*out, distill.HumanSpec(), distill.HumanTestSpec())
+	} else {
+		err = c.Write(*out)
+	}
+	if err != nil {
 		fatal(err)
 	}
 
@@ -42,6 +62,19 @@ func main() {
 	// third of them are explained by rules nobody approved.
 	fmt.Printf("%.1f%% of the recorded decisions are explained by an approved chip\n",
 		100*float64(distill.Covered(c.Library, c.Records))/float64(len(c.Records)))
+
+	// A curated corpus keeps a holdout beside its train side, and that
+	// is the honest half of the report: play the miner never saw.
+	hold, ok, err := distill.EvaluateHoldout(*corpus, c, read)
+	if err != nil {
+		fatal(err)
+	}
+	if ok {
+		fmt.Printf("holdout: %d decisions answered as recorded, %d answered differently, %d silent\n",
+			len(hold.Covered), len(hold.Misplayed), len(hold.Silent))
+		fmt.Printf("silent situations written to %s\n",
+			filepath.Join(filepath.Dir(filepath.Clean(*corpus)), "gaps.jsonl"))
+	}
 }
 
 // env reads what the toolchain sets, falling back to the configured

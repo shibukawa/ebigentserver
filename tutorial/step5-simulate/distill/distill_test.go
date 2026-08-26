@@ -14,6 +14,7 @@ import (
 	"github.com/shibukawa/ebigentserver/session"
 	"github.com/shibukawa/ebigentserver/tutorial/step5-simulate/distill"
 	"github.com/shibukawa/ebigentserver/tutorial/step5-simulate/distill/gen"
+	"github.com/shibukawa/ebigentserver/tutorial/step5-simulate/distill/genrotated"
 	"github.com/shibukawa/ebigentserver/tutorial/step5-simulate/distill/pred"
 	"github.com/shibukawa/ebigentserver/tutorial/step5-simulate/game"
 	"github.com/shibukawa/ebigentserver/tutorial/step5-simulate/msg"
@@ -158,8 +159,10 @@ func timeDecide(t *testing.T, call func(), n int) time.Duration {
 
 // TestGeneratedAgentPlaysExactlyLikeTheBot carries step 4's claim
 // forward against the corpus this step records: every position the
-// teacher can reach, walked, with the committed agent asked the same
-// question.
+// teacher can reach, walked, with BOTH committed agents asked the same
+// question. That both answer identically is what makes the swap in
+// main.go honest — it changes what justifies the ordering, not a move
+// on this board.
 func TestGeneratedAgentPlaysExactlyLikeTheBot(t *testing.T) {
 	positions := 0
 	walk(t, distill.Tactic, func(obs game.Sight) {
@@ -167,9 +170,13 @@ func TestGeneratedAgentPlaysExactlyLikeTheBot(t *testing.T) {
 		bot := &game.Bot{}
 		bot.Observe(obs)
 		want, wantOK := bot.Decide(context.Background())
-		got, gotOK := gen.Decide(obs)
+		got, gotOK := genrotated.Decide(obs)
 		if gotOK != wantOK || (wantOK && got != want) {
-			t.Fatalf("board %v: generated %v/%v, bot %v/%v", obs.Cells, got, gotOK, want, wantOK)
+			t.Fatalf("board %v: rotated %v/%v, bot %v/%v", obs.Cells, got, gotOK, want, wantOK)
+		}
+		baseGot, baseOK := gen.Decide(obs)
+		if baseOK != wantOK || (wantOK && baseGot != want) {
+			t.Fatalf("board %v: baseline %v/%v, bot %v/%v", obs.Cells, baseGot, baseOK, want, wantOK)
 		}
 	})
 	t.Logf("agreed on all %d positions the teacher can reach", positions)
@@ -301,13 +308,24 @@ func clone(w msg.TTTWorld) msg.TTTWorld {
 //	go test ./tutorial/step5-simulate/distill -update
 var update = flag.Bool("update", false, "rewrite the committed generated sources instead of comparing against them")
 
-// TestGeneratedSourcesAreCurrent keeps the committed agent honest.
+// TestGeneratedSourcesAreCurrent keeps both committed agents honest:
+// the baseline the swap goes back to, and the rotated bot the window
+// seats. Either going stale would leave the one-line diff in main.go
+// comparing things that no recipe reproduces.
 func TestGeneratedSourcesAreCurrent(t *testing.T) {
-	c, err := distill.Compile()
+	base, err := distill.CompileBaseline()
 	if err != nil {
 		t.Fatal(err)
 	}
-	files, err := c.Sources()
+	rot, err := distill.Compile()
+	if err != nil {
+		t.Fatal(err)
+	}
+	baseFiles, err := base.Sources()
+	if err != nil {
+		t.Fatal(err)
+	}
+	rotFiles, err := rot.SourcesAs(distill.RotatedSpec(), distill.RotatedTestSpec())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -317,19 +335,24 @@ func TestGeneratedSourcesAreCurrent(t *testing.T) {
 	// this red and neither running it again nor rerunning the command
 	// would fix it.
 	if *update {
-		if err := c.Write("gen"); err != nil {
+		if err := base.Write("gen"); err != nil {
 			t.Fatal(err)
 		}
-		t.Logf("wrote %d files under gen/", len(files))
+		if err := rot.WriteAs("genrotated", distill.RotatedSpec(), distill.RotatedTestSpec()); err != nil {
+			t.Fatal(err)
+		}
+		t.Logf("wrote %d files under gen/ and %d under genrotated/", len(baseFiles), len(rotFiles))
 		return
 	}
-	for name, generated := range files {
-		committed, err := os.ReadFile(filepath.Join("gen", name))
-		if err != nil {
-			t.Fatal(err)
-		}
-		if string(generated) != string(committed) {
-			t.Fatalf("gen/%s is stale; regenerate it with: ebigent distill", name)
+	for dir, files := range map[string]map[string][]byte{"gen": baseFiles, "genrotated": rotFiles} {
+		for name, generated := range files {
+			committed, err := os.ReadFile(filepath.Join(dir, name))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if string(generated) != string(committed) {
+				t.Fatalf("%s/%s is stale; regenerate it with: ebigent distill", dir, name)
+			}
 		}
 	}
 }
