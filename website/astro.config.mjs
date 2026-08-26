@@ -2,11 +2,48 @@
 import { defineConfig } from 'astro/config';
 import starlight from '@astrojs/starlight';
 
+// GitHub Pages のプロジェクトサイトとして base 付きで配信する。
+// 独自ドメイン（ルート配信）へ移す場合は site を差し替えて base を空にする。
+const base = '/ebigentserver';
+
+// Markdown/MDX 中のルート絶対参照（href="/..." や ](/images/...)）に base を
+// 前置する。Astro は Markdown 内のリンクに base を付けないため、ここで補う。
+// ページ本文は base を知らないまま書ける。
+function rehypePrefixBase() {
+	/** @param {unknown} value */
+	const prefix = (value) =>
+		typeof value === 'string' &&
+		value.startsWith('/') &&
+		!value.startsWith('//') &&
+		value !== base &&
+		!value.startsWith(`${base}/`)
+			? base + value
+			: value;
+	/** @param {any} node */
+	const visit = (node) => {
+		if (node.type === 'element' && node.properties) {
+			if ('href' in node.properties) node.properties.href = prefix(node.properties.href);
+			if ('src' in node.properties) node.properties.src = prefix(node.properties.src);
+		}
+		if (node.type === 'mdxJsxFlowElement' || node.type === 'mdxJsxTextElement') {
+			for (const attr of node.attributes ?? []) {
+				if (attr.type === 'mdxJsxAttribute' && (attr.name === 'href' || attr.name === 'src')) {
+					attr.value = prefix(attr.value);
+				}
+			}
+		}
+		for (const child of node.children ?? []) visit(child);
+	};
+	return visit;
+}
+
 // https://astro.build/config
 export default defineConfig({
-	// 公開先に合わせて差し替える（sitemap と canonical URL にだけ効く）。
-	// サブパス配信にするなら base も足し、ページ内の絶対リンクを見直すこと。
-	site: 'https://example.com',
+	site: 'https://shibukawa.github.io',
+	base,
+	markdown: {
+		rehypePlugins: [rehypePrefixBase],
+	},
 	integrations: [
 		starlight({
 			title: 'ebigentserver',
