@@ -13,6 +13,11 @@ jobs:
       - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
+      # Ebitengine compiles against X11/OpenGL/ALSA headers on Linux even
+      # when nothing ever opens a window, so vetting any package that
+      # imports it needs these dev packages on the runner.
+      - name: Install Ebitengine build dependencies
+        run: sudo apt-get update && sudo apt-get install -y libgl1-mesa-dev xorg-dev libasound2-dev pkg-config
       - name: Vet
         run: go vet ./...
       - name: Test
