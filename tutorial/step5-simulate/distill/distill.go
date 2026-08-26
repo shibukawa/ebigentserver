@@ -334,8 +334,8 @@ func Corpus(matches int, v *behavior.Vocabulary) ([]behavior.Record, error) {
 			return nil, err
 		}
 
-		recs, err := behavior.Segment(v, "", &decisions, func(slot uint16) bool {
-			return slot == uint16(game.SlotX)
+		recs, err := behavior.Segment(v, "", &decisions, func(row episode.Decision) bool {
+			return row.Slot == uint16(game.SlotX)
 		})
 		if err != nil {
 			return nil, err
@@ -475,6 +475,24 @@ func TestSpec() behavior.CodegenSpec {
 	return s
 }
 
+// RotatedSpec targets the bot this step actually produces: a different
+// package and a different name, so replacing the step-4 bot is a visible
+// one-line diff in main.go rather than the same identifier quietly
+// meaning something better.
+func RotatedSpec() behavior.CodegenSpec {
+	s := Spec()
+	s.Package = "genrotated"
+	s.AgentName = "Rotated"
+	return s
+}
+
+// RotatedTestSpec is RotatedSpec narrowed the way TestSpec narrows Spec.
+func RotatedTestSpec() behavior.CodegenSpec {
+	s := RotatedSpec()
+	s.Imports = []string{"github.com/shibukawa/ebigentserver/tutorial/step5-simulate/game"}
+	return s
+}
+
 // randomBot fills the other seat. It picks uniformly among the cells the
 // sight says are legal, from a seeded generator: a corpus has to be
 // reproducible, so the randomness is a declared input rather than a
@@ -510,10 +528,26 @@ type Compiled struct {
 	Records []behavior.Record
 }
 
-// Compile runs the canonical recipe: the corpus these committed sources
-// came from, and the only one that reproduces them.
+// Compile runs the canonical recipe: the rotated corpus the committed
+// genrotated sources came from, and the only one that reproduces them.
 func Compile() (*Compiled, error) {
 	lib, records, err := Canonical()
+	if err != nil {
+		return nil, err
+	}
+	return &Compiled{Library: lib, Records: records}, nil
+}
+
+// BaselineMatches is step 4's canonical count, carried into this module
+// for the bot the rotation replaces.
+const BaselineMatches = 800
+
+// CompileBaseline is step 4's recipe rebuilt here: the same teacher
+// against a random opponent alone. It is committed as distill/gen so
+// that swapping it out for the rotated bot is a diff a reader can make
+// and unmake, with both sides reproducible.
+func CompileBaseline() (*Compiled, error) {
+	lib, records, err := MineFrom(BaselineMatches, Judgement(), Tactic, RandomOnly())
 	if err != nil {
 		return nil, err
 	}
@@ -523,11 +557,18 @@ func Compile() (*Compiled, error) {
 // Sources renders every generated file, keyed by its name under the
 // output directory.
 func (c *Compiled) Sources() (map[string][]byte, error) {
-	agent, err := behavior.GenerateAgent(Spec(), Judgement(), c.Library)
+	return c.SourcesAs(Spec(), TestSpec())
+}
+
+// SourcesAs renders the same files under the identity the spec carries —
+// gen.Distilled for the baseline, genrotated.Rotated for this step's
+// product.
+func (c *Compiled) SourcesAs(spec, testSpec behavior.CodegenSpec) (map[string][]byte, error) {
+	agent, err := behavior.GenerateAgent(spec, Judgement(), c.Library)
 	if err != nil {
 		return nil, err
 	}
-	tests, err := behavior.GenerateTests(TestSpec(), c.Records, 24)
+	tests, err := behavior.GenerateTests(testSpec, c.Records, 24)
 	if err != nil {
 		return nil, err
 	}
@@ -545,7 +586,16 @@ func (c *Compiled) Sources() (map[string][]byte, error) {
 // Write puts them on disk. This is what `ebigent distill` reaches
 // through ./cmd/distill.
 func (c *Compiled) Write(dir string) error {
-	files, err := c.Sources()
+	return c.write(dir, c.Sources)
+}
+
+// WriteAs is Write under another identity, for the rotated bot.
+func (c *Compiled) WriteAs(dir string, spec, testSpec behavior.CodegenSpec) error {
+	return c.write(dir, func() (map[string][]byte, error) { return c.SourcesAs(spec, testSpec) })
+}
+
+func (c *Compiled) write(dir string, render func() (map[string][]byte, error)) error {
+	files, err := render()
 	if err != nil {
 		return err
 	}

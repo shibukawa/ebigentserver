@@ -88,6 +88,8 @@
 {"context": "body", "path": ".knowledge/api/game-cli.md", "source": "api:game-cli", "target": "actor:replay-agent", "target_category": "behavior", "target_type": "actor"}
 {"context": "body", "path": ".knowledge/api/game-cli.md", "source": "api:game-cli", "target": "metric:balance-signals", "target_category": "objective", "target_type": "metric"}
 {"context": "body", "path": ".knowledge/api/game-cli.md", "source": "api:game-cli", "target": "rule:analysis-tooling-outside-game-process", "target_category": "constraint", "target_type": "rule"}
+{"context": "body", "path": ".knowledge/api/game-cli.md", "source": "api:game-cli", "target": "data:curated-corpus", "target_category": "structure", "target_type": "data"}
+{"context": "body", "path": ".knowledge/api/game-cli.md", "source": "api:game-cli", "target": "requirement:corpus-curation", "target_category": "objective", "target_type": "requirement"}
 {"context": "body", "path": ".knowledge/api/game-cli.md", "source": "api:game-cli", "target": "flow:behavior-tree-synthesis", "target_category": "behavior", "target_type": "flow"}
 {"context": "body", "path": ".knowledge/api/game-cli.md", "source": "api:game-cli", "target": "flow:behavior-profile-derivation", "target_category": "behavior", "target_type": "flow"}
 {"context": "body", "path": ".knowledge/api/game-cli.md", "source": "api:game-cli", "target": "concept:continuous-match-loop", "target_category": "concept", "target_type": "concept"}
@@ -272,6 +274,7 @@
 {"context": "body", "path": ".knowledge/concept/agent.md", "source": "concept:agent", "target": "flow:agent-decision-loop", "target_category": "behavior", "target_type": "flow"}
 {"context": "body", "path": ".knowledge/concept/behavior-distillation.md", "source": "concept:behavior-distillation", "target": "actor:llm-agent", "target_category": "behavior", "target_type": "actor"}
 {"context": "body", "path": ".knowledge/concept/behavior-distillation.md", "source": "concept:behavior-distillation", "target": "data:episode-log", "target_category": "structure", "target_type": "data"}
+{"context": "body", "path": ".knowledge/concept/behavior-distillation.md", "source": "concept:behavior-distillation", "target": "requirement:corpus-curation", "target_category": "objective", "target_type": "requirement"}
 {"context": "body", "path": ".knowledge/concept/behavior-distillation.md", "source": "concept:behavior-distillation", "target": "actor:behavior-tree-agent", "target_category": "behavior", "target_type": "actor"}
 {"context": "body", "path": ".knowledge/concept/behavior-distillation.md", "source": "concept:behavior-distillation", "target": "data:behavior-tree", "target_category": "structure", "target_type": "data"}
 {"context": "body", "path": ".knowledge/concept/behavior-distillation.md", "source": "concept:behavior-distillation", "target": "flow:behavior-tree-synthesis", "target_category": "behavior", "target_type": "flow"}
@@ -723,6 +726,10 @@
 {"context": "body", "path": ".knowledge/data/configuration-surface.md", "source": "data:configuration-surface", "target": "system:websocket", "target_category": "external", "target_type": "system"}
 {"context": "body", "path": ".knowledge/data/configuration-surface.md", "source": "data:configuration-surface", "target": "concept:config-redundancy", "target_category": "concept", "target_type": "concept"}
 {"context": "body", "path": ".knowledge/data/configuration-surface.md", "source": "data:configuration-surface", "target": "rule:config-tier-placement", "target_category": "constraint", "target_type": "rule"}
+{"context": "body", "path": ".knowledge/data/curated-corpus.md", "source": "data:curated-corpus", "target": "data:episode-log", "target_category": "structure", "target_type": "data"}
+{"context": "body", "path": ".knowledge/data/curated-corpus.md", "source": "data:curated-corpus", "target": "flow:behavior-tree-synthesis", "target_category": "behavior", "target_type": "flow"}
+{"context": "body", "path": ".knowledge/data/curated-corpus.md", "source": "data:curated-corpus", "target": "decision:curate-corpus-to-corpus", "target_category": "constraint", "target_type": "decision"}
+{"context": "body", "path": ".knowledge/data/curated-corpus.md", "source": "data:curated-corpus", "target": "requirement:corpus-curation", "target_category": "objective", "target_type": "requirement"}
 {"context": "body", "path": ".knowledge/data/decision-record.md", "source": "data:decision-record", "target": "term:tick", "target_category": "vocabulary", "target_type": "term"}
 {"context": "body", "path": ".knowledge/data/decision-record.md", "source": "data:decision-record", "target": "actor:llm-agent", "target_category": "behavior", "target_type": "actor"}
 {"context": "body", "path": ".knowledge/data/decision-record.md", "source": "data:decision-record", "target": "concept:sight", "target_category": "concept", "target_type": "concept"}
@@ -895,6 +902,11 @@
 {"context": "body", "path": ".knowledge/decision/control-plane-features-out-of-scope.md", "source": "decision:control-plane-features-out-of-scope", "target": "concept:session", "target_category": "concept", "target_type": "concept"}
 {"context": "body", "path": ".knowledge/decision/control-plane-features-out-of-scope.md", "source": "decision:control-plane-features-out-of-scope", "target": "concept:world-state", "target_category": "concept", "target_type": "concept"}
 {"context": "body", "path": ".knowledge/decision/control-plane-features-out-of-scope.md", "source": "decision:control-plane-features-out-of-scope", "target": "flow:session-admission", "target_category": "behavior", "target_type": "flow"}
+{"context": "body", "path": ".knowledge/decision/curate-corpus-to-corpus.md", "source": "decision:curate-corpus-to-corpus", "target": "requirement:corpus-curation", "target_category": "objective", "target_type": "requirement"}
+{"context": "body", "path": ".knowledge/decision/curate-corpus-to-corpus.md", "source": "decision:curate-corpus-to-corpus", "target": "data:episode-log", "target_category": "structure", "target_type": "data"}
+{"context": "body", "path": ".knowledge/decision/curate-corpus-to-corpus.md", "source": "decision:curate-corpus-to-corpus", "target": "data:curated-corpus", "target_category": "structure", "target_type": "data"}
+{"context": "body", "path": ".knowledge/decision/curate-corpus-to-corpus.md", "source": "decision:curate-corpus-to-corpus", "target": "rule:generated-behavior-requires-approval", "target_category": "constraint", "target_type": "rule"}
+{"context": "body", "path": ".knowledge/decision/curate-corpus-to-corpus.md", "source": "decision:curate-corpus-to-corpus", "target": "data:decision-record", "target_category": "structure", "target_type": "data"}
 {"context": "body", "path": ".knowledge/decision/dev-console-over-debug-endpoint.md", "source": "decision:dev-console-over-debug-endpoint", "target": "concept:dedicated-server-mode", "target_category": "concept", "target_type": "concept"}
 {"context": "body", "path": ".knowledge/decision/dev-console-over-debug-endpoint.md", "source": "decision:dev-console-over-debug-endpoint", "target": "concept:execution-topology", "target_category": "concept", "target_type": "concept"}
 {"context": "body", "path": ".knowledge/decision/dev-console-over-debug-endpoint.md", "source": "decision:dev-console-over-debug-endpoint", "target": "api:dev-debug-endpoint", "target_category": "interface", "target_type": "api"}
@@ -1120,6 +1132,7 @@
 {"context": "body", "path": ".knowledge/flow/behavior-profile-derivation.md", "source": "flow:behavior-profile-derivation", "target": "requirement:behavior-learning-from-logs", "target_category": "objective", "target_type": "requirement"}
 {"context": "body", "path": ".knowledge/flow/behavior-tree-synthesis.md", "source": "flow:behavior-tree-synthesis", "target": "data:episode-log", "target_category": "structure", "target_type": "data"}
 {"context": "body", "path": ".knowledge/flow/behavior-tree-synthesis.md", "source": "flow:behavior-tree-synthesis", "target": "actor:llm-agent", "target_category": "behavior", "target_type": "actor"}
+{"context": "body", "path": ".knowledge/flow/behavior-tree-synthesis.md", "source": "flow:behavior-tree-synthesis", "target": "requirement:corpus-curation", "target_category": "objective", "target_type": "requirement"}
 {"context": "body", "path": ".knowledge/flow/behavior-tree-synthesis.md", "source": "flow:behavior-tree-synthesis", "target": "concept:sight", "target_category": "concept", "target_type": "concept"}
 {"context": "body", "path": ".knowledge/flow/behavior-tree-synthesis.md", "source": "flow:behavior-tree-synthesis", "target": "concept:action", "target_category": "concept", "target_type": "concept"}
 {"context": "body", "path": ".knowledge/flow/behavior-tree-synthesis.md", "source": "flow:behavior-tree-synthesis", "target": "data:derived-predicate", "target_category": "structure", "target_type": "data"}
@@ -1307,6 +1320,14 @@
 {"context": "body", "path": ".knowledge/requirement/control-plane-decoupling.md", "source": "requirement:control-plane-decoupling", "target": "concept:control-plane", "target_category": "concept", "target_type": "concept"}
 {"context": "body", "path": ".knowledge/requirement/control-plane-decoupling.md", "source": "requirement:control-plane-decoupling", "target": "decision:control-plane-features-out-of-scope", "target_category": "constraint", "target_type": "decision"}
 {"context": "body", "path": ".knowledge/requirement/control-plane-decoupling.md", "source": "requirement:control-plane-decoupling", "target": "decision:independent-from-popcornweb", "target_category": "constraint", "target_type": "decision"}
+{"context": "body", "path": ".knowledge/requirement/corpus-curation.md", "source": "requirement:corpus-curation", "target": "data:decision-record", "target_category": "structure", "target_type": "data"}
+{"context": "body", "path": ".knowledge/requirement/corpus-curation.md", "source": "requirement:corpus-curation", "target": "data:behavior-chip", "target_category": "structure", "target_type": "data"}
+{"context": "body", "path": ".knowledge/requirement/corpus-curation.md", "source": "requirement:corpus-curation", "target": "data:game-version", "target_category": "structure", "target_type": "data"}
+{"context": "body", "path": ".knowledge/requirement/corpus-curation.md", "source": "requirement:corpus-curation", "target": "concept:episode", "target_category": "concept", "target_type": "concept"}
+{"context": "body", "path": ".knowledge/requirement/corpus-curation.md", "source": "requirement:corpus-curation", "target": "flow:behavior-tree-synthesis", "target_category": "behavior", "target_type": "flow"}
+{"context": "body", "path": ".knowledge/requirement/corpus-curation.md", "source": "requirement:corpus-curation", "target": "concept:behavior-distillation", "target_category": "concept", "target_type": "concept"}
+{"context": "body", "path": ".knowledge/requirement/corpus-curation.md", "source": "requirement:corpus-curation", "target": "decision:curate-corpus-to-corpus", "target_category": "constraint", "target_type": "decision"}
+{"context": "body", "path": ".knowledge/requirement/corpus-curation.md", "source": "requirement:corpus-curation", "target": "data:curated-corpus", "target_category": "structure", "target_type": "data"}
 {"context": "body", "path": ".knowledge/requirement/dedicated-game-toolchain.md", "source": "requirement:dedicated-game-toolchain", "target": "api:game-cli", "target_category": "interface", "target_type": "api"}
 {"context": "body", "path": ".knowledge/requirement/dedicated-game-toolchain.md", "source": "requirement:dedicated-game-toolchain", "target": "concept:build-target", "target_category": "concept", "target_type": "concept"}
 {"context": "body", "path": ".knowledge/requirement/dedicated-game-toolchain.md", "source": "requirement:dedicated-game-toolchain", "target": "system:tinybind", "target_category": "external", "target_type": "system"}

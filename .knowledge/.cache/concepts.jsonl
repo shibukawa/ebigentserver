@@ -81,6 +81,7 @@
 {"category": "structure", "id": "data:behavior-tree", "path": ".knowledge/data/behavior-tree.md", "role": "supporting", "title": "Behavior Tree Artifact", "type": "data"}
 {"category": "structure", "id": "data:build-config", "path": ".knowledge/data/build-config.md", "role": "supporting", "title": "Build Config", "type": "data"}
 {"category": "structure", "id": "data:configuration-surface", "path": ".knowledge/data/configuration-surface.md", "role": "supporting", "title": "Configuration Surface", "type": "data"}
+{"category": "structure", "id": "data:curated-corpus", "path": ".knowledge/data/curated-corpus.md", "role": "supporting", "title": "Curated Corpus", "type": "data"}
 {"category": "structure", "id": "data:decision-record", "path": ".knowledge/data/decision-record.md", "role": "supporting", "title": "Decision Record", "type": "data"}
 {"category": "structure", "id": "data:derived-predicate", "path": ".knowledge/data/derived-predicate.md", "role": "supporting", "title": "Derived Predicate", "type": "data"}
 {"category": "structure", "id": "data:episode-log", "path": ".knowledge/data/episode-log.md", "role": "supporting", "title": "Episode Log", "type": "data"}
@@ -107,6 +108,7 @@
 {"category": "constraint", "id": "decision:combined-local-dev-process", "path": ".knowledge/decision/combined-local-dev-process.md", "role": "supporting", "title": "Combined Local Development Process", "type": "decision"}
 {"category": "constraint", "id": "decision:configbind-for-all-config", "path": ".knowledge/decision/configbind-for-all-config.md", "role": "supporting", "title": "Configbind For All Config", "type": "decision"}
 {"category": "constraint", "id": "decision:control-plane-features-out-of-scope", "path": ".knowledge/decision/control-plane-features-out-of-scope.md", "role": "supporting", "title": "Control Plane Features Out Of Scope", "type": "decision"}
+{"category": "constraint", "id": "decision:curate-corpus-to-corpus", "path": ".knowledge/decision/curate-corpus-to-corpus.md", "role": "supporting", "title": "Curate Is A Corpus To Corpus Transform", "type": "decision"}
 {"category": "constraint", "id": "decision:dev-console-over-debug-endpoint", "path": ".knowledge/decision/dev-console-over-debug-endpoint.md", "role": "supporting", "title": "Dev Console Over Debug Endpoint", "type": "decision"}
 {"category": "constraint", "id": "decision:dual-mode-agent-pacing", "path": ".knowledge/decision/dual-mode-agent-pacing.md", "role": "supporting", "title": "Dual Mode Agent Pacing", "type": "decision"}
 {"category": "constraint", "id": "decision:entry-points-over-build-tags", "path": ".knowledge/decision/entry-points-over-build-tags.md", "role": "supporting", "title": "Entry Points Over Build Tags", "type": "decision"}
@@ -168,6 +170,7 @@
 {"category": "objective", "id": "requirement:config-codegen", "path": ".knowledge/requirement/config-codegen.md", "role": "primary", "title": "Config Code Generation", "type": "requirement"}
 {"category": "objective", "id": "requirement:config-file-shape", "path": ".knowledge/requirement/config-file-shape.md", "role": "primary", "title": "Config File Shape", "type": "requirement"}
 {"category": "objective", "id": "requirement:control-plane-decoupling", "path": ".knowledge/requirement/control-plane-decoupling.md", "role": "primary", "title": "Control Plane Decoupling", "type": "requirement"}
+{"category": "objective", "id": "requirement:corpus-curation", "path": ".knowledge/requirement/corpus-curation.md", "role": "primary", "title": "Corpus Curation", "type": "requirement"}
 {"category": "objective", "id": "requirement:dedicated-game-toolchain", "path": ".knowledge/requirement/dedicated-game-toolchain.md", "role": "primary", "title": "Dedicated Game Toolchain", "type": "requirement"}
 {"category": "objective", "id": "requirement:dev-time-inspection", "path": ".knowledge/requirement/dev-time-inspection.md", "role": "primary", "title": "Development Time Inspection", "type": "requirement"}
 {"category": "objective", "id": "requirement:ebitengine-integration", "path": ".knowledge/requirement/ebitengine-integration.md", "role": "primary", "title": "Ebitengine Integration", "type": "requirement"}

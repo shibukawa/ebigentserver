@@ -132,8 +132,8 @@ func Corpus(n int) ([]behavior.Record, error) {
 		if err := s.Run(context.Background()); err != nil {
 			return nil, err
 		}
-		recs, err := behavior.Segment(vocab, "", &decisions, func(slot uint16) bool {
-			return slot == uint16(ttt.SlotX) // distill the bot's seat only
+		recs, err := behavior.Segment(vocab, "", &decisions, func(row episode.Decision) bool {
+			return row.Slot == uint16(ttt.SlotX) // distill the bot's seat only
 		})
 		if err != nil {
 			return nil, err
@@ -226,8 +226,8 @@ func ExportCorpus(root string, n int) ([]behavior.Record, error) {
 		if err != nil {
 			return nil, err
 		}
-		recs, err := behavior.Segment(vocab, id, df, func(slot uint16) bool {
-			return slot == uint16(ttt.SlotX)
+		recs, err := behavior.Segment(vocab, id, df, func(row episode.Decision) bool {
+			return row.Slot == uint16(ttt.SlotX)
 		})
 		df.Close()
 		if err != nil {

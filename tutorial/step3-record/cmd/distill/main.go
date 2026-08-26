@@ -20,6 +20,7 @@ import (
 	"path/filepath"
 
 	"github.com/shibukawa/ebigentserver/behavior"
+	"github.com/shibukawa/ebigentserver/episode"
 )
 
 // Vocabulary is the language a rule about tictactoe may use: the
@@ -169,9 +170,9 @@ func Segment(root string, v *behavior.Vocabulary, seat uint16) ([]behavior.Recor
 	if err != nil {
 		return nil, err
 	}
-	keep := func(uint16) bool { return true }
+	keep := func(episode.Decision) bool { return true }
 	if seat != 0 {
-		keep = func(slot uint16) bool { return slot == seat }
+		keep = func(row episode.Decision) bool { return row.Slot == seat }
 	}
 	var out []behavior.Record
 	for _, e := range entries {

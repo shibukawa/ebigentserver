@@ -17,6 +17,7 @@ coverage.*
 /corpus/
 /tutorial/step*/corpus/*
 !/tutorial/step*/corpus/.gitkeep
+/tutorial/step*/corpus-*/
 
 # Editor
 .DS_Store

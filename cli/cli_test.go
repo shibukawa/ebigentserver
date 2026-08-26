@@ -214,7 +214,7 @@ func TestHelpExitsZeroAndListsVerbs(t *testing.T) {
 	if code != 0 {
 		t.Errorf("--help exit = %d, want 0", code)
 	}
-	for _, verb := range []string{"init", "build", "config", "doctor", "analyze", "merge", "version"} {
+	for _, verb := range []string{"init", "build", "config", "doctor", "analyze", "curate", "merge", "version"} {
 		if !strings.Contains(out, verb) {
 			t.Errorf("help is missing the %s verb", verb)
 		}
@@ -642,6 +642,75 @@ func TestSimulateFillsTheCorpusFromWhatInitWrote(t *testing.T) {
 	}
 	if strings.Contains(out, "no decisions under") {
 		t.Errorf("distill found nothing simulate had just written:\n%s", out)
+	}
+
+	// Curate composes with both halves without either knowing: it reads
+	// what simulate wrote, and what it writes is a corpus like any
+	// other, so pointing distill at the train side is the whole of the
+	// wiring (decision:curate-corpus-to-corpus).
+	code, out, errOut = run(t, dir, "curate", "--cap", "2")
+	if code != 0 {
+		t.Fatalf("curate: exit %d\nstdout:\n%s\nstderr:\n%s", code, out, errOut)
+	}
+	code, out, errOut = run(t, dir, "distill", "--corpus", "corpus-curated/train")
+	if code != 0 {
+		t.Fatalf("distill over curated: exit %d\nstdout:\n%s\nstderr:\n%s", code, out, errOut)
+	}
+	if strings.Contains(out, "no decisions under") {
+		t.Errorf("distill found nothing in the curated corpus:\n%s", out)
+	}
+}
+
+// Curate stands between simulate and distill (requirement:corpus-curation):
+// corpus in, smaller corpus out, and the report says what moved. It works
+// on the recorded columns alone, so a hand-written corpus drives it
+// without the go toolchain.
+func TestCurateWritesACuratedCorpusAndReport(t *testing.T) {
+	dir := t.TempDir()
+	writeProject(t, dir)
+	episode := filepath.Join(dir, "corpus", "ep-1")
+	if err := os.MkdirAll(episode, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	body := `{"stream":"decisions","schema_version":1,"episode_id":"ep-1"}
+{"tick":1,"slot":1,"agent_kind":"human","sight":{"board":"open"},"action":{"cell":4}}
+{"tick":2,"slot":2,"agent_kind":"coin","sight":{"board":"open"},"action":{"cell":8}}
+{"tick":3,"slot":1,"agent_kind":"human","sight":{"board":"open"},"action":{"cell":4}}
+`
+	if err := os.WriteFile(filepath.Join(episode, "decisions.jsonl"), []byte(body), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	code, out, errOut := run(t, dir, "curate", "--agent_kind", "human", "--cap", "1")
+	if code != 0 {
+		t.Fatalf("exit %d\nstdout:\n%s\nstderr:\n%s", code, out, errOut)
+	}
+	// The human's duplicate fell to the cap and the coin's row to the
+	// filter, so one row survives — and the report says so in numbers.
+	if !strings.Contains(out, "cap 1: 1 of 2 training rows kept") {
+		t.Errorf("the report does not account for the cap:\n%s", out)
+	}
+	if !strings.Contains(out, "conflicts: 0") {
+		t.Errorf("the coin's row should have left with the filter, not stayed to conflict:\n%s", out)
+	}
+	curated := filepath.Join(dir, "corpus-curated")
+	if _, err := os.Stat(filepath.Join(curated, "train", "ep-1", "decisions.jsonl")); err != nil {
+		t.Errorf("no curated decisions stream: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(curated, "report.json")); err != nil {
+		t.Errorf("no report.json beside the curated corpus: %v", err)
+	}
+}
+
+// A holdout percent outside 0–100 is a usage mistake, and it has to fail
+// before anything is read or written.
+func TestCurateRejectsAnImpossibleHoldout(t *testing.T) {
+	code, _, errOut := run(t, t.TempDir(), "curate", "--holdout", "120")
+	if code == 0 {
+		t.Fatal("--holdout 120 should fail")
+	}
+	if !strings.Contains(errOut, "0 to 100") {
+		t.Errorf("stderr = %q, want the valid range", errOut)
 	}
 }
 

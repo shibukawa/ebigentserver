@@ -499,6 +499,61 @@ func simulationTarget(c *context, name string) (buildconf.Target, error) {
 // never names a corpus size or a seed: a recipe living here as well as
 // in the entry is a second place for it to be wrong, which is exactly
 // how a regeneration loop stops closing.
+// runCurate is the curate step of requirement:corpus-curation as a verb:
+// corpus in, curated corpus out, the report on stdout and beside the
+// output as report.json. Mining follows with
+// `ebigent distill --corpus <out>/train`; the holdout side exists for
+// the entry's evaluation, never for mining.
+func runCurate(c *context, opts *CurateOptions) error {
+	if opts.Holdout < 0 || opts.Holdout > 100 {
+		return fmt.Errorf("curate: --holdout %d is a percent; give 0 to 100", opts.Holdout)
+	}
+	corpus := opts.Corpus
+	if corpus == "" {
+		if err := c.requireProject(); err != nil {
+			return err
+		}
+		corpus = c.path(c.build.Behavior.Corpus)
+	}
+	out := opts.Out
+	if out == "" {
+		out = strings.TrimRight(corpus, "/\\") + "-curated"
+	}
+	copts := behavior.CurateOptions{
+		Filter:  behavior.RowFilter{AgentKind: opts.AgentKind, Result: opts.Result},
+		Cap:     opts.Cap,
+		Holdout: float64(opts.Holdout) / 100,
+		Seed:    uint64(opts.Seed),
+	}
+	if opts.Seat > 0 {
+		seat := uint16(opts.Seat)
+		copts.Filter.Slot = &seat
+	}
+	rep, err := behavior.Curate(corpus, out, copts)
+	if err != nil {
+		return err
+	}
+	// report.json keeps the resolved paths; the terminal gets the ones
+	// a person would type.
+	rep.Source, rep.Out = displayPath(rep.Source), displayPath(rep.Out)
+	rep.WriteText(c.stdout)
+	return nil
+}
+
+// displayPath shortens an absolute path to the working directory's view
+// of it, when that view is not worse.
+func displayPath(p string) string {
+	wd, err := os.Getwd()
+	if err != nil {
+		return p
+	}
+	rel, err := filepath.Rel(wd, p)
+	if err != nil || strings.HasPrefix(rel, "..") {
+		return p
+	}
+	return rel
+}
+
 func runDistill(c *context, opts *DistillOptions) error {
 	if err := c.requireProject(); err != nil {
 		return err

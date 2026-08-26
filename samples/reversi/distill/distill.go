@@ -161,8 +161,8 @@ func Corpus(n int) ([]behavior.Record, error) {
 		if err := s.Run(context.Background()); err != nil {
 			return nil, err
 		}
-		recs, err := behavior.Segment(vocab, "", &decisions, func(slot uint16) bool {
-			return slot == uint16(reversi.SlotBlack) // distill the greedy seat only
+		recs, err := behavior.Segment(vocab, "", &decisions, func(row episode.Decision) bool {
+			return row.Slot == uint16(reversi.SlotBlack) // distill the greedy seat only
 		})
 		if err != nil {
 			return nil, err

@@ -12,7 +12,12 @@ import (
 // Segment reads one episode's decisions stream and featurizes the rows
 // the filter accepts (the segment step of flow:behavior-tree-synthesis).
 // Sight-only rows and actions outside the vocabulary are skipped.
-func Segment(v *Vocabulary, episodeID string, decisions io.Reader, keep func(slot uint16) bool) ([]Record, error) {
+//
+// The filter sees the whole data:decision-record row, not just the seat:
+// the agent_kind column is the one that separates a human's rows from a
+// bot's within one seat, and a filter that could not read it would make
+// that column decoration (requirement:corpus-curation).
+func Segment(v *Vocabulary, episodeID string, decisions io.Reader, keep func(row episode.Decision) bool) ([]Record, error) {
 	sc := bufio.NewScanner(decisions)
 	sc.Buffer(make([]byte, 0, 64*1024), 16*1024*1024)
 	if !sc.Scan() {
@@ -34,7 +39,7 @@ func Segment(v *Vocabulary, episodeID string, decisions io.Reader, keep func(slo
 		if len(row.Action) == 0 || string(row.Action) == "null" {
 			continue
 		}
-		if keep != nil && !keep(row.Slot) {
+		if keep != nil && !keep(row) {
 			continue
 		}
 		rec, err := v.Featurize(episodeID, row.Tick, row.Slot, row.Sight, row.Action)

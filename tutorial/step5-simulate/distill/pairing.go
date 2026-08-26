@@ -134,8 +134,8 @@ func CorpusFrom(matches int, v *behavior.Vocabulary, teacher func() session.Agen
 			return matchloop.Result{}, err
 		}
 
-		recs, err := behavior.Segment(v, "", &decisions, func(slot uint16) bool {
-			return slot == uint16(game.SlotX)
+		recs, err := behavior.Segment(v, "", &decisions, func(row episode.Decision) bool {
+			return row.Slot == uint16(game.SlotX)
 		})
 		if err != nil {
 			return matchloop.Result{}, err

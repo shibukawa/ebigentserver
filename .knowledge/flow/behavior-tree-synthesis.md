@@ -9,6 +9,9 @@ Turn recorded play into an approved behavior tree with the developer deciding wh
 flow:
   trigger: a corpus of data:episode-log exists from human or actor:llm-agent play
   steps:
+    - id: curate
+      action: filter, aggregate, cap, prioritize, and split the corpus per requirement:corpus-curation
+      note: downstream analysis counts one record as one vote, so a raw human corpus distills poorly
     - id: segment
       action: split episodes into decision points, each an concept:sight paired with the concept:action taken
     - id: analyze

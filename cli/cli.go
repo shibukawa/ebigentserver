@@ -79,6 +79,21 @@ type AnalyzeOptions struct {
 	SQL    string `default:"" help:"also write a DuckDB report script to this path"`
 }
 
+// CurateOptions filters, dedups, caps, and splits a recorded corpus
+// before distillation mines it (requirement:corpus-curation). The verb
+// needs no project entry point: unlike distill it never evaluates a
+// predicate, so it works on the recorded columns alone.
+type CurateOptions struct {
+	Corpus    string `default:"" help:"corpus root; defaults to the behavior.corpus setting"`
+	Out       string `default:"" help:"curated corpus root; defaults to <corpus>-curated"`
+	AgentKind string `default:"" help:"keep rows of one agent_kind: human, or a bot policy name"`
+	Seat      int    `default:"0" help:"keep one seat; 0 keeps every seat"`
+	Result    string `default:"" help:"keep rows of seats whose episode ended so, e.g. win"`
+	Cap       int    `default:"0" help:"most rows one identical situation and action may keep; 0 keeps all"`
+	Holdout   int    `default:"0" help:"percent of episodes reserved for evaluation, split whole"`
+	Seed      int    `default:"0" help:"episode split seed"`
+}
+
 // DistillOptions runs the project's own distillation entry point.
 // AddOptions adds one piece to an existing project.
 //
@@ -160,6 +175,7 @@ func Run(stdout, stderr io.Writer) int {
 	generateOpts := configbind.SubCommand[GenerateOptions]("generate", "emit the code the configuration settles")
 	analyzeOpts := configbind.SubCommand[AnalyzeOptions]("analyze", "aggregate a recorded episode corpus")
 	addOpts := configbind.SubCommand[AddOptions]("add", "write a stage's rule set, or an agent for one")
+	curateOpts := configbind.SubCommand[CurateOptions]("curate", "filter, dedup, and split the corpus for distillation")
 	distillOpts := configbind.SubCommand[DistillOptions]("distill", "mine the corpus into behavior candidates and regenerate the agent")
 	mergeOpts := configbind.SubCommand[MergeOptions]("merge", "fold analyzer proposals into a chip library")
 	doctorOpts := configbind.SubCommand[DoctorOptions]("doctor", "report environment problems")
@@ -219,6 +235,8 @@ func Run(stdout, stderr io.Writer) int {
 		return ctx.report(runAnalyze(ctx, analyzeOpts))
 	case addOpts != nil:
 		return ctx.report(runAdd(ctx, addOpts))
+	case curateOpts != nil:
+		return ctx.report(runCurate(ctx, curateOpts))
 	case distillOpts != nil:
 		return ctx.report(runDistill(ctx, distillOpts))
 	case mergeOpts != nil:

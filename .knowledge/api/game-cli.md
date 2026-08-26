@@ -31,6 +31,8 @@ verbs:
     action: materialize a recorded corpus into analysis ready JSONL or parquet
   - name: analyze
     action: run metric:balance-signals queries over a corpus, see rule:analysis-tooling-outside-game-process
+  - name: curate
+    action: filter, dedup, cap, and split a corpus into a data:curated-corpus with a report, see requirement:corpus-curation
   - name: merge
     action: fold validated analyzer proposals into a chip library as a reviewable diff
   - name: train

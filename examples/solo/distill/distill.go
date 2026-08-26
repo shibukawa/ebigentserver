@@ -214,8 +214,8 @@ func Records(root string, slot session.SlotID) ([]behavior.Record, error) {
 		if err != nil {
 			continue // not an episode directory
 		}
-		recs, err := behavior.Segment(vocab, "", f, func(s uint16) bool {
-			return session.SlotID(s) == slot
+		recs, err := behavior.Segment(vocab, "", f, func(row episode.Decision) bool {
+			return session.SlotID(row.Slot) == slot
 		})
 		f.Close()
 		if err != nil {

@@ -15,6 +15,7 @@ package distill
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -236,6 +237,23 @@ func decodeSight(raw json.RawMessage) (sightShape, error) {
 // same log under a different agent_kind, and distilling those would
 // produce a faithful reproduction of a coin.
 func Corpus(root string, v *behavior.Vocabulary) ([]behavior.Record, error) {
+	return corpusRows(root, v, func(row episode.Decision) bool {
+		return row.Slot == uint16(game.SlotX)
+	})
+}
+
+// YourCorpus reads a corpus without a seat filter. It exists for the
+// curated human corpus: `ebigent curate --agent_kind human` has already
+// chosen the rows, and which seat you happened to sit in is not part of
+// your policy — the sight carries your mark, so rows from both seats
+// stay distinguishable to the miner.
+func YourCorpus(root string, v *behavior.Vocabulary) ([]behavior.Record, error) {
+	return corpusRows(root, v, nil)
+}
+
+// corpusRows walks one corpus directory and featurizes the rows the
+// filter accepts.
+func corpusRows(root string, v *behavior.Vocabulary, keep func(episode.Decision) bool) ([]behavior.Record, error) {
 	entries, err := os.ReadDir(root)
 	if err != nil {
 		return nil, err
@@ -252,9 +270,7 @@ func Corpus(root string, v *behavior.Vocabulary) ([]behavior.Record, error) {
 		if err != nil {
 			return nil, err
 		}
-		recs, err := behavior.Segment(v, "", f, func(slot uint16) bool {
-			return slot == uint16(game.SlotX)
-		})
+		recs, err := behavior.Segment(v, "", f, keep)
 		f.Close()
 		if err != nil {
 			return nil, fmt.Errorf("%s: %w", e.Name(), err)
@@ -466,6 +482,78 @@ func TestSpec() behavior.CodegenSpec {
 	return s
 }
 
+// HumanSpec targets the generated copy of the person's own play. A
+// different package and agent name, and nothing else: your policy and
+// the bot's policy come out of the same generator, which is the point —
+// the pipeline never asks who the teacher was.
+func HumanSpec() behavior.CodegenSpec {
+	s := Spec()
+	s.Package = "genhuman"
+	s.AgentName = "You"
+	return s
+}
+
+// HumanTestSpec is HumanSpec narrowed the way TestSpec narrows Spec.
+func HumanTestSpec() behavior.CodegenSpec {
+	s := HumanSpec()
+	s.Imports = []string{"github.com/shibukawa/ebigentserver/tutorial/step4-distill/game"}
+	return s
+}
+
+// CompileYours mines a curated human corpus — every seat, because
+// `ebigent curate --agent_kind human` already chose the rows and the
+// seat you sat in is not part of your policy.
+func CompileYours(root string) (*Compiled, error) {
+	records, err := YourCorpus(root, Judgement())
+	if err != nil {
+		return nil, err
+	}
+	lib, err := Mine(Judgement(), records)
+	if err != nil {
+		return nil, err
+	}
+	return &Compiled{Library: lib, Records: records}, nil
+}
+
+// Understudy seats a primary policy with a stand-in behind it. A decision
+// list distilled from a thin corpus is silent in situations it never saw
+// — Decide returns false — and a silent seat would stall the match. The
+// understudy answers those, so the copy is playable on day one, and it
+// says so: every fallback is a gap the corpus has not covered yet, the
+// live twin of the gaps.jsonl the holdout evaluation writes.
+type Understudy struct {
+	Primary, Backup session.Agent[game.Sight, msg.Move]
+	// Gaps counts the decisions the backup had to take.
+	Gaps int
+}
+
+func (u *Understudy) Joined(id session.SlotID) {
+	u.Primary.Joined(id)
+	u.Backup.Joined(id)
+}
+
+func (u *Understudy) Observe(o game.Sight) {
+	u.Primary.Observe(o)
+	u.Backup.Observe(o)
+}
+
+func (u *Understudy) Decide(ctx context.Context) (msg.Move, bool) {
+	if m, ok := u.Primary.Decide(ctx); ok {
+		return m, ok
+	}
+	u.Gaps++
+	return u.Backup.Decide(ctx)
+}
+
+func (u *Understudy) Ended(res session.Result) {
+	u.Primary.Ended(res)
+	u.Backup.Ended(res)
+	if u.Gaps > 0 {
+		fmt.Printf("  your copy was silent %d times; the coin filled in\n", u.Gaps)
+		u.Gaps = 0
+	}
+}
+
 // randomBot fills the other seat. It picks uniformly among the cells the
 // sight says are legal, from a seeded generator: a corpus has to be
 // reproducible, so the randomness is a declared input rather than a
@@ -533,14 +621,72 @@ func CompileFrom(root string) (*Compiled, error) {
 	return &Compiled{Library: lib, Records: records}, nil
 }
 
+// EvaluateHoldout measures the mined library against the holdout side a
+// curated corpus keeps beside its train side (data:curated-corpus). The
+// second return value says whether there was one: a plain corpus has no
+// holdout, and that is not an error. The read function must be the one
+// the training side was read with — Corpus for the bot, YourCorpus for a
+// human corpus — because a holdout filtered differently from the
+// training set measures the filter rather than the policy; nil means
+// Corpus.
+//
+// The coverage distill prints for itself is computed on the corpus it
+// mined, and a number computed on what the miner saw can only flatter
+// the miner. The holdout answers with play it never saw, in three
+// buckets: covered is agreement, misplayed is an order the training rows
+// never contradicted but real play does, and silent is the gap list —
+// written beside the corpus as gaps.jsonl, which is what the next
+// simulate or play round works from (requirement:corpus-curation).
+func EvaluateHoldout(corpus string, c *Compiled, read func(string, *behavior.Vocabulary) ([]behavior.Record, error)) (behavior.EvalReport, bool, error) {
+	root := filepath.Dir(filepath.Clean(corpus))
+	holdout := filepath.Join(root, "holdout")
+	if fi, err := os.Stat(holdout); err != nil || !fi.IsDir() {
+		return behavior.EvalReport{}, false, nil
+	}
+	if read == nil {
+		read = Corpus
+	}
+	records, err := read(holdout, Judgement())
+	if errors.Is(err, behavior.ErrEmptyCorpus) {
+		return behavior.EvalReport{}, false, nil
+	}
+	if err != nil {
+		return behavior.EvalReport{}, false, err
+	}
+	rep, err := behavior.Evaluate(Judgement(), c.Library, records)
+	if err != nil {
+		return behavior.EvalReport{}, false, err
+	}
+	f, err := os.Create(filepath.Join(root, "gaps.jsonl"))
+	if err != nil {
+		return behavior.EvalReport{}, false, err
+	}
+	werr := rep.WriteGaps(f)
+	if cerr := f.Close(); werr == nil {
+		werr = cerr
+	}
+	if werr != nil {
+		return behavior.EvalReport{}, false, werr
+	}
+	return rep, true, nil
+}
+
 // Sources renders every generated file, keyed by its name under the
 // output directory.
 func (c *Compiled) Sources() (map[string][]byte, error) {
-	agent, err := behavior.GenerateAgent(Spec(), Judgement(), c.Library)
+	return c.SourcesAs(Spec(), TestSpec())
+}
+
+// SourcesAs renders the same files under a different identity — the
+// package and agent name the spec carries. The human copy goes through
+// here with HumanSpec, so "your policy" and "the bot's policy" are two
+// packages side by side rather than one directory taking turns.
+func (c *Compiled) SourcesAs(spec, testSpec behavior.CodegenSpec) (map[string][]byte, error) {
+	agent, err := behavior.GenerateAgent(spec, Judgement(), c.Library)
 	if err != nil {
 		return nil, err
 	}
-	tests, err := behavior.GenerateTests(TestSpec(), c.Records, 24)
+	tests, err := behavior.GenerateTests(testSpec, c.Records, 24)
 	if err != nil {
 		return nil, err
 	}
@@ -558,7 +704,16 @@ func (c *Compiled) Sources() (map[string][]byte, error) {
 // Write puts them on disk. This is what `ebigent distill` reaches
 // through ./cmd/distill.
 func (c *Compiled) Write(dir string) error {
-	files, err := c.Sources()
+	return c.write(dir, c.Sources)
+}
+
+// WriteAs is Write under another identity, for the human copy.
+func (c *Compiled) WriteAs(dir string, spec, testSpec behavior.CodegenSpec) error {
+	return c.write(dir, func() (map[string][]byte, error) { return c.SourcesAs(spec, testSpec) })
+}
+
+func (c *Compiled) write(dir string, render func() (map[string][]byte, error)) error {
+	files, err := render()
 	if err != nil {
 		return err
 	}
